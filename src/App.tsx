@@ -779,8 +779,8 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
   };
   const setCmd = async (card) => {
     const img = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null;
-    setCommander({ ...card, image_url: img, instanceId: uid() });
-    setDeck(d => { const idx = d.findIndex(c => c.name === card.name || c.id === card.id); if (idx === -1) return d; const n = [...d]; n.splice(idx, 1); return n; });
+    // Keep card in deck — commander is just a reference, not removed
+    setCommander({ ...card, image_url: img || card.image_url, instanceId: card.instanceId || uid() });
   };
 
   const handleImport = async () => {
@@ -982,9 +982,9 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
         <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           <div style={{ padding: "10px 18px", borderBottom: "1px solid #2a2a4a", display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: "#ffd700" }}>Mi Mazo</span>
-            <span style={{ background: "#1a1a3e", borderRadius: 20, padding: "2px 9px", fontSize: 12, color: "#8888aa" }}>{deck.length + (commander ? 1 : 0)}/100</span>
+            <span style={{ background: "#1a1a3e", borderRadius: 20, padding: "2px 9px", fontSize: 12, color: "#8888aa" }}>{deck.length}/100</span>
             <div style={{ marginLeft: "auto" }}>
-              <button onClick={() => { if (!commander) return alert("Selecciona un Comandante."); if (deck.length < 5) return alert("Agrega más cartas."); onReady({ deck: shuffle(deck), commander, playerName }); }}
+              <button onClick={() => { if (!commander) return alert("Selecciona un Comandante."); if (deck.length < 5) return alert("Agrega más cartas."); const deckWithoutCmd = deck.filter(c => c.instanceId !== commander.instanceId); onReady({ deck: shuffle(deckWithoutCmd), commander, playerName }); }}
                 style={{ padding: "9px 22px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>▶ JUGAR</button>
             </div>
           </div>
