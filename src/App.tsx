@@ -1832,7 +1832,14 @@ const KEYWORD_MAP = {
   "hexproof":      "hexproof",
   "indestructible":"indestructible",
   "menace":        "menace",
-  "reach":         "reach",
+  "reach":          "reach",
+  "fear":           "fear",
+  "intimidate":     "intimidate",
+  "shadow":         "shadow",
+  "wither":         "wither",
+  "infect":         "infect",
+  "flanking":       "flanking",
+  "protection":     "protection",
 };
 
 // Extract abilities from card keywords
@@ -1856,6 +1863,13 @@ const ABILITIES = [
   { key: "menace",     name: "Amenaza",         en: "Menace",       icon: "😈", color: "#3a1a2a", text: "#ff88aa",  desc: "Debe bloquearse con 2+ criaturas" },
   { key: "reach",      name: "Alcance",         en: "Reach",        icon: "🌿", color: "#1a3a1a", text: "#88dd88",  desc: "Puede bloquear criaturas con volar" },
   { key: "doublestrike",name:"Doble golpe",     en: "Double Strike", icon:"⚔⚔", color: "#4a2a0a", text: "#ffcc44", desc: "Daña primero y también en combate normal" },
+  { key: "fear",       name:"Inspirar temor",  en: "Fear",           icon:"👻", color: "#1a0a2a", text: "#bb88ff", desc: "Solo puede bloquearse con artefactos o criaturas negras" },
+  { key: "intimidate", name:"Intimidar",       en: "Intimidate",     icon:"😱", color: "#2a1a3a", text: "#dd99ff", desc: "Solo puede bloquearse con artefactos o criaturas del mismo color" },
+  { key: "shadow",     name:"Sombra",          en: "Shadow",         icon:"🌑", color: "#0a0a1a", text: "#9999cc", desc: "Solo bloquea y es bloqueada por criaturas con sombra" },
+  { key: "wither",     name:"Marchitar",       en: "Wither",         icon:"🥀", color: "#1a2a0a", text: "#88cc44", desc: "Inflige daño a criaturas como contadores -1/-1" },
+  { key: "infect",     name:"Infectar",        en: "Infect",         icon:"☣", color: "#0a2a0a", text: "#44ff44", desc: "Daña como contadores -1/-1 a criaturas y contadores de veneno a jugadores" },
+  { key: "flanking",   name:"Flanquear",       en: "Flanking",       icon:"🐎", color: "#3a2a0a", text: "#ffbb44", desc: "Criaturas que lo bloquean sin flanquear obtienen -1/-1" },
+  { key: "protection", name:"Protección",      en: "Protection",     icon:"🔰", color: "#0a2a3a", text: "#44ddff", desc: "Protegida de un color o tipo específico" },
 ];
 
 function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
@@ -2787,33 +2801,27 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
               {(card.abilities||[]).length > 0 && (
                 <div style={{
                   position:"absolute",
-                  bottom: "100%",        /* sits ABOVE the card */
-                  left:"50%",
-                  transform:"translateX(-50%)",
-                  marginBottom:3,
+                  top: 2,
+                  left: 2,
+                  right: 2,
                   display:"flex",
                   gap:2,
-                  flexWrap:"nowrap",
-                  zIndex:10,
+                  flexWrap:"wrap",
+                  zIndex:5,
                   pointerEvents:"none",
-                  filter:"drop-shadow(0 1px 3px #000a)",
                 }}>
                   {(card.abilities||[]).map(key => {
                     const ab = ABILITIES.find(a=>a.key===key);
                     return ab ? (
                       <span key={key} title={ab.name}
                         style={{
-                          fontSize: isMe ? 14 : 11,
+                          fontSize: isMe ? 11 : 9,
                           lineHeight:1,
-                          background: ab.color + "cc",
-                          borderRadius:"50%",
-                          width: isMe ? 20 : 16,
-                          height: isMe ? 20 : 16,
-                          display:"flex",
-                          alignItems:"center",
-                          justifyContent:"center",
-                          border:`1px solid ${ab.text}66`,
+                          background: "#000000cc",
+                          borderRadius:3,
+                          padding:"1px 2px",
                           flexShrink:0,
+                          filter:"drop-shadow(0 1px 2px #000)",
                         }}>
                         {ab.icon}
                       </span>
