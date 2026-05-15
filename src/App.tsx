@@ -60,7 +60,8 @@ class SupabaseRealtime {
 // ─── Scryfall ─────────────────────────────────────────────────────────────────
 async function searchCards(query) {
   try {
-    const r = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}&order=name&unique=cards`);
+    // Use our Vercel proxy to avoid CORS restrictions
+    const r = await fetch(`/api/scryfall-search?q=${encodeURIComponent(query)}`);
     if (r.ok) { const d = await r.json(); return d.data || []; }
     return [];
   } catch { return []; }
@@ -70,15 +71,15 @@ async function getCardLocalized(card, preferLang = "es") {
   const result = { image_url: engImg, printed_name: card.name, printed_text: card.oracle_text, type_line: card.type_line };
   if (preferLang && preferLang !== "en" && card.name) {
     try {
-      const r = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(card.name)}&lang=${preferLang}`);
+      // Use Vercel proxy — no CORS restrictions
+      const r = await fetch(`/api/scryfall?name=${encodeURIComponent(card.name)}&lang=${preferLang}`);
       const data = await r.json();
-      // Scryfall returns {object:"error"} for cards not in that language — check for it
-      if (data.object !== "error" && data.image_uris) {
+      if (!data.error && data.image_url) {
         return {
-          image_url: data.image_uris?.normal || data.card_faces?.[0]?.image_uris?.normal || engImg,
+          image_url: data.image_url || engImg,
           printed_name: data.printed_name || data.name || card.name,
           printed_text: data.printed_text || data.oracle_text || card.oracle_text,
-          type_line: data.printed_type_line || data.type_line || card.type_line,
+          type_line: data.type_line || card.type_line,
         };
       }
     } catch {}
@@ -86,18 +87,13 @@ async function getCardLocalized(card, preferLang = "es") {
   return result;
 }
 async function getCardImage(card, preferLang = "es") {
-  // Try Spanish via /cards/named — CORS-safe, works from any origin
   if (preferLang !== "en" && card.name) {
     try {
-      const r = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(card.name)}&lang=${preferLang}`);
-      const esCard = await r.json();
-      if (esCard.object !== "error") {
-        if (esCard.image_uris?.normal) return esCard.image_uris.normal;
-        if (esCard.card_faces?.[0]?.image_uris?.normal) return esCard.card_faces[0].image_uris.normal;
-      }
+      const r = await fetch(`/api/scryfall?name=${encodeURIComponent(card.name)}&lang=${preferLang}`);
+      const data = await r.json();
+      if (!data.error && data.image_url) return data.image_url;
     } catch {}
   }
-  // Fallback: English image already on the card object
   if (card.image_uris?.normal) return card.image_uris.normal;
   if (card.card_faces?.[0]?.image_uris?.normal) return card.card_faces[0].image_uris.normal;
   return null;
@@ -830,37 +826,17 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
         const targetLang = "es"; // always try Spanish first
         try {
           let card = null;
-          // Try target language first (1 request, gets name+image in lang)
-          if (targetLang !== "en") {
-            const r = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&lang=${targetLang}`);
-            const d = await r.json();
-            // Scryfall returns HTTP 200 with {object:"error"} for cards not in that language
-            if (d.object !== "error" && d.image_uris) card = d;
-          }
-          // Fallback: English exact
-          if (!card) {
-            const r = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`);
-            if (r.ok) card = await r.json();
-          }
-          // Fallback: fuzzy
-          if (!card) {
-            const r = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`);
-            if (r.ok) card = await r.json();
+          // Use Vercel proxy — handles Spanish, English fallback, and fuzzy automatically
+          const proxyUrl = `/api/scryfall?name=${encodeURIComponent(name)}&lang=${targetLang}`;
+          const proxyRes = await fetch(proxyUrl);
+          if (proxyRes.ok) {
+            const d = await proxyRes.json();
+            if (!d.error) card = d;
           }
           if (!card) { continue; }
 
-          // If we got English card but want Spanish, fetch Spanish separately
-          if (card.lang !== targetLang && targetLang !== "en") {
-            const loc = await getCardLocalized(card, targetLang);
-            card = {
-              ...card,
-              image_url: loc.image_url,
-              printed_name: loc.printed_name,
-              printed_text: loc.printed_text,
-              type_line: loc.type_line,
-            };
-          } else {
-            // Card already in target lang — use its image directly
+          // Proxy already handled Spanish/English — just ensure image_url is set
+          if (!card.image_url) {
             card = {
               ...card,
               image_url: card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null,
