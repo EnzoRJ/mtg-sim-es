@@ -60,26 +60,32 @@ class SupabaseRealtime {
 // ─── Scryfall ─────────────────────────────────────────────────────────────────
 async function searchCards(query) {
   try {
-    // Use our Vercel proxy to avoid CORS restrictions
-    const r = await fetch(`/api/scryfall-search?q=${encodeURIComponent(query)}`);
+    const url = scryfallUrl(`/cards/search?q=${encodeURIComponent(query)}&order=name&unique=cards`);
+    const r = await fetch(url);
     if (r.ok) { const d = await r.json(); return d.data || []; }
     return [];
   } catch { return []; }
 }
+// CORS proxy wraps the Scryfall URL so it works from any browser
+const CORS_PROXY = "https://corsproxy.io/?url=";
+function scryfallUrl(path) {
+  return CORS_PROXY + encodeURIComponent("https://api.scryfall.com" + path);
+}
+
 async function getCardLocalized(card, preferLang = "es") {
   const engImg = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null;
   const result = { image_url: engImg, printed_name: card.name, printed_text: card.oracle_text, type_line: card.type_line };
   if (preferLang && preferLang !== "en" && card.name) {
     try {
-      // Use Vercel proxy — no CORS restrictions
-      const r = await fetch(`/api/scryfall?name=${encodeURIComponent(card.name)}&lang=${preferLang}`);
+      const url = scryfallUrl(`/cards/named?exact=${encodeURIComponent(card.name)}&lang=${preferLang}`);
+      const r = await fetch(url);
       const data = await r.json();
-      if (!data.error && data.image_url) {
+      if (data.object !== "error" && data.image_uris) {
         return {
-          image_url: data.image_url || engImg,
+          image_url: data.image_uris?.normal || data.card_faces?.[0]?.image_uris?.normal || engImg,
           printed_name: data.printed_name || data.name || card.name,
           printed_text: data.printed_text || data.oracle_text || card.oracle_text,
-          type_line: data.type_line || card.type_line,
+          type_line: data.printed_type_line || data.type_line || card.type_line,
         };
       }
     } catch {}
@@ -89,9 +95,10 @@ async function getCardLocalized(card, preferLang = "es") {
 async function getCardImage(card, preferLang = "es") {
   if (preferLang !== "en" && card.name) {
     try {
-      const r = await fetch(`/api/scryfall?name=${encodeURIComponent(card.name)}&lang=${preferLang}`);
+      const url = scryfallUrl(`/cards/named?exact=${encodeURIComponent(card.name)}&lang=${preferLang}`);
+      const r = await fetch(url);
       const data = await r.json();
-      if (!data.error && data.image_url) return data.image_url;
+      if (data.object !== "error" && data.image_uris?.normal) return data.image_uris.normal;
     } catch {}
   }
   if (card.image_uris?.normal) return card.image_uris.normal;
@@ -826,12 +833,32 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
         const targetLang = "es"; // always try Spanish first
         try {
           let card = null;
-          // Use Vercel proxy — handles Spanish, English fallback, and fuzzy automatically
-          const proxyUrl = `/api/scryfall?name=${encodeURIComponent(name)}&lang=${targetLang}`;
-          const proxyRes = await fetch(proxyUrl);
-          if (proxyRes.ok) {
-            const d = await proxyRes.json();
-            if (!d.error) card = d;
+          // Try Spanish first via CORS proxy
+          try {
+            const esUrl = scryfallUrl(`/cards/named?exact=${encodeURIComponent(name)}&lang=${targetLang}`);
+            const esRes = await fetch(esUrl);
+            const esData = await esRes.json();
+            if (esData.object !== "error" && esData.image_uris) {
+              card = { ...esData, image_url: esData.image_uris?.normal || esData.card_faces?.[0]?.image_uris?.normal || null, printed_name: esData.printed_name || esData.name };
+            }
+          } catch {}
+          // Fallback: English
+          if (!card) {
+            try {
+              const enUrl = scryfallUrl(`/cards/named?exact=${encodeURIComponent(name)}`);
+              const enRes = await fetch(enUrl);
+              const enData = await enRes.json();
+              if (enData.object !== "error") card = { ...enData, image_url: enData.image_uris?.normal || enData.card_faces?.[0]?.image_uris?.normal || null };
+            } catch {}
+          }
+          // Fallback: fuzzy
+          if (!card) {
+            try {
+              const fuzzUrl = scryfallUrl(`/cards/named?fuzzy=${encodeURIComponent(name)}`);
+              const fuzzRes = await fetch(fuzzUrl);
+              const fuzzData = await fuzzRes.json();
+              if (fuzzData.object !== "error") card = { ...fuzzData, image_url: fuzzData.image_uris?.normal || fuzzData.card_faces?.[0]?.image_uris?.normal || null };
+            } catch {}
           }
           if (!card) { continue; }
 
