@@ -139,7 +139,10 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const shuffle = (arr) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const genCode = () => Math.random().toString(36).slice(2, 6).toUpperCase();
 const PHASES = ["Descanso", "Robo", "Principal 1", "Combate", "Principal 2", "Descarte"];
-const isLegendary = (c) => c?.type_line?.includes("Legendary") || c?.type_line?.includes("Legendaria");
+const isLegendary = (c) => {
+  const t = c?.type_line?.toLowerCase() || "";
+  return t.includes("legendary") || t.includes("legendaria") || t.includes("legendario");
+};
 const isLand = (c) => c?.type_line?.toLowerCase().includes("land") || c?.type_line?.toLowerCase().includes("tierra");
 
 function mkState(id, name, deck, commander) {
@@ -859,7 +862,38 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
     setDeck(d => [...d, ...out]); setImportLoading(false); setImportProgress({ done: 0, total: 0 }); setTab("mazo");
   };
 
-  const grouped = deck.reduce((a, c) => { const t = c.type_line?.split("—")[0]?.trim() || "Otro"; if (!a[t]) a[t] = []; a[t].push(c); return a; }, {});
+  const normalizeType = (typeLine) => {
+    if (!typeLine) return "Otro";
+    const t = typeLine.toLowerCase();
+    const leg = t.includes("legendary") || t.includes("legendaria") || t.includes("legendario");
+    const cre = t.includes("creature") || t.includes("criatura");
+    const art = t.includes("artifact") || t.includes("artefacto");
+    const enc = t.includes("enchantment") || t.includes("encantamiento");
+    const pla = t.includes("planeswalker");
+    const ins = t.includes("instant") || t.includes("instantáneo");
+    const sor = t.includes("sorcery") || t.includes("conjuro");
+    const lan = t.includes("land") || t.includes("tierra");
+    const bat = t.includes("battle") || t.includes("batalla");
+    if (leg && cre) return "Criatura Legendaria";
+    if (leg && pla) return "Planeswalker Legendario";
+    if (leg) return "Legendario";
+    if (cre) return "Criatura";
+    if (ins) return "Instantáneo";
+    if (sor) return "Conjuro";
+    if (enc && art) return "Artefacto Encantamiento";
+    if (enc) return "Encantamiento";
+    if (art) return "Artefacto";
+    if (pla) return "Planeswalker";
+    if (lan) return "Tierra";
+    if (bat) return "Batalla";
+    return "Otro";
+  };
+  const grouped = deck.reduce((a, c) => {
+    const t = normalizeType(c.type_line);
+    if (!a[t]) a[t] = [];
+    a[t].push(c);
+    return a;
+  }, {});
   const tabBtn = (t, label) => <button onClick={() => setTab(t)} style={{ flex: 1, padding: "10px 0", border: "none", cursor: "pointer", background: tab === t ? "#1a1a3e" : "transparent", color: tab === t ? "#ffd700" : "#888", fontWeight: 600, fontSize: 13, borderBottom: tab === t ? "2px solid #ffd700" : "2px solid transparent" }}>{label}</button>;
 
   const ctxItems = (card, source) => [
