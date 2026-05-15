@@ -1807,6 +1807,30 @@ function DiceModal({ onClose, playerName, onRoll }) {
 
 
 // ─── Abilities Modal ──────────────────────────────────────────────────────────
+// Map Scryfall keywords to our ability keys (auto-assigned when card enters battlefield)
+const KEYWORD_MAP = {
+  "lifelink":      "lifelink",
+  "trample":       "trample",
+  "deathtouch":    "deathtouch",
+  "flying":        "flying",
+  "first strike":  "firststrike",
+  "double strike": "doublestrike",
+  "haste":         "haste",
+  "vigilance":     "vigilance",
+  "hexproof":      "hexproof",
+  "indestructible":"indestructible",
+  "menace":        "menace",
+  "reach":         "reach",
+};
+
+// Extract abilities from card keywords
+function cardAbilitiesFromKeywords(card) {
+  const keywords = card.keywords || [];
+  return keywords
+    .map(k => KEYWORD_MAP[k.toLowerCase()])
+    .filter(Boolean);
+}
+
 const ABILITIES = [
   { key: "lifelink",    name: "Vínculo vital",  en: "Lifelink",     icon: "💚", color: "#2a6a2a", text: "#88ff88",  desc: "El daño que hace cura al jugador" },
   { key: "trample",    name: "Arrollar",        en: "Trample",      icon: "🐂", color: "#5a3a1a", text: "#ffaa44",  desc: "El exceso de daño pasa al jugador" },
@@ -2349,7 +2373,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         const pp = ps[pid];
         let next;
         if (action === "play") {
-          next = { ...pp, battlefield: [...pp.battlefield, { ...chosen, tapped: false, counters: [] }], library: [...pp.library, ...unchosen] };
+          next = { ...pp, battlefield: [...pp.battlefield, { ...chosen, tapped: false, counters: [], abilities: cardAbilitiesFromKeywords(chosen) }], library: [...pp.library, ...unchosen] };
         } else {
           next = { ...pp, hand: [...pp.hand, chosen], library: [...pp.library, ...unchosen] };
         }
@@ -2483,9 +2507,21 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   // ── Card Actions ──
   const tapCard = (iid) => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === iid ? { ...c, tapped: !c.tapped } : c) }));
   const untapAll = () => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => ({ ...c, tapped: false })) }), `${players[myId]?.name} destapa todo.`);
-  const playCard = (card, from) => { updMe(p => ({ ...p, [from]: p[from].filter(c => c.instanceId !== card.instanceId), battlefield: [...p.battlefield, { ...card, tapped: false, counters: [] }] }), `${players[myId]?.name} juega ${getCardName(card)}.`); setSelCard(null); setCtxMenu(null); };
+  const playCard = (card, from) => {
+    const autoAbilities = cardAbilitiesFromKeywords(card);
+    updMe(p => ({ ...p,
+      [from]: p[from].filter(c => c.instanceId !== card.instanceId),
+      battlefield: [...p.battlefield, { ...card, tapped: false, counters: [], abilities: autoAbilities }]
+    }), `${players[myId]?.name} juega ${getCardName(card)}.`);
+    setSelCard(null); setCtxMenu(null);
+  };
   const moveCard = (card, from, to) => { updMe(p => ({ ...p, [from]: p[from].filter(c => c.instanceId !== card.instanceId), [to]: to === "library_top" ? [card, ...p.library] : to === "library_bottom" ? [...p.library, card] : to === "hand" ? [...p.hand, card] : [card, ...p[to]] }), `${players[myId]?.name}: ${getCardName(card)} → ${to === "graveyard" ? "cementerio" : to === "exile" ? "exilio" : to === "hand" ? "mano" : "biblioteca"}.`); setCtxMenu(null); };
-  const playCommander = () => updMe(p => { if (!p.commandZone.length) return p; const [c, ...r] = p.commandZone; return { ...p, commandZone: r, battlefield: [...p.battlefield, { ...c, tapped: false, counters: [] }] }; }, `${players[myId]?.name} invoca a su Comandante!`);
+  const playCommander = () => updMe(p => {
+    if (!p.commandZone.length) return p;
+    const [c, ...r] = p.commandZone;
+    const autoAbilities = cardAbilitiesFromKeywords(c);
+    return { ...p, commandZone: r, battlefield: [...p.battlefield, { ...c, tapped: false, counters: [], abilities: autoAbilities }] };
+  }, `${players[myId]?.name} invoca a su Comandante!`);
   const returnCmdToZone = (card, from, incrementTax = false) => updMe(p => ({
     ...p,
     [from]: p[from].filter(c => c.instanceId !== card.instanceId),
