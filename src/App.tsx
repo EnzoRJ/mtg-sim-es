@@ -755,6 +755,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
   const [deck, setDeck] = useState(() => initialDeck || []); const [commander, setCommander] = useState(() => initialCommander || null);
   const [loading, setLoading] = useState(false); const [preview, setPreview] = useState(null);
   const [importText, setImportText] = useState(""); const [importLoading, setImportLoading] = useState(false);
+  const [importProgress, setImportProgress] = useState({ done: 0, total: 0 });
   const [tab, setTab] = useState(initialDeck?.length > 0 ? "mazo" : "buscar"); const [playerName, setPlayerName] = useState(initialPlayerName || "Jugador");
   const [deckCtx, setDeckCtx] = useState(null);
   const [hover, setHover] = useState(null); // {card, x, y}
@@ -782,9 +783,12 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
   const handleImport = async () => {
     setImportLoading(true);
     const lines = importText.split("\n").map(l => l.trim()).filter(Boolean);
+    const validLines = lines.filter(l => !l.startsWith("//") && !l.startsWith("#") && l.trim());
+    const total = validLines.reduce((s, l) => { const m = l.match(/^(\d+)x?\s+/); return s + (m ? parseInt(m[1]) : 1); }, 0);
+    setImportProgress({ done: 0, total });
     const out = [];
-    // Cache to avoid re-fetching the same card name
     const cache = {};
+    let done = 0;
     for (const line of lines) {
       // Skip comment lines
       if (line.startsWith("//") || line.startsWith("#")) continue;
@@ -830,9 +834,11 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
       }
       if (cache[name]) {
         for (let i = 0; i < n; i++) out.push({ ...cache[name], instanceId: uid() });
+        done += n;
+        setImportProgress({ done, total });
       }
     }
-    setDeck(d => [...d, ...out]); setImportLoading(false); setTab("mazo");
+    setDeck(d => [...d, ...out]); setImportLoading(false); setImportProgress({ done: 0, total: 0 }); setTab("mazo");
   };
 
   const grouped = deck.reduce((a, c) => { const t = c.type_line?.split("—")[0]?.trim() || "Otro"; if (!a[t]) a[t] = []; a[t].push(c); return a; }, {});
@@ -899,7 +905,22 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
             <div style={{ flex: 1, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ fontSize: 11, color: "#8888aa" }}>Una carta por línea. Ej: "4x Sol Ring"</div>
               <textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder={"1x Sol Ring\n1x Command Tower\n..."} style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 12, resize: "none", outline: "none", fontFamily: "monospace" }} />
-              <button onClick={handleImport} disabled={importLoading} style={{ padding: "10px 0", borderRadius: 8, border: "none", background: importLoading ? "#333" : "#1a4a8a", color: "#7fc4ff", cursor: importLoading ? "default" : "pointer", fontWeight: 700, fontSize: 13 }}>{importLoading ? "Importando..." : "Importar lista"}</button>
+              {importLoading ? (
+                <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#7fc4ff" }}>
+                    <span>Importando cartas...</span>
+                    <span>{importProgress.done}/{importProgress.total}</span>
+                  </div>
+                  <div style={{ height:8, borderRadius:4, background:"#1a1a2e", overflow:"hidden" }}>
+                    <div style={{ height:"100%", borderRadius:4, background:"linear-gradient(90deg,#1a4a8a,#7fc4ff)", width: importProgress.total > 0 ? `${Math.round(importProgress.done/importProgress.total*100)}%` : "0%", transition:"width 0.3s ease" }} />
+                  </div>
+                  <div style={{ fontSize:10, color:"#555", textAlign:"center" }}>
+                    {importProgress.total > 0 ? `${Math.round(importProgress.done/importProgress.total*100)}%` : "Preparando..."}
+                  </div>
+                </div>
+              ) : (
+                <button onClick={handleImport} style={{ padding:"10px 0", borderRadius:8, border:"none", background:"#1a4a8a", color:"#7fc4ff", cursor:"pointer", fontWeight:700, fontSize:13 }}>Importar lista</button>
+              )}
             </div>
           )}
         </div>
@@ -1929,7 +1950,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [abilitiesModal, setAbilitiesModal] = useState(false);
   const [diceResult, setDiceResult] = useState(null); // {playerName, die, value, color} shown to all
   // Combat state
-  const [attackers, setAttackers] = useState(new Set()); // instanceIds declared as attackers
+  const [attackers, setAttackers] = useState(new Set());
+  const [dragCard, setDragCard] = useState(null); // {instanceId, zone: 'battlefield'|'lands'|'hand'}
+  const [dragOverId, setDragOverId] = useState(null);
   const [combatModal, setCombatModal] = useState(false);
   // Active ability markers on the board: [{id, ability, color, icon}]
   const [abilityMarkers, setAbilityMarkers] = useState([]);
@@ -1975,6 +1998,23 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     if (roomCode) saveGameSession(roomCode, myId, { [myId]: state }, turn, phase, activePlayer);
   };
   const saveHistory = (ps) => setHistory(h => [...h.slice(-19), JSON.parse(JSON.stringify(ps))]);
+  // Reorder cards in a zone by dragging
+  const reorderZone = (pid, zone, fromId, toId) => {
+    if (fromId === toId) return;
+    setPlayers(ps => {
+      const p = ps[pid];
+      const arr = zone === "hand" ? [...p.hand] : [...p.battlefield];
+      const fromIdx = arr.findIndex(c => c.instanceId === fromId);
+      const toIdx   = arr.findIndex(c => c.instanceId === toId);
+      if (fromIdx === -1 || toIdx === -1) return ps;
+      const [moved] = arr.splice(fromIdx, 1);
+      arr.splice(toIdx, 0, moved);
+      const next = zone === "hand" ? { ...p, hand: arr } : { ...p, battlefield: arr };
+      if (pid === myId) syncState(next);
+      return { ...ps, [pid]: next };
+    });
+  };
+
   const updMe = (fn, logMsg) => {
     setPlayers(ps => { saveHistory(ps); const next = fn({ ...ps[myId] }); syncState(next, logMsg); if (logMsg) addLog(logMsg); return { ...ps, [myId]: next }; });
   };
@@ -2622,10 +2662,19 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         {(() => {
           const permanents = p.battlefield.filter(c => !isLand(c));
           const lands = p.battlefield.filter(c => isLand(c));
-          const renderCard = (card) => {
+          const renderCard = (card, zone = "battlefield") => {
             const isAttacking = isMe && attackers.has(card.instanceId);
+            const isDragging = dragCard?.instanceId === card.instanceId;
+            const isOver = dragOverId === card.instanceId;
             return (
-            <div key={card.instanceId} style={{ position: "relative" }}
+            <div key={card.instanceId}
+              draggable={isMe}
+              onDragStart={() => isMe && setDragCard({ instanceId: card.instanceId, zone })}
+              onDragOver={e => { e.preventDefault(); isMe && setDragOverId(card.instanceId); }}
+              onDragLeave={() => setDragOverId(null)}
+              onDrop={e => { e.preventDefault(); if (dragCard && isMe) { reorderZone(pid, zone, dragCard.instanceId, card.instanceId); } setDragCard(null); setDragOverId(null); }}
+              onDragEnd={() => { setDragCard(null); setDragOverId(null); }}
+              style={{ position: "relative", opacity: isDragging ? 0.4 : 1, outline: isOver ? "2px dashed #ffd700" : "none", borderRadius: 6, cursor: isMe ? "grab" : "default", transition:"opacity 0.15s" }}
               onContextMenu={e => openCardCtx(e, pid, card, "battlefield", isMe)}>
               {isAttacking && <div style={{ position:"absolute",inset:-2,borderRadius:6,border:"2px solid #ff4444",zIndex:3,pointerEvents:"none",boxShadow:"0 0 8px #ff4444aa" }} />}
               {isAttacking && <div style={{ position:"absolute",top:-9,left:"50%",transform:"translateX(-50%)",background:"#cc0000",color:"#fff",borderRadius:3,fontSize:7,padding:"1px 4px",zIndex:4,whiteSpace:"nowrap",fontWeight:800 }}>⚔ ATQ</div>}
@@ -2716,7 +2765,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                 {lands.length > 0
                   ? <>
                       <span style={{ fontSize: 8, color: "#4a6a3a", letterSpacing: 1, flexShrink: 0, writingMode: "vertical-rl", marginRight: 2 }}>TIERRAS</span>
-                      {lands.map(renderCard)}
+                      {lands.map(c => renderCard(c, "lands"))}
                     </>
                   : <div style={{ fontSize: 9, color: "#2a2a3a", paddingLeft: 8 }}>Zona de tierras</div>}
               </div>
