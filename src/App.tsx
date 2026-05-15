@@ -802,27 +802,45 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
         const targetLang = "es"; // always try Spanish first
         try {
           let card = null;
-          // Use /cards/search — the only CORS-allowed endpoint from Vercel
+          // Step 1: Get English card first (for image + oracle data)
+          let enCard = null;
           try {
-            // Exact name search using !"name" syntax
-            const q1 = `!"${name}"`;
-            const r1 = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q1)}&unique=cards&order=released`);
-            if (r1.ok) {
-              const d1 = await r1.json();
-              const c = d1.data?.[0];
-              if (c) card = { ...c, image_url: c.image_uris?.normal || c.card_faces?.[0]?.image_uris?.normal || null };
+            const q = `!"${name}"`;
+            const r = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&unique=cards&order=released`);
+            if (r.ok) { const d = await r.json(); enCard = d.data?.[0] || null; }
+          } catch {}
+          if (!enCard) {
+            try {
+              const r = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(name)}&unique=cards&order=released`);
+              if (r.ok) { const d = await r.json(); enCard = d.data?.[0] || null; }
+            } catch {}
+          }
+          if (!enCard) { continue; }
+
+          // Step 2: Try to get Spanish printing via lang:es filter
+          // /cards/search supports lang filter and has CORS allowed
+          let esCard = null;
+          try {
+            const q = `!"${enCard.name}" lang:es`;
+            const r = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&order=released&dir=desc`);
+            if (r.ok) {
+              const d = await r.json();
+              esCard = d.data?.[0] || null;
             }
           } catch {}
-          // Fallback: plain name search
-          if (!card) {
-            try {
-              const r2 = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(name)}&unique=cards&order=released`);
-              if (r2.ok) {
-                const d2 = await r2.json();
-                const c = d2.data?.[0];
-                if (c) card = { ...c, image_url: c.image_uris?.normal || c.card_faces?.[0]?.image_uris?.normal || null };
-              }
-            } catch {}
+
+          if (esCard && esCard.image_uris) {
+            // Spanish version found — use Spanish image + printed_name
+            card = {
+              ...enCard, // keep oracle text and base data
+              image_url: esCard.image_uris?.normal || esCard.card_faces?.[0]?.image_uris?.normal || null,
+              printed_name: esCard.printed_name || enCard.name,
+              printed_text: esCard.printed_text || enCard.oracle_text,
+              type_line: esCard.printed_type_line || enCard.type_line,
+            };
+          } else {
+            // No Spanish version — use English
+            card = { ...enCard, image_url: enCard.image_uris?.normal || enCard.card_faces?.[0]?.image_uris?.normal || null };
           }
           if (!card) { continue; }
 
