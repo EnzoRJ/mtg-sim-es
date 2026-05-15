@@ -866,6 +866,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
     source === "results" && { label: "➕ Agregar al mazo", action: () => addCard(card) },
     isLegendary(card) && { label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "#ffd700" },
     source === "deck" && { label: "🗑 Quitar del mazo", action: () => setDeck(d => d.filter(c => c.instanceId !== card.instanceId)), color: "#ff8888" },
+    source === "results" && isLegendary(card) && { label: "⚔ + Agregar como Comandante", action: () => { addCard(card); setCmd(card); }, color: "#ffd700" },
   ].filter(Boolean);
 
   return (
@@ -973,6 +974,10 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                       style={{ position: "relative" }}>
                       <CardTile card={card} small onClick={() => {}} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
                       <button onClick={() => setDeck(d => d.filter(c => c.instanceId !== card.instanceId))} style={{ position: "absolute", top: -4, right: -4, width: 15, height: 15, borderRadius: "50%", border: "none", background: "#cc2222", color: "#fff", cursor: "pointer", fontSize: 9, padding: 0 }}>×</button>
+                      {isLegendary(card) && (
+                        <button onClick={() => setCmd(card)} title="Elegir como Comandante"
+                          style={{ position: "absolute", top: -4, left: -4, width: 18, height: 18, borderRadius: "50%", border: "none", background: "#4a3a0a", color: "#ffd700", cursor: "pointer", fontSize: 10, padding: 0, fontWeight: 800 }}>⚔</button>
+                      )}
                     </div>
                   ))}
                 </div>
