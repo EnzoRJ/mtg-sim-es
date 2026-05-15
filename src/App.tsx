@@ -798,18 +798,26 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
         const targetLang = "es"; // always try Spanish first
         try {
           let card = null;
-          // Fetch card in English (reliable, no CORS issues)
+          // Use /cards/search — the only CORS-allowed endpoint from Vercel
           try {
-            const r = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`);
-            const d = await r.json();
-            if (d.object !== "error") card = { ...d, image_url: d.image_uris?.normal || d.card_faces?.[0]?.image_uris?.normal || null };
+            // Exact name search using !"name" syntax
+            const q1 = `!"${name}"`;
+            const r1 = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q1)}&unique=cards&order=released`);
+            if (r1.ok) {
+              const d1 = await r1.json();
+              const c = d1.data?.[0];
+              if (c) card = { ...c, image_url: c.image_uris?.normal || c.card_faces?.[0]?.image_uris?.normal || null };
+            }
           } catch {}
-          // Fuzzy fallback
+          // Fallback: plain name search
           if (!card) {
             try {
-              const r = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`);
-              const d = await r.json();
-              if (d.object !== "error") card = { ...d, image_url: d.image_uris?.normal || d.card_faces?.[0]?.image_uris?.normal || null };
+              const r2 = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(name)}&unique=cards&order=released`);
+              if (r2.ok) {
+                const d2 = await r2.json();
+                const c = d2.data?.[0];
+                if (c) card = { ...c, image_url: c.image_uris?.normal || c.card_faces?.[0]?.image_uris?.normal || null };
+              }
             } catch {}
           }
           if (!card) { continue; }
