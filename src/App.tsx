@@ -2718,35 +2718,36 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         borderRadius: 10, overflow: "hidden", background: "#080810",
       }}>
         {/* Header bar */}
-        <div style={{ padding: "5px 10px", display: "flex", alignItems: "center", gap: 8, background: isActive ? "#1a140a" : "#0d0d18", borderBottom: "1px solid #2a2a4a", flexShrink: 0, flexWrap: "wrap", gap: 5 }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: isActive ? "#ffd700" : "#333" }} />
-          <span style={{ fontSize: 16, flexShrink:0 }}>{avatarMap[pid] || "🧙"}</span>
-          <span style={{ fontWeight: 700, fontSize: 12, color: isActive ? "#ffd700" : "#e8e0d0" }}>{p.name}{isMe ? " (tú)" : ""}</span>
+        <div style={{ padding: "2px 6px", display: "flex", alignItems: "center", gap: 4, background: isActive ? "#1a140a" : "#0d0d18", borderBottom: "1px solid #2a2a4a", flexShrink: 0, flexWrap: "nowrap", minHeight: 24 }}>
+          <div style={{ width: 5, height: 5, borderRadius: "50%", background: isActive ? "#ffd700" : "#333", flexShrink:0 }} />
+          <span style={{ fontSize: 13, flexShrink:0 }}>{avatarMap[pid] || "🧙"}</span>
+          <span style={{ fontWeight: 700, fontSize: 10, color: isActive ? "#ffd700" : "#e8e0d0", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:70 }}>{p.name}{isMe ? " (tú)" : ""}</span>
 
           {/* Life */}
-          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 1, flexShrink:0 }}>
             {isMe && <button onClick={() => adjLife(pid, -1)} style={mbtn("#4a1a1a","#ff8888")}>−</button>}
-            <span style={{ fontSize: 18, fontWeight: 800, color: p.life <= 10 ? "#ff4444" : p.life >= 50 ? "#44ff88" : "#e8e0d0", minWidth: 30, textAlign: "center" }}>{p.life}</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: p.life <= 10 ? "#ff4444" : p.life >= 50 ? "#44ff88" : "#e8e0d0", minWidth: 22, textAlign: "center" }}>{p.life}</span>
             {isMe && <button onClick={() => adjLife(pid, 1)} style={mbtn("#1a4a1a","#88ff88")}>+</button>}
-            <span style={{ fontSize: 10, color: "#888" }}>❤</span>
+            <span style={{ fontSize: 8, color: "#888" }}>❤</span>
           </div>
 
-          {/* Poison */}
-          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-            {isMe && <button onClick={() => adjPoison(pid, -1)} style={mbtn("#3a1a3a","#ff88ff")}>−</button>}
-            <span style={{ fontSize: 11, color: p.poison >= 10 ? "#ff44ff" : p.poison > 0 ? "#cc88ff" : "#555" }}>☠{p.poison}</span>
-            {isMe && <button onClick={() => adjPoison(pid, 1)} style={mbtn("#1a1a4a","#88aaff")}>+</button>}
-          </div>
+          {/* Poison — only show if > 0 or is me */}
+          {(isMe || p.poison > 0) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 1, flexShrink:0 }}>
+              {isMe && <button onClick={() => adjPoison(pid, -1)} style={mbtn("#3a1a3a","#ff88ff")}>−</button>}
+              <span style={{ fontSize: 9, color: p.poison >= 10 ? "#ff44ff" : p.poison > 0 ? "#cc88ff" : "#555" }}>☠{p.poison}</span>
+              {isMe && <button onClick={() => adjPoison(pid, 1)} style={mbtn("#1a1a4a","#88aaff")}>+</button>}
+            </div>
+          )}
 
           {/* Commander damage */}
           {Object.entries(p.commanderDamage).filter(([, v]) => v > 0).map(([fromPid, dmg]) => (
-            <span key={fromPid} style={{ fontSize: 10, color: "#ff8844", background: "#2a1a0a", borderRadius: 4, padding: "1px 5px" }}>
-              ⚔{dmg} {players[fromPid]?.name?.slice(0,4)}
+            <span key={fromPid} style={{ fontSize: 8, color: "#ff8844", background: "#2a1a0a", borderRadius: 3, padding: "0 3px", flexShrink:0 }}>
+              ⚔{dmg}
             </span>
           ))}
 
-          {/* Hand count */}
-          <span style={{ fontSize: 10, color: "#8888aa", marginLeft: "auto" }}>🤚{p.hand.length}</span>
+          <span style={{ fontSize: 9, color: "#8888aa", marginLeft: "auto", flexShrink:0 }}>🤚{p.hand.length}</span>
         </div>
 
         {/* Body: battlefield + bottom bar — reversed for opponents */}
