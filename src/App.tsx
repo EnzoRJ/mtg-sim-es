@@ -419,7 +419,19 @@ function SearchLibModal({ library, graveyard, zone, dest, onPick, onClose }) {
   const [q, setQ] = useState("");
   const [hover, setHover] = useState(null);
   const cards = zone === "graveyard" ? (graveyard || []) : (library || []);
-  const filtered = cards.filter(c => getCardName(c).toLowerCase().includes(q.toLowerCase()));
+  const filtered = cards.filter(c => {
+    if (!q.trim()) return true;
+    const s = q.toLowerCase();
+    // Search in: printed name (es), original name (en), type line, oracle text
+    return (
+      (c.printed_name || "").toLowerCase().includes(s) ||
+      (c.name || "").toLowerCase().includes(s) ||
+      (c.type_line || "").toLowerCase().includes(s) ||
+      (c.printed_type_line || "").toLowerCase().includes(s) ||
+      (c.oracle_text || "").toLowerCase().includes(s) ||
+      (c.printed_text || "").toLowerCase().includes(s)
+    );
+  });
   const title = zone === "graveyard"
     ? (dest === "battlefield" ? "⚔ Reanimar al campo" : "☠ Reanimar a la mano")
     : "🔎 Buscar en Biblioteca";
