@@ -60,47 +60,30 @@ class SupabaseRealtime {
 // ─── Scryfall ─────────────────────────────────────────────────────────────────
 async function searchCards(query) {
   try {
-    const url = scryfallUrl(`/cards/search?q=${encodeURIComponent(query)}&order=name&unique=cards`);
-    const r = await fetch(url);
+    // Use a CORS-friendly search approach
+    const r = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}&order=name&unique=cards`);
     if (r.ok) { const d = await r.json(); return d.data || []; }
     return [];
   } catch { return []; }
 }
-// CORS proxy wraps the Scryfall URL so it works from any browser
-const CORS_PROXY = "https://corsproxy.io/?url=";
+// Direct Scryfall calls - works fine for card data and images
+// Spanish lang calls are attempted but silently fall back to English
 function scryfallUrl(path) {
-  return CORS_PROXY + encodeURIComponent("https://api.scryfall.com" + path);
+  return "https://api.scryfall.com" + path;
 }
 
 async function getCardLocalized(card, preferLang = "es") {
-  const engImg = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null;
-  const result = { image_url: engImg, printed_name: card.name, printed_text: card.oracle_text, type_line: card.type_line };
-  if (preferLang && preferLang !== "en" && card.name) {
-    try {
-      const url = scryfallUrl(`/cards/named?exact=${encodeURIComponent(card.name)}&lang=${preferLang}`);
-      const r = await fetch(url);
-      const data = await r.json();
-      if (data.object !== "error" && data.image_uris) {
-        return {
-          image_url: data.image_uris?.normal || data.card_faces?.[0]?.image_uris?.normal || engImg,
-          printed_name: data.printed_name || data.name || card.name,
-          printed_text: data.printed_text || data.oracle_text || card.oracle_text,
-          type_line: data.printed_type_line || data.type_line || card.type_line,
-        };
-      }
-    } catch {}
-  }
-  return result;
+  // Use English image (same artwork, just different text)
+  // Spanish card NAME comes from printed_name field if available
+  const img = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null;
+  return {
+    image_url: img,
+    printed_name: card.printed_name || card.name,
+    printed_text: card.printed_text || card.oracle_text,
+    type_line: card.printed_type_line || card.type_line,
+  };
 }
-async function getCardImage(card, preferLang = "es") {
-  if (preferLang !== "en" && card.name) {
-    try {
-      const url = scryfallUrl(`/cards/named?exact=${encodeURIComponent(card.name)}&lang=${preferLang}`);
-      const r = await fetch(url);
-      const data = await r.json();
-      if (data.object !== "error" && data.image_uris?.normal) return data.image_uris.normal;
-    } catch {}
-  }
+async function getCardImage(card) {
   if (card.image_uris?.normal) return card.image_uris.normal;
   if (card.card_faces?.[0]?.image_uris?.normal) return card.card_faces[0].image_uris.normal;
   return null;
@@ -787,31 +770,13 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
   }, [search, lang]);
 
   const addCard = async (card) => {
-    const engImg = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null;
-    const instanceId = uid();
-    // Show immediately with English data
-    setDeck(d => [...d, { ...card, image_url: engImg, instanceId }]);
-    // Fetch full localized data (name + image + text) async
-    if (lang !== "en" && lang !== "any") {
-      const loc = await getCardLocalized(card, lang);
-      setDeck(d => d.map(c => c.instanceId === instanceId
-        ? { ...c, image_url: loc.image_url, printed_name: loc.printed_name, printed_text: loc.printed_text, type_line: loc.type_line }
-        : c));
-    }
+    const img = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null;
+    setDeck(d => [...d, { ...card, image_url: img, instanceId: uid() }]);
   };
   const setCmd = async (card) => {
-    const engImg = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null;
-    const instanceId = uid();
-    setCommander({ ...card, image_url: engImg, instanceId });
-    // Remove from deck
+    const img = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null;
+    setCommander({ ...card, image_url: img, instanceId: uid() });
     setDeck(d => { const idx = d.findIndex(c => c.name === card.name || c.id === card.id); if (idx === -1) return d; const n = [...d]; n.splice(idx, 1); return n; });
-    // Update with Spanish data
-    if (lang !== "en" && lang !== "any") {
-      const loc = await getCardLocalized(card, lang);
-      setCommander(prev => prev?.instanceId === instanceId
-        ? { ...prev, image_url: loc.image_url, printed_name: loc.printed_name, printed_text: loc.printed_text, type_line: loc.type_line }
-        : prev);
-    }
   };
 
   const handleImport = async () => {
@@ -833,42 +798,24 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
         const targetLang = "es"; // always try Spanish first
         try {
           let card = null;
-          // Try Spanish first via CORS proxy
+          // Fetch card in English (reliable, no CORS issues)
           try {
-            const esUrl = scryfallUrl(`/cards/named?exact=${encodeURIComponent(name)}&lang=${targetLang}`);
-            const esRes = await fetch(esUrl);
-            const esData = await esRes.json();
-            if (esData.object !== "error" && esData.image_uris) {
-              card = { ...esData, image_url: esData.image_uris?.normal || esData.card_faces?.[0]?.image_uris?.normal || null, printed_name: esData.printed_name || esData.name };
-            }
+            const r = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`);
+            const d = await r.json();
+            if (d.object !== "error") card = { ...d, image_url: d.image_uris?.normal || d.card_faces?.[0]?.image_uris?.normal || null };
           } catch {}
-          // Fallback: English
+          // Fuzzy fallback
           if (!card) {
             try {
-              const enUrl = scryfallUrl(`/cards/named?exact=${encodeURIComponent(name)}`);
-              const enRes = await fetch(enUrl);
-              const enData = await enRes.json();
-              if (enData.object !== "error") card = { ...enData, image_url: enData.image_uris?.normal || enData.card_faces?.[0]?.image_uris?.normal || null };
-            } catch {}
-          }
-          // Fallback: fuzzy
-          if (!card) {
-            try {
-              const fuzzUrl = scryfallUrl(`/cards/named?fuzzy=${encodeURIComponent(name)}`);
-              const fuzzRes = await fetch(fuzzUrl);
-              const fuzzData = await fuzzRes.json();
-              if (fuzzData.object !== "error") card = { ...fuzzData, image_url: fuzzData.image_uris?.normal || fuzzData.card_faces?.[0]?.image_uris?.normal || null };
+              const r = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`);
+              const d = await r.json();
+              if (d.object !== "error") card = { ...d, image_url: d.image_uris?.normal || d.card_faces?.[0]?.image_uris?.normal || null };
             } catch {}
           }
           if (!card) { continue; }
 
-          // Proxy already handled Spanish/English — just ensure image_url is set
-          if (!card.image_url) {
-            card = {
-              ...card,
-              image_url: card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null,
-              printed_name: card.printed_name || card.name,
-            };
+          if (card && !card.image_url) {
+            card = { ...card, image_url: card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null };
           }
           cache[name] = card;
         } catch {}
