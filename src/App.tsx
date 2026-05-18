@@ -107,8 +107,124 @@ function deleteDeckFromStorage(name) {
   localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify(decks));
 }
 
-// Game session persistence via Supabase REST API
+// ─── Supabase Auth Client ────────────────────────────────────────────────────
+const SB_AUTH = SUPABASE_URL + "/auth/v1";
 const SB_REST = SUPABASE_URL + "/rest/v1";
+
+async function authFetch(path, opts = {}) {
+  const token = localStorage.getItem("sb_access_token");
+  return fetch(SUPABASE_URL + path, {
+    ...opts,
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": "Bearer " + (token || SUPABASE_KEY),
+      "Content-Type": "application/json",
+      ...(opts.headers || {}),
+    }
+  });
+}
+
+// Sign in with Google OAuth
+async function signInWithGoogle() {
+  const redirectTo = encodeURIComponent(window.location.origin);
+  window.location.href = `${SB_AUTH}/authorize?provider=google&redirect_to=${redirectTo}`;
+}
+
+// Sign in with email/password
+async function signInWithEmail(email, password) {
+  const r = await fetch(`${SB_AUTH}/token?grant_type=password`, {
+    method: "POST",
+    headers: { "apikey": SUPABASE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  });
+  const d = await r.json();
+  if (d.access_token) {
+    localStorage.setItem("sb_access_token", d.access_token);
+    localStorage.setItem("sb_refresh_token", d.refresh_token);
+    localStorage.setItem("sb_user", JSON.stringify(d.user));
+    return { user: d.user, error: null };
+  }
+  return { user: null, error: d.error_description || d.msg || "Error al iniciar sesión" };
+}
+
+// Sign up with email/password
+async function signUpWithEmail(email, password) {
+  const r = await fetch(`${SB_AUTH}/signup`, {
+    method: "POST",
+    headers: { "apikey": SUPABASE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  });
+  const d = await r.json();
+  if (d.access_token) {
+    localStorage.setItem("sb_access_token", d.access_token);
+    localStorage.setItem("sb_refresh_token", d.refresh_token);
+    localStorage.setItem("sb_user", JSON.stringify(d.user));
+    return { user: d.user, error: null };
+  }
+  return { user: null, error: d.error_description || d.msg || "Error al registrarse" };
+}
+
+// Sign out
+function signOut() {
+  localStorage.removeItem("sb_access_token");
+  localStorage.removeItem("sb_refresh_token");
+  localStorage.removeItem("sb_user");
+}
+
+// Get current user from token
+function getCurrentUser() {
+  try { return JSON.parse(localStorage.getItem("sb_user") || "null"); } catch { return null; }
+}
+
+// Handle OAuth callback (token in URL hash)
+function handleAuthCallback() {
+  const hash = window.location.hash;
+  if (!hash) return null;
+  const params = new URLSearchParams(hash.slice(1));
+  const accessToken = params.get("access_token");
+  const refreshToken = params.get("refresh_token");
+  if (accessToken) {
+    localStorage.setItem("sb_access_token", accessToken);
+    if (refreshToken) localStorage.setItem("sb_refresh_token", refreshToken);
+    // Fetch user info
+    fetch(`${SB_AUTH}/user`, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + accessToken }
+    }).then(r => r.json()).then(user => {
+      localStorage.setItem("sb_user", JSON.stringify(user));
+      window.history.replaceState({}, document.title, window.location.pathname);
+    });
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return accessToken;
+  }
+  return null;
+}
+
+// Cloud deck operations
+async function saveCloudDeck(name, deck, commander, playerName) {
+  const user = getCurrentUser();
+  if (!user) return false;
+  const r = await authFetch("/rest/v1/user_decks", {
+    method: "POST",
+    headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({ user_id: user.id, name, deck, commander, player_name: playerName, updated_at: new Date().toISOString() })
+  });
+  return r.ok;
+}
+
+async function loadCloudDecks() {
+  const user = getCurrentUser();
+  if (!user) return [];
+  const r = await authFetch(`/rest/v1/user_decks?user_id=eq.${user.id}&order=updated_at.desc`);
+  if (!r.ok) return [];
+  return await r.json();
+}
+
+async function deleteCloudDeck(id) {
+  const r = await authFetch(`/rest/v1/user_decks?id=eq.${id}`, { method: "DELETE" });
+  return r.ok;
+}
+
+// Game session persistence via Supabase REST API
 const SB_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" };
 
 async function saveGameSession(roomCode, myId, playersState, turn, phase, activePlayer) {
@@ -929,7 +1045,18 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
           <span style={{ fontSize: 12, color: "#888" }}>Tu nombre:</span>
           <input value={playerName} onChange={e => setPlayerName(e.target.value)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 14, outline: "none", width: 120 }} />
           <input value={deckName} onChange={e => setDeckName(e.target.value)} placeholder="Nombre del mazo" style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 13, outline: "none", width: 140 }} />
-          <button onClick={() => { if (!commander) return alert("Selecciona un comandante primero."); saveDeckToStorage(deckName, deck, commander, playerName); setSavedDecks(getSavedDecks()); alert(`✓ Mazo "${deckName}" guardado.`); }}
+          <button onClick={async () => {
+              if (!commander) return alert("Selecciona un comandante primero.");
+              saveDeckToStorage(deckName, deck, commander, playerName);
+              setSavedDecks(getSavedDecks());
+              const user = getCurrentUser();
+              if (user) {
+                await saveCloudDeck(deckName, deck, commander, playerName);
+                alert(`✓ Mazo "${deckName}" guardado localmente y en la nube ☁`);
+              } else {
+                alert(`✓ Mazo "${deckName}" guardado localmente. Inicia sesión para guardarlo en la nube.`);
+              }
+            }}
             style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#1a4a1a", color: "#7fff7f", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
             💾 Guardar
           </button>
@@ -3433,9 +3560,87 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
 function mbtn(bg, col) { return { width: 20, height: 20, borderRadius: "50%", border: "none", background: bg, color: col, cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0, flexShrink: 0 }; }
 
+
+// ─── Auth Modal ───────────────────────────────────────────────────────────────
+function AuthModal({ onAuth, onClose }) {
+  const [mode, setMode] = useState("login"); // "login" | "signup"
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async () => {
+    if (!email.trim() || !password.trim()) return;
+    setLoading(true); setError("");
+    const fn = mode === "login" ? signInWithEmail : signUpWithEmail;
+    const { user, error: err } = await fn(email, password);
+    setLoading(false);
+    if (err) { setError(err); return; }
+    onAuth(user);
+  };
+
+  return (
+    <div style={{ position:"fixed",inset:0,background:"#000d",display:"flex",alignItems:"center",justifyContent:"center",zIndex:900,fontFamily:"'Crimson Text',Georgia,serif" }} onClick={onClose}>
+      <div style={{ background:"#0d0d1e",border:"1px solid #3a3a6a",borderRadius:18,padding:28,width:380,display:"flex",flexDirection:"column",gap:16 }} onClick={e=>e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{ textAlign:"center" }}>
+          <div style={{ fontSize:28,marginBottom:6 }}>⚔️</div>
+          <div style={{ fontSize:18,fontWeight:800,color:"#ffd700" }}>Commander ES</div>
+          <div style={{ fontSize:12,color:"#8888aa",marginTop:4 }}>
+            {mode === "login" ? "Inicia sesión para guardar tus mazos en la nube" : "Crea una cuenta para guardar tus mazos"}
+          </div>
+        </div>
+
+        {/* Google button */}
+        <button onClick={signInWithGoogle}
+          style={{ padding:"12px 0",borderRadius:10,border:"1px solid #3a3a6a",background:"#fff",color:"#333",fontWeight:700,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10 }}>
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.8 2.5 30.2 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.8 6.1C12.4 13 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17z"/><path fill="#FBBC05" d="M10.4 28.6A14.8 14.8 0 0 1 9.5 24c0-1.6.3-3.1.8-4.6l-7.8-6.1A23.9 23.9 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.5-5.8c-2 1.4-4.6 2.2-7.7 2.2-6.2 0-11.5-4.2-13.4-9.9l-7.8 6.1C6.6 42.6 14.6 48 24 48z"/></svg>
+          Continuar con Google
+        </button>
+
+        <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+          <div style={{ flex:1,height:1,background:"#2a2a4a" }} />
+          <span style={{ fontSize:11,color:"#555" }}>o con email</span>
+          <div style={{ flex:1,height:1,background:"#2a2a4a" }} />
+        </div>
+
+        {/* Email/password */}
+        <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" type="email"
+          style={{ padding:"10px 14px",borderRadius:9,border:"1px solid #3a3a6a",background:"#080810",color:"#e8e0d0",fontSize:14,outline:"none" }} />
+        <input value={password} onChange={e=>setPassword(e.target.value)} placeholder="Contraseña" type="password"
+          onKeyDown={e=>e.key==="Enter"&&handleSubmit()}
+          style={{ padding:"10px 14px",borderRadius:9,border:"1px solid #3a3a6a",background:"#080810",color:"#e8e0d0",fontSize:14,outline:"none" }} />
+
+        {error && <div style={{ fontSize:11,color:"#ff8888",textAlign:"center" }}>{error}</div>}
+
+        <button onClick={handleSubmit} disabled={loading}
+          style={{ padding:"12px 0",borderRadius:10,border:"none",background:"linear-gradient(90deg,#ffd700,#ff8c00)",color:"#000",fontWeight:800,fontSize:15,cursor:loading?"default":"pointer" }}>
+          {loading ? "..." : mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
+        </button>
+
+        <button onClick={() => { setMode(m=>m==="login"?"signup":"login"); setError(""); }}
+          style={{ background:"none",border:"none",color:"#8888aa",cursor:"pointer",fontSize:12,textAlign:"center" }}>
+          {mode === "login" ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── HOME SCREEN ─────────────────────────────────────────────────────────────
-function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClearSession, savedSession }) {
+function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClearSession, savedSession, user, onSignIn, onSignOut }) {
   const [decks, setDecks] = useState(getSavedDecks);
+  const [cloudDecks, setCloudDecks] = useState([]);
+  const [loadingCloud, setLoadingCloud] = useState(false);
+  const [cloudDeckName, setCloudDeckName] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      setLoadingCloud(true);
+      loadCloudDecks().then(d => { setCloudDecks(d); setLoadingCloud(false); });
+    }
+  }, [user]);
   const [joinCode, setJoinCode] = useState("");
   const [showJoin, setShowJoin] = useState(false);
   const [expandDecks, setExpandDecks] = useState(false);
@@ -3466,6 +3671,25 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
 
   return (
     <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#0a0a1a 0%,#0d1b2a 50%,#0a0a1a 100%)", color:"#e8e0d0", fontFamily:"'Crimson Text',Georgia,serif", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:28, padding:"24px 16px" }}>
+      {/* User bar */}
+      <div style={{ position:"absolute", top:16, right:20, display:"flex", alignItems:"center", gap:10 }}>
+        {user ? (
+          <>
+            <div style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 12px", borderRadius:20, background:"#1a1a2e", border:"1px solid #2a2a4a" }}>
+              <div style={{ width:24, height:24, borderRadius:"50%", background:"linear-gradient(135deg,#ffd700,#ff8c00)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#000" }}>
+                {(user.email||"?")[0].toUpperCase()}
+              </div>
+              <span style={{ fontSize:12, color:"#e8e0d0", maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.email}</span>
+            </div>
+            <button onClick={onSignOut} style={{ padding:"6px 12px", borderRadius:8, border:"1px solid #333", background:"transparent", color:"#888", cursor:"pointer", fontSize:11 }}>Cerrar sesión</button>
+          </>
+        ) : (
+          <button onClick={onSignIn} style={{ padding:"8px 18px", borderRadius:10, border:"1px solid #ffd70044", background:"linear-gradient(135deg,#1a140a,#2a1f0a)", color:"#ffd700", cursor:"pointer", fontSize:13, fontWeight:700 }}>
+            ✦ Iniciar sesión
+          </button>
+        )}
+      </div>
+
       {/* Logo */}
       <div style={{ textAlign:"center" }}>
         <div style={{ fontSize:52, marginBottom:10 }}>⚔️</div>
@@ -3514,6 +3738,44 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
                 Unirse →
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Cloud decks panel — only shown when logged in */}
+        {user && (
+          <div style={{ background:"#0d0d1e", border:"1px solid #2a4a2a", borderRadius:12, overflow:"hidden" }}>
+            <div style={{ padding:"12px 16px", display:"flex", alignItems:"center", gap:8, borderBottom: cloudDecks.length ? "1px solid #2a2a4a" : "none" }}>
+              <span style={{ fontSize:13, fontWeight:700, color:"#44ff88" }}>☁ Mazos en la nube</span>
+              <span style={{ fontSize:11, color:"#8888aa" }}>({cloudDecks.length})</span>
+              {loadingCloud && <span style={{ fontSize:10, color:"#555" }}>Cargando...</span>}
+            </div>
+            {cloudDecks.length > 0 && (
+              <div style={{ maxHeight:180, overflowY:"auto" }}>
+                {cloudDecks.map(d => (
+                  <div key={d.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 14px", borderBottom:"1px solid #1a1a2e" }}>
+                    {d.commander?.image_url && <img src={d.commander.image_url} style={{ width:32,height:44,borderRadius:3,objectFit:"cover",flexShrink:0 }} />}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:"#e8e0d0", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.name}</div>
+                      <div style={{ fontSize:10, color:"#8888aa" }}>{(d.deck||[]).length + 1} cartas · {d.commander ? getCardName(d.commander) : "Sin comandante"}</div>
+                    </div>
+                    <button onClick={() => onNewGame({ deck: d.deck, commander: d.commander, playerName: d.player_name })}
+                      style={{ padding:"5px 12px", borderRadius:6, border:"none", background:"linear-gradient(90deg,#44ff88,#22cc66)", color:"#000", fontWeight:800, fontSize:11, cursor:"pointer" }}>
+                      ▶
+                    </button>
+                    <button onClick={() => deleteCloudDeck(d.id).then(() => setCloudDecks(c => c.filter(x=>x.id!==d.id)))}
+                      style={{ padding:"5px 8px", borderRadius:6, border:"1px solid #4a2a2a", background:"#1a0a0a", color:"#ff8888", cursor:"pointer", fontSize:11 }}>
+                      🗑
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {cloudDecks.length === 0 && !loadingCloud && (
+              <div style={{ padding:"16px", textAlign:"center", color:"#444", fontSize:12 }}>
+                Aún no tienes mazos guardados en la nube.<br/>
+                <span style={{ fontSize:11, color:"#333" }}>Usa 💾 en el constructor para guardarlos.</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -3629,6 +3891,17 @@ export default function App() {
   const [savedSession, setSavedSession] = useState(() => {
     try { const s = localStorage.getItem("commander_es_session"); return s ? JSON.parse(s) : null; } catch { return null; }
   });
+  const [user, setUser] = useState(() => getCurrentUser());
+  const [showAuth, setShowAuth] = useState(false);
+
+  // Handle OAuth callback on mount
+  useEffect(() => {
+    const token = handleAuthCallback();
+    if (token) {
+      // Wait a tick for user to be saved then update state
+      setTimeout(() => setUser(getCurrentUser()), 500);
+    }
+  }, []);
 
   const goHome = () => setStage("home");
 
@@ -3652,7 +3925,12 @@ export default function App() {
   };
 
   if (stage === "home") return (
+    <>
+    {showAuth && <AuthModal onAuth={(u) => { setUser(u); setShowAuth(false); }} onClose={() => setShowAuth(false)} />}
     <HomeScreen
+      user={user}
+      onSignIn={() => setShowAuth(true)}
+      onSignOut={() => { signOut(); setUser(null); }}
       onNewGame={(preloadedDeck) => {
         if (preloadedDeck) { setDeckData(preloadedDeck); setStage("lobby"); }
         else setStage("deck");
@@ -3676,6 +3954,7 @@ export default function App() {
       }}
       savedSession={savedSession}
     />
+    </>
   );
 
   if (stage === "deck" || stage === "deck-join" || stage === "deck-edit") return (
