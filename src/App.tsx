@@ -126,7 +126,7 @@ async function authFetch(path, opts = {}) {
 
 // Sign in with Google OAuth
 async function signInWithGoogle() {
-  const redirectTo = encodeURIComponent(window.location.origin);
+  const redirectTo = encodeURIComponent("https://v0-vite-react-setup-sand.vercel.app");
   window.location.href = `${SB_AUTH}/authorize?provider=google&redirect_to=${redirectTo}`;
 }
 
