@@ -263,7 +263,7 @@ async function clearGameSession(roomCode, myId) {
 const uid = () => Math.random().toString(36).slice(2, 10);
 const shuffle = (arr) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const genCode = () => Math.random().toString(36).slice(2, 6).toUpperCase();
-const PHASES = ["Descanso", "Robo", "Principal 1", "Combate", "Principal 2", "Descarte"];
+const PHASES = ["Mantenimiento", "Robo", "Principal 1", "Ataque", "Principal 2", "Fin Turno"];
 const isLegendary = (c) => {
   const t = c?.type_line?.toLowerCase() || "";
   return t.includes("legendary") || t.includes("legendaria") || t.includes("legendario");
@@ -1734,8 +1734,8 @@ function ZoomCardModal({ card, onClose }) {
 
 // ─── Turn Order Panel ─────────────────────────────────────────────────────────
 function PhasePanel({ playerOrder, players, activePlayer, turn, phase, isMyTurn, onNextPhase, onMulligan, onHome, avatars }) {
-  const PHASE_ICONS = ["🌙","📖","⚡","⚔","⚡","🌙"];
-  const PHASE_SHORT = ["Des","Robo","Prin 1","Combate","Prin 2","Desc"];
+  const PHASE_ICONS = ["🌙","📖","⚡","⚔️","⚡","🏁"];
+  const PHASE_SHORT = ["Mant.","Robo","Prin 1","Ataque","Prin 2","Fin"];
   return (
     <div style={{ width:72,flexShrink:0,background:"#06060e",borderRight:"1px solid #1a1a2e",display:"flex",flexDirection:"column",alignItems:"center",padding:"6px 4px",gap:3,overflowY:"auto" }}>
       {/* Logo/Home */}
@@ -1755,10 +1755,11 @@ function PhasePanel({ playerOrder, players, activePlayer, turn, phase, isMyTurn,
           <button onClick={onNextPhase} style={{ width:"100%",padding:"6px 2px",borderRadius:6,border:"none",background:"linear-gradient(180deg,#ffd700,#ff8c00)",color:"#000",fontWeight:800,fontSize:9,cursor:"pointer",lineHeight:1.3 }}>
             {phase>=5?"Pasar turno":"Sig. fase"} ▶
           </button>
-          {/* Combat hint — floats above button, no layout impact */}
+          {/* Combat hint — tooltip floats to the right of the phase panel */}
           {phase === 3 && (
-            <div style={{ position:"absolute", bottom:"100%", left:0, right:0, marginBottom:3, padding:"3px 2px", borderRadius:5, background:"#0d0d1e", border:"1px solid #ff444466", textAlign:"center", pointerEvents:"none", whiteSpace:"nowrap", overflow:"hidden" }}>
-              <div style={{ fontSize:7, color:"#ff8888", lineHeight:1.3 }}>⚔ Click der. en criatura</div>
+            <div style={{ position:"absolute", left:"calc(100% + 6px)", top:0, width:90, padding:"7px 8px", borderRadius:8, background:"#1a0a0a", border:"1px solid #ff444488", pointerEvents:"none", zIndex:50, boxShadow:"0 4px 16px #000a" }}>
+              <div style={{ fontSize:9, color:"#ff8888", fontWeight:700, marginBottom:3 }}>⚔ Fase de Ataque</div>
+              <div style={{ fontSize:8, color:"#ff6666", lineHeight:1.4 }}>Click derecho en una criatura para declarar atacante</div>
             </div>
           )}
         </div>
