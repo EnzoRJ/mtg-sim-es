@@ -3269,8 +3269,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             { icon: "💎", label: "Maná", action: () => setManaOpen(o=>!o), color: manaOpen?"#ffd700":"#888" },
             { icon: "💬", label: "Chat", action: () => setChatOpen(o=>!o), color: chatOpen?"#7fc4ff":"#888" },
             { icon: "📝", label: "Notas", action: () => setNotesOpen(o=>!o), color: notesOpen?"#88ff88":"#888" },
-            { icon: voiceEnabled ? "🎙" : "🎙", label: voiceEnabled ? (muted ? "Silenc." : "Voz ON") : "Voz", action: toggleVoice, color: voiceEnabled ? (muted ? "#ff8888" : "#44ff88") : "#888" },
-            voiceEnabled && { icon: muted ? "🔇" : "🔊", label: muted ? "Unmute" : "Mute", action: toggleMute, color: muted ? "#ff4444" : "#88ff88" },
+            { icon: "🎙", label: voiceEnabled ? (muted ? "Silenc." : "Voz ON") : "Voz", action: toggleVoice, color: voiceEnabled ? (muted ? "#ff8888" : "#44ff88") : "#555" },
+            ...(voiceEnabled ? [{ icon: muted ? "🔇" : "🔊", label: muted ? "Unmute" : "Mute", action: toggleMute, color: muted ? "#ff4444" : "#88ff88" }] : []),
             { icon: "✕", label: "Salir", action: onExit, color: "#666" },
           ].map(btn => (
             <button key={btn.label} onClick={btn.action} disabled={btn.disabled} title={btn.label}
