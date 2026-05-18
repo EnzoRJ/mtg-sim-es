@@ -1755,11 +1755,11 @@ function PhasePanel({ playerOrder, players, activePlayer, turn, phase, isMyTurn,
           <button onClick={onNextPhase} style={{ width:"100%",padding:"6px 2px",borderRadius:6,border:"none",background:"linear-gradient(180deg,#ffd700,#ff8c00)",color:"#000",fontWeight:800,fontSize:9,cursor:"pointer",lineHeight:1.3 }}>
             {phase>=5?"Pasar turno":"Sig. fase"} ▶
           </button>
-          {/* Combat hint — tooltip floats to the right of the phase panel */}
+          {/* Combat hint — shown directly on the button */}
           {phase === 3 && (
-            <div style={{ position:"absolute", left:"calc(100% + 6px)", top:0, width:90, padding:"7px 8px", borderRadius:8, background:"#1a0a0a", border:"1px solid #ff444488", pointerEvents:"none", zIndex:50, boxShadow:"0 4px 16px #000a" }}>
-              <div style={{ fontSize:9, color:"#ff8888", fontWeight:700, marginBottom:3 }}>⚔ Fase de Ataque</div>
-              <div style={{ fontSize:8, color:"#ff6666", lineHeight:1.4 }}>Click derecho en una criatura para declarar atacante</div>
+            <div style={{ width:"100%", marginTop:4, padding:"6px 8px", borderRadius:8, background:"#2a0a0a", border:"1px solid #ff4444aa", textAlign:"center" }}>
+              <div style={{ fontSize:10, color:"#ff6666", fontWeight:800 }}>⚔ ATAQUE</div>
+              <div style={{ fontSize:8, color:"#ff8888", lineHeight:1.5, marginTop:2 }}>Click derecho<br/>en criatura para<br/>declarar atacante</div>
             </div>
           )}
         </div>
