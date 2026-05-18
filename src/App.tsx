@@ -1279,7 +1279,12 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
     onGameStart(all, roomCode, myId, rtRef.current);
   };
 
-  const copyCode = () => navigator.clipboard?.writeText(roomCode).catch(() => {});
+  const [copied, setCopied] = useState(false);
+  const copyCode = () => {
+    navigator.clipboard?.writeText(roomCode).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#0a0a1a,#0d1b2a)", color:"#e8e0d0", fontFamily:"'Crimson Text',Georgia,serif", display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -1364,8 +1369,8 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 <span style={{ fontSize:36, fontWeight:800, letterSpacing:10, color:"#ffd700" }}>{roomCode}</span>
                 <button onClick={copyCode} title="Copiar código"
-                  style={{ padding:"5px 10px", borderRadius:6, border:"1px solid #3a3a6a", background:"#1a1a3e", color:"#aaa", cursor:"pointer", fontSize:11 }}>
-                  📋
+                  style={{ padding:"5px 10px", borderRadius:6, border: copied ? "1px solid #44ff88" : "1px solid #3a3a6a", background: copied ? "#1a3a1a" : "#1a1a3e", color: copied ? "#44ff88" : "#aaa", cursor:"pointer", fontSize:11, fontWeight: copied ? 700 : 400, transition:"all 0.2s", minWidth:60 }}>
+                  {copied ? "✓ COPIADO" : "📋"}
                 </button>
               </div>
             </div>
@@ -3715,30 +3720,43 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
         )}
 
         {/* Main actions */}
-        <div style={{ display:"flex", gap:10 }}>
-          <button onClick={() => onNewGame(null)} style={{ flex:1, padding:"17px 0", borderRadius:12, border:"1px solid #ffd70044", background:"linear-gradient(135deg,#1a140a,#2a1f0a)", color:"#ffd700", fontSize:16, cursor:"pointer", fontWeight:700 }}>
-            ✦ Nueva Partida
-          </button>
-          <button onClick={() => { setShowJoin(v => !v); }} style={{ flex:1, padding:"17px 0", borderRadius:12, border:"1px solid #3a6a9a44", background: showJoin ? "#0d1e30" : "linear-gradient(135deg,#0a1a2a,#0d2a3a)", color:"#7fc4ff", fontSize:16, cursor:"pointer", fontWeight:700 }}>
-            🔗 Unirse
-          </button>
-        </div>
-
-        {/* Join code input */}
-        {showJoin && (
-          <div style={{ background:"#0d0d1e", border:"1px solid #2a3a5a", borderRadius:12, padding:"14px 16px", display:"flex", flexDirection:"column", gap:10 }}>
-            <div style={{ fontSize:12, color:"#8888aa" }}>Código de sala (4 letras)</div>
-            <div style={{ display:"flex", gap:8 }}>
-              <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase().slice(0,4))}
-                onKeyDown={e => e.key==="Enter" && joinCode.length===4 && onJoinGame(joinCode)}
-                placeholder="XKJF" maxLength={4} autoFocus
-                style={{ flex:1, padding:"12px 14px", borderRadius:9, border:"1px solid #3a3a6a", background:"#080810", color:"#e8e0d0", fontSize:22, outline:"none", textAlign:"center", letterSpacing:8, fontWeight:800 }} />
-              <button onClick={() => joinCode.length===4 && onJoinGame(joinCode)} disabled={joinCode.length<4}
-                style={{ padding:"12px 18px", borderRadius:9, border:"none", background: joinCode.length===4 ? "#1a4a8a":"#111", color: joinCode.length===4 ? "#7fc4ff":"#444", fontSize:13, cursor: joinCode.length===4 ? "pointer":"default", fontWeight:700 }}>
-                Unirse →
+        {!user ? (
+          /* Not logged in — show sign in prompt */
+          <div style={{ background:"#0d0d1e", border:"1px solid #ffd70033", borderRadius:14, padding:"20px 18px", textAlign:"center", display:"flex", flexDirection:"column", gap:12 }}>
+            <div style={{ fontSize:14, color:"#ffd700", fontWeight:700 }}>⚔️ Para jugar necesitas una cuenta</div>
+            <div style={{ fontSize:12, color:"#8888aa" }}>Inicia sesión para crear o unirte a una partida y guardar tus mazos en la nube</div>
+            <button onClick={onSignIn} style={{ padding:"14px 0", borderRadius:10, border:"none", background:"linear-gradient(90deg,#ffd700,#ff8c00)", color:"#000", fontWeight:800, fontSize:15, cursor:"pointer" }}>
+              ✦ Iniciar sesión / Crear cuenta
+            </button>
+          </div>
+        ) : (
+          <>
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={() => onNewGame(null)} style={{ flex:1, padding:"17px 0", borderRadius:12, border:"1px solid #ffd70044", background:"linear-gradient(135deg,#1a140a,#2a1f0a)", color:"#ffd700", fontSize:16, cursor:"pointer", fontWeight:700 }}>
+                ✦ Nueva Partida
+              </button>
+              <button onClick={() => { setShowJoin(v => !v); }} style={{ flex:1, padding:"17px 0", borderRadius:12, border:"1px solid #3a6a9a44", background: showJoin ? "#0d1e30" : "linear-gradient(135deg,#0a1a2a,#0d2a3a)", color:"#7fc4ff", fontSize:16, cursor:"pointer", fontWeight:700 }}>
+                🔗 Unirse
               </button>
             </div>
-          </div>
+
+            {/* Join code input */}
+            {showJoin && (
+              <div style={{ background:"#0d0d1e", border:"1px solid #2a3a5a", borderRadius:12, padding:"14px 16px", display:"flex", flexDirection:"column", gap:10 }}>
+                <div style={{ fontSize:12, color:"#8888aa" }}>Código de sala (4 letras)</div>
+                <div style={{ display:"flex", gap:8 }}>
+                  <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase().slice(0,4))}
+                    onKeyDown={e => e.key==="Enter" && joinCode.length===4 && onJoinGame(joinCode)}
+                    placeholder="XKJF" maxLength={4} autoFocus
+                    style={{ flex:1, padding:"12px 14px", borderRadius:9, border:"1px solid #3a3a6a", background:"#080810", color:"#e8e0d0", fontSize:22, outline:"none", textAlign:"center", letterSpacing:8, fontWeight:800 }} />
+                  <button onClick={() => joinCode.length===4 && onJoinGame(joinCode)} disabled={joinCode.length<4}
+                    style={{ padding:"12px 18px", borderRadius:9, border:"none", background: joinCode.length===4 ? "#1a4a8a":"#111", color: joinCode.length===4 ? "#7fc4ff":"#444", fontSize:13, cursor: joinCode.length===4 ? "pointer":"default", fontWeight:700 }}>
+                    Unirse →
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Cloud decks panel — only shown when logged in */}
