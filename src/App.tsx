@@ -267,6 +267,7 @@ function CtxMenu({ menu, onClose }) {
       <style>{`
         .has-sub:hover > .submenu-panel { display: block !important; }
         .has-sub:hover > button { background: #2a2a5a !important; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
       `}</style>
       <div style={{ position:"fixed", inset:0, zIndex:500 }} onClick={onClose}>
         <div style={{ position:"absolute", left, top, background:"#161630", border:"1px solid #3a3a6a", borderRadius:10, padding:7, minWidth: W, boxShadow:"0 8px 40px #000c" }}
@@ -2020,6 +2021,167 @@ function ManaTracker({ mana, onChange, onClose }) {
   );
 }
 
+
+// ─── WebRTC Voice Chat ────────────────────────────────────────────────────────
+// P2P audio using WebRTC, Supabase Realtime as signaling channel
+class VoiceChat {
+  constructor(myId, rtInstance) {
+    this.myId = myId;
+    this.rt = rtInstance;
+    this.peers = {};        // { peerId: RTCPeerConnection }
+    this.streams = {};      // { peerId: MediaStream }
+    this.localStream = null;
+    this.muted = false;
+    this.onSpeaking = null; // callback(peerId, bool)
+    this.onPeerJoin = null;
+    this.onPeerLeave = null;
+    this.analyserNodes = {};
+    this.speakingTimers = {};
+  }
+
+  async start() {
+    try {
+      this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      return true;
+    } catch (e) {
+      console.warn("Microphone access denied:", e);
+      return false;
+    }
+  }
+
+  setMuted(muted) {
+    this.muted = muted;
+    if (this.localStream) {
+      this.localStream.getAudioTracks().forEach(t => t.enabled = !muted);
+    }
+  }
+
+  // Called when we receive a signaling message
+  async handleSignal(fromId, signal) {
+    if (fromId === this.myId) return;
+    const { type, sdp, candidate } = signal;
+
+    if (type === "offer") {
+      const pc = this._getPeer(fromId);
+      await pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp }));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      this.rt.broadcast("webrtc_signal", { to: fromId, from: this.myId, type: "answer", sdp: answer.sdp });
+    }
+    else if (type === "answer") {
+      const pc = this.peers[fromId];
+      if (pc && pc.signalingState !== "stable") {
+        await pc.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp }));
+      }
+    }
+    else if (type === "candidate" && candidate) {
+      const pc = this.peers[fromId];
+      if (pc) { try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch {} }
+    }
+    else if (type === "join") {
+      // New peer joined — initiate offer
+      await this._initiateCall(fromId);
+    }
+  }
+
+  async connectToPeer(peerId) {
+    // Announce our presence so peer initiates offer
+    this.rt.broadcast("webrtc_signal", { to: peerId, from: this.myId, type: "join" });
+  }
+
+  async _initiateCall(peerId) {
+    const pc = this._getPeer(peerId);
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    this.rt.broadcast("webrtc_signal", { to: peerId, from: this.myId, type: "offer", sdp: offer.sdp });
+  }
+
+  _getPeer(peerId) {
+    if (this.peers[peerId]) return this.peers[peerId];
+    const config = {
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+      ]
+    };
+    const pc = new RTCPeerConnection(config);
+    this.peers[peerId] = pc;
+
+    // Add local audio tracks
+    if (this.localStream) {
+      this.localStream.getTracks().forEach(t => pc.addTrack(t, this.localStream));
+    }
+
+    // ICE candidates
+    pc.onicecandidate = e => {
+      if (e.candidate) {
+        this.rt.broadcast("webrtc_signal", { to: peerId, from: this.myId, type: "candidate", candidate: e.candidate });
+      }
+    };
+
+    // Remote audio
+    pc.ontrack = e => {
+      this.streams[peerId] = e.streams[0];
+      const audio = document.createElement("audio");
+      audio.srcObject = e.streams[0];
+      audio.autoplay = true;
+      audio.id = `voice-${peerId}`;
+      document.body.appendChild(audio);
+      this.onPeerJoin?.(peerId);
+      this._startSpeakingDetection(peerId, e.streams[0]);
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === "disconnected" || pc.connectionState === "failed") {
+        this._cleanupPeer(peerId);
+        this.onPeerLeave?.(peerId);
+      }
+    };
+
+    return pc;
+  }
+
+  _startSpeakingDetection(peerId, stream) {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      src.connect(analyser);
+      this.analyserNodes[peerId] = analyser;
+
+      const check = () => {
+        if (!this.analyserNodes[peerId]) return;
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(data);
+        const avg = data.reduce((a, b) => a + b, 0) / data.length;
+        const speaking = avg > 15;
+        if (speaking !== this._lastSpeaking?.[peerId]) {
+          this._lastSpeaking = { ...this._lastSpeaking, [peerId]: speaking };
+          this.onSpeaking?.(peerId, speaking);
+        }
+        this.speakingTimers[peerId] = requestAnimationFrame(check);
+      };
+      check();
+    } catch {}
+  }
+
+  _cleanupPeer(peerId) {
+    this.peers[peerId]?.close();
+    delete this.peers[peerId];
+    delete this.streams[peerId];
+    delete this.analyserNodes[peerId];
+    if (this.speakingTimers[peerId]) cancelAnimationFrame(this.speakingTimers[peerId]);
+    document.getElementById(`voice-${peerId}`)?.remove();
+  }
+
+  stop() {
+    Object.keys(this.peers).forEach(id => this._cleanupPeer(id));
+    this.localStream?.getTracks().forEach(t => t.stop());
+    this.localStream = null;
+  }
+}
+
 // ─── GAME BOARD ───────────────────────────────────────────────────────────────
 // Layout: top-left, top-right, bottom-left, bottom-right, center = me
 // Positions: p1=bottom-center(me), p2=top-center, p3=left, p4=right  (adjusted by count)
@@ -2060,6 +2222,10 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [notesOpen, setNotesOpen] = useState(false);
   const [zoomCard, setZoomCard] = useState(null);
   const [diceModal, setDiceModal] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [speaking, setSpeaking] = useState({}); // {pid: bool}
+  const voiceRef = useRef(null);
   const [abilitiesModal, setAbilitiesModal] = useState(false);
   const [diceResult, setDiceResult] = useState(null); // {playerName, die, value, color} shown to all
   // Combat state
@@ -2104,6 +2270,55 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       }
     };
   }, [addLog]);
+
+  // ── Voice Chat Init ──
+  useEffect(() => {
+    const vc = new VoiceChat(myId, rt.current);
+    voiceRef.current = vc;
+
+    vc.onSpeaking = (pid, isSpeaking) => setSpeaking(s => ({ ...s, [pid]: isSpeaking }));
+    vc.onPeerJoin = (pid) => addLog(`🎙 ${players[pid]?.name || pid} conectado a voz.`);
+    vc.onPeerLeave = (pid) => { setSpeaking(s => ({ ...s, [pid]: false })); addLog(`🎙 ${players[pid]?.name || pid} desconectado de voz.`); };
+
+    // Handle WebRTC signals from Supabase
+    const origOnMessage = rt.current?.onMessage;
+    if (rt.current) {
+      const prevOnMsg = rt.current.onMessage;
+      rt.current.onMessage = (event, payload) => {
+        if (event === "webrtc_signal" && payload.to === myId) {
+          vc.handleSignal(payload.from, payload);
+        }
+        prevOnMsg?.(event, payload);
+      };
+    }
+
+    return () => { vc.stop(); };
+  }, []);
+
+  const toggleVoice = async () => {
+    const vc = voiceRef.current;
+    if (!voiceEnabled) {
+      const ok = await vc.start();
+      if (!ok) { alert("No se pudo acceder al micrófono. Verifica los permisos del navegador."); return; }
+      setVoiceEnabled(true);
+      // Connect to all current players
+      playerOrder.filter(pid => pid !== myId).forEach(pid => vc.connectToPeer(pid));
+      addLog(`🎙 ${players[myId]?.name} activó el chat de voz.`);
+    } else {
+      vc.stop();
+      await vc.start(); // restart for re-enabling
+      setVoiceEnabled(false);
+      setSpeaking({});
+      addLog(`🎙 ${players[myId]?.name} desactivó el chat de voz.`);
+    }
+  };
+
+  const toggleMute = () => {
+    const vc = voiceRef.current;
+    const newMuted = !muted;
+    setMuted(newMuted);
+    vc?.setMuted(newMuted);
+  };
 
   const syncState = (state, logMsg) => {
     rt.current?.broadcast("state_update", { pid: myId, state, log: logMsg });
@@ -2779,6 +2994,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             </span>
           ))}
 
+          {speaking[pid] && <span style={{ fontSize:10, color:"#44ff88", animation:"pulse 0.5s infinite", flexShrink:0 }}>🎙</span>}
           <span style={{ fontSize: 9, color: "#8888aa", marginLeft: "auto", flexShrink:0 }}>🤚{p.hand.length}</span>
         </div>
 
@@ -3053,6 +3269,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             { icon: "💎", label: "Maná", action: () => setManaOpen(o=>!o), color: manaOpen?"#ffd700":"#888" },
             { icon: "💬", label: "Chat", action: () => setChatOpen(o=>!o), color: chatOpen?"#7fc4ff":"#888" },
             { icon: "📝", label: "Notas", action: () => setNotesOpen(o=>!o), color: notesOpen?"#88ff88":"#888" },
+            { icon: "🎙", label: voiceEnabled ? (muted ? "Silenc." : "Voz ON") : "Voz", action: toggleVoice, color: voiceEnabled ? (muted ? "#ff8888" : "#44ff88") : "#555" },
+            ...(voiceEnabled ? [{ icon: muted ? "🔇" : "🔊", label: muted ? "Unmute" : "Mute", action: toggleMute, color: muted ? "#ff4444" : "#88ff88" }] : []),
             { icon: "✕", label: "Salir", action: onExit, color: "#666" },
           ].map(btn => (
             <button key={btn.label} onClick={btn.action} disabled={btn.disabled} title={btn.label}
