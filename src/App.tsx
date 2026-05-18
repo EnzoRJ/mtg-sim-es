@@ -3815,8 +3815,8 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
           </div>
         )}
 
-        {/* Saved decks panel */}
-        <div style={{ background:"#0d0d1e", border:"1px solid #2a2a4a", borderRadius:12, overflow:"hidden" }}>
+        {/* Saved decks panel — only when logged in */}
+        {user && <div style={{ background:"#0d0d1e", border:"1px solid #2a2a4a", borderRadius:12, overflow:"hidden" }}>
           {/* Header — always visible */}
           <div style={{ display:"flex", alignItems:"center", padding:"4px 6px 4px 16px" }}>
             <button onClick={() => setExpandDecks(v => !v)}
@@ -3899,7 +3899,7 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
               ))}
             </div>
           )}
-        </div>
+        </div>}
 
       </div>
     </div>
