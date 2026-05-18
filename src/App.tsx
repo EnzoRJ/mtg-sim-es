@@ -3680,13 +3680,16 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
       <div style={{ position:"absolute", top:16, right:20, display:"flex", alignItems:"center", gap:10 }}>
         {user ? (
           <>
-            <div style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 12px", borderRadius:20, background:"#1a1a2e", border:"1px solid #2a2a4a" }}>
-              <div style={{ width:24, height:24, borderRadius:"50%", background:"linear-gradient(135deg,#ffd700,#ff8c00)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#000" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 14px", borderRadius:20, background:"#1a1a2e", border:"1px solid #2a2a4a" }}>
+              <div style={{ width:26, height:26, borderRadius:"50%", background:"linear-gradient(135deg,#ffd700,#ff8c00)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800, color:"#000", flexShrink:0 }}>
                 {(user.email||"?")[0].toUpperCase()}
               </div>
               <span style={{ fontSize:12, color:"#e8e0d0", maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.email}</span>
             </div>
-            <button onClick={onSignOut} style={{ padding:"6px 12px", borderRadius:8, border:"1px solid #333", background:"transparent", color:"#888", cursor:"pointer", fontSize:11 }}>Cerrar sesión</button>
+            <button onClick={onSignOut}
+              style={{ padding:"7px 14px", borderRadius:10, border:"1px solid #4a2a2a", background:"#1a0a0a", color:"#ff8888", cursor:"pointer", fontSize:12, fontWeight:600, display:"flex", alignItems:"center", gap:5 }}>
+              ↩ Cerrar sesión
+            </button>
           </>
         ) : (
           <button onClick={onSignIn} style={{ padding:"8px 18px", borderRadius:10, border:"1px solid #ffd70044", background:"linear-gradient(135deg,#1a140a,#2a1f0a)", color:"#ffd700", cursor:"pointer", fontSize:13, fontWeight:700 }}>
@@ -3800,19 +3803,28 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
         {/* Saved decks panel */}
         <div style={{ background:"#0d0d1e", border:"1px solid #2a2a4a", borderRadius:12, overflow:"hidden" }}>
           {/* Header — always visible */}
-          <button onClick={() => setExpandDecks(v => !v)}
-            style={{ width:"100%", padding:"13px 16px", background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:10, color:"#e8e0d0" }}>
-            <span style={{ fontSize:13, fontWeight:700, color:"#ffd700" }}>📚 Mis Mazos</span>
-            <span style={{ fontSize:11, color:"#8888aa" }}>({decks.length})</span>
-            <span style={{ marginLeft:"auto", fontSize:11, color:"#888" }}>{expandDecks ? "▲ ocultar" : "▼ ver"}</span>
-          </button>
+          <div style={{ display:"flex", alignItems:"center", padding:"4px 6px 4px 16px" }}>
+            <button onClick={() => setExpandDecks(v => !v)}
+              style={{ flex:1, padding:"9px 0", background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:10, color:"#e8e0d0" }}>
+              <span style={{ fontSize:13, fontWeight:700, color:"#ffd700" }}>📚 Mis Mazos</span>
+              <span style={{ fontSize:11, color:"#8888aa" }}>({decks.length})</span>
+              <span style={{ marginLeft:"auto", fontSize:11, color:"#888" }}>{expandDecks ? "▲ ocultar" : "▼ ver"}</span>
+            </button>
+            <button onClick={() => onNewGame(null)}
+              title="Crear nuevo mazo"
+              style={{ marginLeft:8, padding:"6px 12px", borderRadius:8, border:"1px solid #ffd70044", background:"#1a140a", color:"#ffd700", cursor:"pointer", fontSize:11, fontWeight:700, flexShrink:0, whiteSpace:"nowrap" }}>
+              + Nuevo Mazo
+            </button>
+          </div>
 
           {expandDecks && (
             <div style={{ borderTop:"1px solid #2a2a4a" }}>
               {decks.length === 0 && (
                 <div style={{ padding:"20px", textAlign:"center", color:"#444", fontSize:13 }}>
                   No hay mazos guardados aún.<br/>
-                  <span style={{ fontSize:11, color:"#333" }}>Crea uno en "Nueva Partida" y guárdalo con 💾</span>
+                  <button onClick={() => onNewGame(null)} style={{ marginTop:10, padding:"7px 18px", borderRadius:8, border:"none", background:"linear-gradient(90deg,#ffd700,#ff8c00)", color:"#000", fontWeight:800, fontSize:12, cursor:"pointer" }}>
+                    + Crear primer mazo
+                  </button>
                 </div>
               )}
               {decks.map(d => (
