@@ -318,7 +318,7 @@ function CardTile({ card, onClick, onDoubleClick, onRightClick, onHover, onHover
       title={faceDown ? "?" : getCardName(card)}
       style={{ width: w, height: h, borderRadius: 5, overflow: "hidden", cursor: "pointer", flexShrink: 0, transform: tapped ? "rotate(90deg)" : "none", transition: "transform 0.2s", boxShadow: selected ? "0 0 0 2px #ffd700,0 4px 16px #0008" : "0 2px 8px #0005", border: selected ? "2px solid #ffd700" : "2px solid #2a2a4a", background: "#1a1a2e", position: "relative" }}>
       {faceDown
-        ? <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg,#1a2a4a,#0d1a2e)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🎴</div>
+        ? <img src="https://cards.scryfall.io/normal/back/0/0/00000000-0000-0000-0000-000000000000.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         : imgUrl
           ? <><div style={{ position: "absolute", inset: 0, display: loaded ? "none" : "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "#888", padding: 3, textAlign: "center" }}>{getCardName(card)}</div><img src={imgUrl} alt={getCardName(card)} onLoad={() => setLoaded(true)} style={{ width: "100%", height: "100%", objectFit: "cover", display: loaded ? "block" : "none" }} /></>
           : card?.isToken
@@ -2051,6 +2051,12 @@ const ABILITIES = [
   { key: "infect", name: "Infectar", en: "Infect", icon: "☣", color: "#0a2a0a", text: "#44ff44", desc: "Daña como contadores -1/-1 a criaturas y contadores de veneno a jugadores" },
   { key: "flanking", name: "Flanquear", en: "Flanking", icon: "🐎", color: "#3a2a0a", text: "#ffbb44", desc: "Criaturas que lo bloquean sin flanquear obtienen -1/-1" },
   { key: "protection", name: "Protección", en: "Protection", icon: "🔰", color: "#0a2a3a", text: "#44ddff", desc: "Protegida de un color o tipo específico" },
+  { key: "enrage", name: "Enfurecer", en: "Enrage", icon: "🔴", color: "#3a0a0a", text: "#ff6644", desc: "Se activa cuando recibe daño" },
+  { key: "undying", name: "Inmortal", en: "Undying", icon: "🔁", color: "#0a1a2a", text: "#44ccff", desc: "Vuelve del cementerio con +1/+1 si no tenía contadores" },
+  { key: "persist", name: "Persistir", en: "Persist", icon: "🔄", color: "#1a0a2a", text: "#cc88ff", desc: "Vuelve del cementerio con -1/-1 si no tenía contadores" },
+  { key: "exploit", name: "Explotar", en: "Exploit", icon: "💥", color: "#2a0a1a", text: "#ff44aa", desc: "Puedes sacrificar una criatura al entrar al campo" },
+  { key: "annihilator", name: "Aniquilador", en: "Annihilator", icon: "☠⚡", color: "#1a0a0a", text: "#ff2222", desc: "El defensor sacrifica permanentes al atacar" },
+  { key: "unblockable", name: "Imbloqueable", en: "Unblockable", icon: "👻", color: "#0a0a2a", text: "#8888ff", desc: "No puede ser bloqueada" },
 ];
 
 function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
@@ -3104,9 +3110,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         <div
           onClick={isMe ? () => libActions.draw(p.id, 1) : undefined}
           onContextMenu={e => { if (!isMe) return; e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, title: `Biblioteca (${p.library.length})`, items: libraryMenu(p, p.id, isMe, libActions) }); }}
-          style={{ width: 52, height: 73, borderRadius: 5, background: "linear-gradient(135deg,#1a2a4a,#0d1a2e)", border: "2px solid #3a5a8a", cursor: isMe ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 3, flexShrink: 0 }}>
-          <div style={{ fontSize: 16 }}>📚</div>
-          <div style={{ fontSize: 10, color: "#7fc4ff", fontWeight: 700 }}>{p.library.length}</div>
+          style={{ width: 52, height: 73, borderRadius: 5, overflow: "hidden", border: "2px solid #3a5a8a", cursor: isMe ? "pointer" : "default", position: "relative", flexShrink: 0 }}>
+          <img src="https://cards.scryfall.io/normal/back/0/0/00000000-0000-0000-0000-000000000000.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", fontSize: 10, color: "#fff", fontWeight: 800, background: "#000b", padding: "2px 0" }}>{p.library.length}</div>
         </div>
         {isMe && <div style={{ position: "absolute", bottom: -14, left: 0, right: 0, fontSize: 8, color: "#8888aa", textAlign: "center" }}>Biblioteca</div>}
       </div>
@@ -3331,9 +3337,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     <div style={labelStyle}>Bib.</div>
                     <div onClick={isMe ? () => libActions.draw(p.id, 1) : undefined}
                       onContextMenu={e => { if (!isMe) return; e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, title: `Biblioteca (${p.library.length})`, items: libraryMenu(p, p.id, isMe, libActions) }); }}
-                      style={{ width: cardW, height: cardH, borderRadius: 5, background: "linear-gradient(135deg,#1a2a4a,#0d1a2e)", border: "2px solid #3a5a8a", cursor: isMe ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 2 }}>
-                      <div style={{ fontSize: 14 }}>📚</div>
-                      <div style={{ fontSize: 10, color: "#7fc4ff", fontWeight: 700 }}>{p.library.length}</div>
+                      style={{ width: cardW, height: cardH, borderRadius: 5, overflow: "hidden", border: "2px solid #3a5a8a", cursor: isMe ? "pointer" : "default", position: "relative" }}>
+                      <img src="https://cards.scryfall.io/normal/back/0/0/00000000-0000-0000-0000-000000000000.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <div style={{ position: "absolute", bottom: 2, left: 0, right: 0, textAlign: "center", fontSize: 10, color: "#fff", fontWeight: 800, background: "#000a", borderRadius: "0 0 4px 4px", padding: "1px 0" }}>{p.library.length}</div>
                     </div>
                   </div>
 
@@ -3375,7 +3381,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       </div>
                     ))
                     : p.hand.map(card => (
-                      <div key={card.instanceId} style={{ width: 38, height: 52, borderRadius: 4, background: "linear-gradient(135deg,#1a2a4a,#0d1a2e)", border: "2px solid #2a3a5a", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🎴</div>
+                      <div key={card.instanceId} style={{ width: 38, height: 52, borderRadius: 4, overflow: "hidden", flexShrink: 0, border: "2px solid #2a3a5a" }}>
+                        <img src="https://cards.scryfall.io/normal/back/0/0/00000000-0000-0000-0000-000000000000.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      </div>
                     ))
                   }
                   {p.hand.length === 0 && <span style={{ color: "#2a2a3a", fontSize: 9 }}>vacía</span>}
