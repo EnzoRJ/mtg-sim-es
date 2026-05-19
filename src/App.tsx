@@ -1,6 +1,99 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback, useRef } from "react";
 
+// ─── Static Data (moved to top to prevent TDZ in production build) ─────────
+var COUNTER_TYPES = [
+  { key: "+1/+1", label: "+1/+1", color: "#1a4a1a", text: "#7fff7f", desc: "Poder y resistencia" },
+  { key: "-1/-1", label: "-1/-1", color: "#4a1a1a", text: "#ff8888", desc: "Reducir P/R" },
+  { key: "loyalty", label: "Lealtad", color: "#1a2a5a", text: "#7fc4ff", desc: "Planeswalker" },
+  { key: "charge", label: "Carga", color: "#3a2a1a", text: "#ffcc88", desc: "Artefactos, hechizos" },
+  { key: "poison", label: "Veneno", color: "#2a1a4a", text: "#cc88ff", desc: "Infect" },
+  { key: "energy", label: "⚡ Energía", color: "#1a3a3a", text: "#88ffee", desc: "Contador de energía" },
+  { key: "time", label: "⏳ Tiempo", color: "#2a2a1a", text: "#eeee88", desc: "Suspense, Vanishing" },
+  { key: "quest", label: "📜 Misión", color: "#2a1a2a", text: "#ff88cc", desc: "Quest enchantments" },
+  { key: "shield", label: "🛡 Escudo", color: "#1a2a2a", text: "#88ffcc", desc: "Ward counters" },
+  { key: "custom", label: "✏ Custom", color: "#2a2a2a", text: "#cccccc", desc: "Contador personalizado" },
+];
+var TOKEN_PRESETS = [
+  { name: "Soldado",  p: "1", t: "1", color: "#e8e0c0" },
+  { name: "Zombie",   p: "2", t: "2", color: "#8a9a8a" },
+  { name: "Dragón",   p: "5", t: "5", color: "#c04020" },
+  { name: "Ángel",    p: "4", t: "4", color: "#f0e8b0" },
+  { name: "Demonio",  p: "5", t: "5", color: "#4a1a6a" },
+  { name: "Golem",    p: "3", t: "3", color: "#8a8a9a" },
+  { name: "Elfo",     p: "1", t: "1", color: "#2a5a2a" },
+  { name: "Humano",   p: "1", t: "1", color: "#c0a060" },
+  { name: "Thopter",  p: "1", t: "1", color: "#7a9aaa" },
+  { name: "Tesorero", p: "0", t: "1", color: "#c0a020" },
+];
+var DICE = [
+  { sides: 4,  icon: "▲", color: "#ff8844" },
+  { sides: 6,  icon: "⬡", color: "#ffcc44" },
+  { sides: 8,  icon: "◆", color: "#44ff88" },
+  { sides: 10, icon: "⬟", color: "#44ccff" },
+  { sides: 12, icon: "⬠", color: "#cc88ff" },
+  { sides: 20, icon: "⬡", color: "#ff4488" },
+];
+var KEYWORD_MAP = {
+  "lifelink":      "lifelink",
+  "trample":       "trample",
+  "deathtouch":    "deathtouch",
+  "flying":        "flying",
+  "first strike":  "firststrike",
+  "double strike": "doublestrike",
+  "haste":         "haste",
+  "vigilance":     "vigilance",
+  "hexproof":      "hexproof",
+  "indestructible":"indestructible",
+  "menace":        "menace",
+  "reach":          "reach",
+  "fear":           "fear",
+  "intimidate":     "intimidate",
+  "shadow":         "shadow",
+  "wither":         "wither",
+  "infect":         "infect",
+  "flanking":       "flanking",
+  "protection":     "protection",
+};
+var ABILITIES = [
+  { key: "lifelink",    name: "Vínculo vital",  en: "Lifelink",     icon: "💚", color: "#2a6a2a", text: "#88ff88",  desc: "El daño que hace cura al jugador" },
+  { key: "trample",    name: "Arrollar",        en: "Trample",      icon: "🐂", color: "#5a3a1a", text: "#ffaa44",  desc: "El exceso de daño pasa al jugador" },
+  { key: "deathtouch", name: "Toque mortal",    en: "Deathtouch",   icon: "💀", color: "#2a1a3a", text: "#cc88ff",  desc: "Mata a cualquier criatura que dañe" },
+  { key: "flying",     name: "Volar",           en: "Flying",       icon: "🦅", color: "#1a2a4a", text: "#88ccff",  desc: "Solo puede bloquearse con voladoras" },
+  { key: "firststrike", name: "Dañar primero",  en: "First Strike",  icon: "⚡", color: "#4a3a0a", text: "#ffdd44",  desc: "Hace daño antes que las demás" },
+  { key: "haste",      name: "Prisa",           en: "Haste",        icon: "💨", color: "#4a1a1a", text: "#ff8844",  desc: "Puede atacar el mismo turno que entra" },
+  { key: "vigilance",  name: "Vigilancia",      en: "Vigilance",    icon: "👁", color: "#3a3a1a", text: "#eedd88",  desc: "No se gira al atacar" },
+  { key: "hexproof",   name: "Protección mágica",en:"Hexproof",     icon: "🛡", color: "#1a3a3a", text: "#88ffee",  desc: "No puede ser objetivo de hechizos del oponente" },
+  { key: "indestructible", name: "Indestructible", en:"Indestructible",icon:"♾", color: "#2a2a4a", text: "#aaaaff", desc: "No puede ser destruida" },
+  { key: "menace",     name: "Amenaza",         en: "Menace",       icon: "😈", color: "#3a1a2a", text: "#ff88aa",  desc: "Debe bloquearse con 2+ criaturas" },
+  { key: "reach",      name: "Alcance",         en: "Reach",        icon: "🌿", color: "#1a3a1a", text: "#88dd88",  desc: "Puede bloquear criaturas con volar" },
+  { key: "doublestrike",name:"Doble golpe",     en: "Double Strike", icon:"⚔⚔", color: "#4a2a0a", text: "#ffcc44", desc: "Daña primero y también en combate normal" },
+  { key: "fear",       name:"Inspirar temor",  en: "Fear",           icon:"👻", color: "#1a0a2a", text: "#bb88ff", desc: "Solo puede bloquearse con artefactos o criaturas negras" },
+  { key: "intimidate", name:"Intimidar",       en: "Intimidate",     icon:"😱", color: "#2a1a3a", text: "#dd99ff", desc: "Solo puede bloquearse con artefactos o criaturas del mismo color" },
+  { key: "shadow",     name:"Sombra",          en: "Shadow",         icon:"🌑", color: "#0a0a1a", text: "#9999cc", desc: "Solo bloquea y es bloqueada por criaturas con sombra" },
+  { key: "wither",     name:"Marchitar",       en: "Wither",         icon:"🥀", color: "#1a2a0a", text: "#88cc44", desc: "Inflige daño a criaturas como contadores -1/-1" },
+  { key: "infect",     name:"Infectar",        en: "Infect",         icon:"☣", color: "#0a2a0a", text: "#44ff44", desc: "Daña como contadores -1/-1 a criaturas y contadores de veneno a jugadores" },
+  { key: "flanking",   name:"Flanquear",       en: "Flanking",       icon:"🐎", color: "#3a2a0a", text: "#ffbb44", desc: "Criaturas que lo bloquean sin flanquear obtienen -1/-1" },
+  { key: "protection",  name:"Protección",     en: "Protection",     icon:"🔰", color: "#0a2a3a", text: "#44ddff", desc: "Protegida de un color o tipo específico" },
+  { key: "enrage",      name:"Enfurecer",      en: "Enrage",         icon:"🔴", color: "#3a0a0a", text: "#ff6644", desc: "Se activa cuando recibe daño" },
+  { key: "undying",     name:"Inmortal",       en: "Undying",        icon:"🔁", color: "#0a1a2a", text: "#44ccff", desc: "Vuelve del cementerio con +1/+1 si no tenía contadores" },
+  { key: "persist",     name:"Persistir",      en: "Persist",        icon:"🔄", color: "#1a0a2a", text: "#cc88ff", desc: "Vuelve del cementerio con -1/-1 si no tenía contadores" },
+  { key: "exploit",     name:"Explotar",       en: "Exploit",        icon:"💥", color: "#2a0a1a", text: "#ff44aa", desc: "Puedes sacrificar una criatura al entrar al campo" },
+  { key: "annihilator", name:"Aniquilador",    en: "Annihilator",    icon:"☠⚡", color: "#1a0a0a", text: "#ff2222", desc: "El defensor sacrifica permanentes al atacar" },
+  { key: "unblockable", name:"Imbloqueable",   en: "Unblockable",    icon:"👻", color: "#0a0a2a", text: "#8888ff", desc: "No puede ser bloqueada" },
+];
+var MANA_DEFS = [
+  { key:"W", label:"Blanco",   color:"#f9f3d9", text:"#8a7a30", symbol:"☀" },
+  { key:"U", label:"Azul",     color:"#b3d9f7", text:"#1a4a7a", symbol:"💧" },
+  { key:"B", label:"Negro",    color:"#c8a0c8", text:"#4a1a4a", symbol:"💀" },
+  { key:"R", label:"Rojo",     color:"#f7b3a0", text:"#7a1a0a", symbol:"🔥" },
+  { key:"G", label:"Verde",    color:"#a0d9b3", text:"#0a4a1a", symbol:"🌲" },
+  { key:"C", label:"Incoloro", color:"#d0d0d0", text:"#3a3a3a", symbol:"◇" },
+];
+var PHASES = ["Mantenimiento", "Robo", "Principal 1", "Ataque", "Principal 2", "Fin Turno"];
+var AVATARS = ['🧙', '⚔️', '🐉', '🏴\u200d☠️', '🦁', '🐺', '🦊', '🐻', '🦅', '🦉', '🧝', '🧛', '🧟', '🧜', '🪄', '🔮', '💀', '🌙', '☀️', '⚡', '🔥', '❄️', '🌊', '🌿'];
+
+
 // ─── Sound Engine (Web Audio API) ────────────────────────────────────────────
 var AudioCtx = typeof window !== "undefined" ? (window.AudioContext || window.webkitAudioContext) : null;
 let _actx = null;
@@ -299,7 +392,6 @@ async function clearGameSession(roomCode, myId) {
 const uid = () => Math.random().toString(36).slice(2, 10);
 const shuffle = (arr) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const genCode = () => Math.random().toString(36).slice(2, 6).toUpperCase();
-var PHASES = ["Mantenimiento", "Robo", "Principal 1", "Ataque", "Principal 2", "Fin Turno"];
 function isLegendary(c) {
   const t = c?.type_line?.toLowerCase() || "";
   return t.includes("legendary") || t.includes("legendaria") || t.includes("legendario");
@@ -628,19 +720,6 @@ function SearchLibModal({ library, graveyard, zone, dest, onPick, onClose }) {
 
 
 // ─── Counter Modal ────────────────────────────────────────────────────────────
-var COUNTER_TYPES = [
-  { key: "+1/+1", label: "+1/+1", color: "#1a4a1a", text: "#7fff7f", desc: "Poder y resistencia" },
-  { key: "-1/-1", label: "-1/-1", color: "#4a1a1a", text: "#ff8888", desc: "Reducir P/R" },
-  { key: "loyalty", label: "Lealtad", color: "#1a2a5a", text: "#7fc4ff", desc: "Planeswalker" },
-  { key: "charge", label: "Carga", color: "#3a2a1a", text: "#ffcc88", desc: "Artefactos, hechizos" },
-  { key: "poison", label: "Veneno", color: "#2a1a4a", text: "#cc88ff", desc: "Infect" },
-  { key: "energy", label: "⚡ Energía", color: "#1a3a3a", text: "#88ffee", desc: "Contador de energía" },
-  { key: "time", label: "⏳ Tiempo", color: "#2a2a1a", text: "#eeee88", desc: "Suspense, Vanishing" },
-  { key: "quest", label: "📜 Misión", color: "#2a1a2a", text: "#ff88cc", desc: "Quest enchantments" },
-  { key: "shield", label: "🛡 Escudo", color: "#1a2a2a", text: "#88ffcc", desc: "Ward counters" },
-  { key: "custom", label: "✏ Custom", color: "#2a2a2a", text: "#cccccc", desc: "Contador personalizado" },
-];
-
 function CounterModal({ card, onUpdate, onClose }) {
   const current = card.counters || [];
   const [customName, setCustomName] = useState("");
@@ -1246,8 +1325,6 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
 }
 
 // ─── LOBBY ────────────────────────────────────────────────────────────────────
-var AVATARS = ['🧙', '⚔️', '🐉', '🏴\u200d☠️', '🦁', '🐺', '🦊', '🐻', '🦅', '🦉', '🧝', '🧛', '🧟', '🧜', '🪄', '🔮', '💀', '🌙', '☀️', '⚡', '🔥', '❄️', '🌊', '🌿'];
-
 function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeCode }) {
   const googleName = getUserDisplayName(getCurrentUser());
   const defaultName = initialName || googleName || "";
@@ -1507,19 +1584,6 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
 
 
 // ─── Token Creator Modal ──────────────────────────────────────────────────────
-var TOKEN_PRESETS = [
-  { name: "Soldado",  p: "1", t: "1", color: "#e8e0c0" },
-  { name: "Zombie",   p: "2", t: "2", color: "#8a9a8a" },
-  { name: "Dragón",   p: "5", t: "5", color: "#c04020" },
-  { name: "Ángel",    p: "4", t: "4", color: "#f0e8b0" },
-  { name: "Demonio",  p: "5", t: "5", color: "#4a1a6a" },
-  { name: "Golem",    p: "3", t: "3", color: "#8a8a9a" },
-  { name: "Elfo",     p: "1", t: "1", color: "#2a5a2a" },
-  { name: "Humano",   p: "1", t: "1", color: "#c0a060" },
-  { name: "Thopter",  p: "1", t: "1", color: "#7a9aaa" },
-  { name: "Tesorero", p: "0", t: "1", color: "#c0a020" },
-];
-
 function TokenModal({ onCreate, onClose }) {
   const [tab, setTab] = useState("buscar");   // "buscar" | "manual"
   const [search, setSearch] = useState("");
@@ -1974,15 +2038,6 @@ function ResolveModal({ modal, players, onResolve, onClose }) {
 
 
 // ─── Dice Roller Modal ────────────────────────────────────────────────────────
-var DICE = [
-  { sides: 4,  icon: "▲", color: "#ff8844" },
-  { sides: 6,  icon: "⬡", color: "#ffcc44" },
-  { sides: 8,  icon: "◆", color: "#44ff88" },
-  { sides: 10, icon: "⬟", color: "#44ccff" },
-  { sides: 12, icon: "⬠", color: "#cc88ff" },
-  { sides: 20, icon: "⬡", color: "#ff4488" },
-];
-
 function DiceModal({ onClose, playerName, onRoll }) {
   const [result, setResult] = useState(null);
   const [rolling, setRolling] = useState(false);
@@ -2047,28 +2102,6 @@ function DiceModal({ onClose, playerName, onRoll }) {
 
 // ─── Abilities Modal ──────────────────────────────────────────────────────────
 // Map Scryfall keywords to our ability keys (auto-assigned when card enters battlefield)
-var KEYWORD_MAP = {
-  "lifelink":      "lifelink",
-  "trample":       "trample",
-  "deathtouch":    "deathtouch",
-  "flying":        "flying",
-  "first strike":  "firststrike",
-  "double strike": "doublestrike",
-  "haste":         "haste",
-  "vigilance":     "vigilance",
-  "hexproof":      "hexproof",
-  "indestructible":"indestructible",
-  "menace":        "menace",
-  "reach":          "reach",
-  "fear":           "fear",
-  "intimidate":     "intimidate",
-  "shadow":         "shadow",
-  "wither":         "wither",
-  "infect":         "infect",
-  "flanking":       "flanking",
-  "protection":     "protection",
-};
-
 // Extract abilities from card keywords
 function cardAbilitiesFromKeywords(card) {
   const keywords = card.keywords || [];
@@ -2076,34 +2109,6 @@ function cardAbilitiesFromKeywords(card) {
     .map(k => KEYWORD_MAP[k.toLowerCase()])
     .filter(Boolean);
 }
-
-var ABILITIES = [
-  { key: "lifelink",    name: "Vínculo vital",  en: "Lifelink",     icon: "💚", color: "#2a6a2a", text: "#88ff88",  desc: "El daño que hace cura al jugador" },
-  { key: "trample",    name: "Arrollar",        en: "Trample",      icon: "🐂", color: "#5a3a1a", text: "#ffaa44",  desc: "El exceso de daño pasa al jugador" },
-  { key: "deathtouch", name: "Toque mortal",    en: "Deathtouch",   icon: "💀", color: "#2a1a3a", text: "#cc88ff",  desc: "Mata a cualquier criatura que dañe" },
-  { key: "flying",     name: "Volar",           en: "Flying",       icon: "🦅", color: "#1a2a4a", text: "#88ccff",  desc: "Solo puede bloquearse con voladoras" },
-  { key: "firststrike", name: "Dañar primero",  en: "First Strike",  icon: "⚡", color: "#4a3a0a", text: "#ffdd44",  desc: "Hace daño antes que las demás" },
-  { key: "haste",      name: "Prisa",           en: "Haste",        icon: "💨", color: "#4a1a1a", text: "#ff8844",  desc: "Puede atacar el mismo turno que entra" },
-  { key: "vigilance",  name: "Vigilancia",      en: "Vigilance",    icon: "👁", color: "#3a3a1a", text: "#eedd88",  desc: "No se gira al atacar" },
-  { key: "hexproof",   name: "Protección mágica",en:"Hexproof",     icon: "🛡", color: "#1a3a3a", text: "#88ffee",  desc: "No puede ser objetivo de hechizos del oponente" },
-  { key: "indestructible", name: "Indestructible", en:"Indestructible",icon:"♾", color: "#2a2a4a", text: "#aaaaff", desc: "No puede ser destruida" },
-  { key: "menace",     name: "Amenaza",         en: "Menace",       icon: "😈", color: "#3a1a2a", text: "#ff88aa",  desc: "Debe bloquearse con 2+ criaturas" },
-  { key: "reach",      name: "Alcance",         en: "Reach",        icon: "🌿", color: "#1a3a1a", text: "#88dd88",  desc: "Puede bloquear criaturas con volar" },
-  { key: "doublestrike",name:"Doble golpe",     en: "Double Strike", icon:"⚔⚔", color: "#4a2a0a", text: "#ffcc44", desc: "Daña primero y también en combate normal" },
-  { key: "fear",       name:"Inspirar temor",  en: "Fear",           icon:"👻", color: "#1a0a2a", text: "#bb88ff", desc: "Solo puede bloquearse con artefactos o criaturas negras" },
-  { key: "intimidate", name:"Intimidar",       en: "Intimidate",     icon:"😱", color: "#2a1a3a", text: "#dd99ff", desc: "Solo puede bloquearse con artefactos o criaturas del mismo color" },
-  { key: "shadow",     name:"Sombra",          en: "Shadow",         icon:"🌑", color: "#0a0a1a", text: "#9999cc", desc: "Solo bloquea y es bloqueada por criaturas con sombra" },
-  { key: "wither",     name:"Marchitar",       en: "Wither",         icon:"🥀", color: "#1a2a0a", text: "#88cc44", desc: "Inflige daño a criaturas como contadores -1/-1" },
-  { key: "infect",     name:"Infectar",        en: "Infect",         icon:"☣", color: "#0a2a0a", text: "#44ff44", desc: "Daña como contadores -1/-1 a criaturas y contadores de veneno a jugadores" },
-  { key: "flanking",   name:"Flanquear",       en: "Flanking",       icon:"🐎", color: "#3a2a0a", text: "#ffbb44", desc: "Criaturas que lo bloquean sin flanquear obtienen -1/-1" },
-  { key: "protection",  name:"Protección",     en: "Protection",     icon:"🔰", color: "#0a2a3a", text: "#44ddff", desc: "Protegida de un color o tipo específico" },
-  { key: "enrage",      name:"Enfurecer",      en: "Enrage",         icon:"🔴", color: "#3a0a0a", text: "#ff6644", desc: "Se activa cuando recibe daño" },
-  { key: "undying",     name:"Inmortal",       en: "Undying",        icon:"🔁", color: "#0a1a2a", text: "#44ccff", desc: "Vuelve del cementerio con +1/+1 si no tenía contadores" },
-  { key: "persist",     name:"Persistir",      en: "Persist",        icon:"🔄", color: "#1a0a2a", text: "#cc88ff", desc: "Vuelve del cementerio con -1/-1 si no tenía contadores" },
-  { key: "exploit",     name:"Explotar",       en: "Exploit",        icon:"💥", color: "#2a0a1a", text: "#ff44aa", desc: "Puedes sacrificar una criatura al entrar al campo" },
-  { key: "annihilator", name:"Aniquilador",    en: "Annihilator",    icon:"☠⚡", color: "#1a0a0a", text: "#ff2222", desc: "El defensor sacrifica permanentes al atacar" },
-  { key: "unblockable", name:"Imbloqueable",   en: "Unblockable",    icon:"👻", color: "#0a0a2a", text: "#8888ff", desc: "No puede ser bloqueada" },
-];
 
 function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
   return (
@@ -2206,15 +2211,6 @@ function DiceResultOverlay({ result, onClose }) {
 
 
 // ─── Mana Tracker ─────────────────────────────────────────────────────────────
-var MANA_DEFS = [
-  { key:"W", label:"Blanco",   color:"#f9f3d9", text:"#8a7a30", symbol:"☀" },
-  { key:"U", label:"Azul",     color:"#b3d9f7", text:"#1a4a7a", symbol:"💧" },
-  { key:"B", label:"Negro",    color:"#c8a0c8", text:"#4a1a4a", symbol:"💀" },
-  { key:"R", label:"Rojo",     color:"#f7b3a0", text:"#7a1a0a", symbol:"🔥" },
-  { key:"G", label:"Verde",    color:"#a0d9b3", text:"#0a4a1a", symbol:"🌲" },
-  { key:"C", label:"Incoloro", color:"#d0d0d0", text:"#3a3a3a", symbol:"◇" },
-];
-
 function ManaTracker({ mana, onChange, onClose }) {
   return (
     <div style={{ position:"fixed",bottom:10,left:90,background:"#0d0d1e",border:"1px solid #3a3a6a",borderRadius:14,padding:14,zIndex:400,boxShadow:"0 8px 32px #000a" }}>
