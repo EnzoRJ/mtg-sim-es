@@ -238,6 +238,7 @@ async function authFetch(path, opts = {}) {
       "apikey": SUPABASE_KEY,
       "Authorization": "Bearer " + (t || SUPABASE_KEY),
       "Content-Type": "application/json",
+      "Accept": "application/json",
       ...(opts.headers || {}),
     }
   });
@@ -340,13 +341,29 @@ function handleAuthCallback() {
 // Cloud deck operations
 async function saveCloudDeck(name, deck, commander, playerName) {
   const user = getCurrentUser();
-  if (!user) return false;
-  const r = await authFetch("/rest/v1/user_decks", {
-    method: "POST",
-    headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
-    body: JSON.stringify({ user_id: user.id, name, deck, commander, player_name: playerName, updated_at: new Date().toISOString() })
-  });
-  return r.ok;
+  if (!user) return { ok: false, error: "No hay sesión activa" };
+  try {
+    const r = await authFetch("/rest/v1/user_decks", {
+      method: "POST",
+      headers: { "Prefer": "return=minimal" },
+      body: JSON.stringify({
+        user_id: user.id,
+        name,
+        deck,
+        commander,
+        player_name: playerName,
+        updated_at: new Date().toISOString()
+      })
+    });
+    if (!r.ok) {
+      const errText = await r.text();
+      console.error("saveCloudDeck error:", r.status, errText);
+      return { ok: false, error: `Error ${r.status}: ${errText}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
 }
 
 async function loadCloudDecks() {
@@ -1188,8 +1205,12 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
               const currentUser = getCurrentUser();
               if (currentUser) {
                 // Logged in: save only to cloud
-                const ok = await saveCloudDeck(deckName, deck, commander, playerName);
-                alert(ok ? `✓ Mazo "${deckName}" guardado en la nube ☁` : `✗ Error al guardar en la nube`);
+                const result = await saveCloudDeck(deckName, deck, commander, playerName);
+                if (result.ok) {
+                  alert(`✓ Mazo "${deckName}" guardado en la nube ☁`);
+                } else {
+                  alert(`✗ Error al guardar: ${result.error}`);
+                }
               } else {
                 // Not logged in: save locally
                 saveDeckToStorage(deckName, deck, commander, playerName);
@@ -1532,8 +1553,8 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
               <button onClick={async () => {
                 const user = getCurrentUser();
                 if (user) {
-                  await saveCloudDeck(lobbyDeckName, deckData.deck, deckData.commander, name);
-                  alert(`✓ Mazo "${lobbyDeckName}" guardado en la nube ☁`);
+                  const res = await saveCloudDeck(lobbyDeckName, deckData.deck, deckData.commander, name);
+                  alert(res.ok ? `✓ Mazo "${lobbyDeckName}" guardado en la nube ☁` : `✗ Error: ${res.error}`);
                 } else {
                   saveDeckToStorage(lobbyDeckName, deckData.deck, deckData.commander, name);
                   alert(`✓ Mazo "${lobbyDeckName}" guardado`);
