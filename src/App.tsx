@@ -1334,8 +1334,8 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
   const [mode, setMode] = useState(null);
   const [roomCode, setRoomCode] = useState("");
   const [joinCode, setJoinCode] = useState(resumeCode || "");
-  const [players, setPlayers] = useState([]); // {id, name, isHost, ready}
   const [isHost, setIsHost] = useState(false);
+  const [players, setPlayers] = useState([]);
   const [lobbyDeckName, setLobbyDeckName] = useState(() => {
     const user = getCurrentUser();
     const name = user ? (user.user_metadata?.full_name || user.email?.split("@")[0]) : "";
@@ -2409,6 +2409,9 @@ class VoiceChat {
 // Positions: p1=bottom-center(me), p2=top-center, p3=left, p4=right  (adjusted by count)
 
 function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSession, roomCode }) {
+  const [turn, setTurn] = useState(1);
+  const [phase, setPhase] = useState(0);
+  const [activePlayer, setActivePlayer] = useState(initialPlayers[0]?.id);
   const [players, setPlayers] = useState(() => {
     const entries = initialPlayers.map(p => {
       const state = p.playerState || mkState(p.id, p.name || "Jugador", [], null);
@@ -2416,14 +2419,10 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     });
     return Object.fromEntries(entries);
   });
-  const [activePlayer, setActivePlayer] = useState(initialPlayers[0]?.id);
-  const [phase, setPhase] = useState(0);
-  const [turn, setTurn] = useState(1);
   // Structured log: [{turn, phase, entries:[]}]
   const [turnLog, setTurnLog] = useState([{ turn:1, entries:["¡Partida comenzada!"] }]);
   const [logCollapsed, setLogCollapsed] = useState({}); // {turnN: bool}
   // Auto-open mulligan on game start
-  useEffect(() => { setMulliganModal(true); }, []);
   const [ctxMenu, setCtxMenu] = useState(null);
   const [showZone, setShowZone] = useState(null);
   const [selCard, setSelCard] = useState(null);
@@ -2550,6 +2549,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     if (roomCode) saveGameSession(roomCode, myId, { [myId]: state }, turn, phase, activePlayer);
   };
   const saveHistory = (ps) => setHistory(h => [...h.slice(-19), JSON.parse(JSON.stringify(ps))]);
+  // Auto-open mulligan on game start
+  useEffect(() => { setMulliganModal(true); }, []);
+
   // Reorder cards in a zone by dragging
   const reorderZone = (pid, zone, fromId, toId) => {
     if (fromId === toId) return;
@@ -3886,6 +3888,12 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
   const [loadingCloud, setLoadingCloud] = useState(false);
   const [cloudDeckName, setCloudDeckName] = useState("");
 
+  const [joinCode, setJoinCode] = useState("");
+  const [showJoin, setShowJoin] = useState(false);
+  const [expandDecks, setExpandDecks] = useState(false);
+  const [renamingDeck, setRenamingDeck] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
+
   const refreshCloudDecks = () => {
     if (!user) return;
     setLoadingCloud(true);
@@ -3894,17 +3902,11 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
 
   useEffect(() => {
     refreshCloudDecks();
-  }, [user?.id]); // use user.id to avoid re-running on object reference changes
+  }, [user?.id]);
 
-  // Also reload when panel expands
   useEffect(() => {
     if (expandDecks && user) refreshCloudDecks();
   }, [expandDecks]);
-  const [joinCode, setJoinCode] = useState("");
-  const [showJoin, setShowJoin] = useState(false);
-  const [expandDecks, setExpandDecks] = useState(false);
-  const [renamingDeck, setRenamingDeck] = useState(null); // deck name being renamed
-  const [renameValue, setRenameValue] = useState("");
 
   const refreshDecks = () => setDecks(getSavedDecks());
 
