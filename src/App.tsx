@@ -93,7 +93,7 @@ async function getCardImage(card) {
   if (card.card_faces?.[0]?.image_uris?.normal) return card.card_faces[0].image_uris.normal;
   return null;
 }
-const getCardName = (c) => c?.printed_name || c?.name || "?";
+function getCardName(c) { return c?.printed_name || c?.name || "?"; }
 
 // ─── Persistence ─────────────────────────────────────────────────────────────
 const DECK_STORAGE_KEY = "commander_es_decks";
@@ -300,11 +300,11 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const shuffle = (arr) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const genCode = () => Math.random().toString(36).slice(2, 6).toUpperCase();
 const PHASES = ["Mantenimiento", "Robo", "Principal 1", "Ataque", "Principal 2", "Fin Turno"];
-const isLegendary = (c) => {
+function isLegendary(c) {
   const t = c?.type_line?.toLowerCase() || "";
   return t.includes("legendary") || t.includes("legendaria") || t.includes("legendario");
-};
-const isLand = (c) => c?.type_line?.toLowerCase().includes("land") || c?.type_line?.toLowerCase().includes("tierra");
+}
+function isLand(c) { const t = c?.type_line?.toLowerCase() || ""; return t.includes("land") || t.includes("tierra"); }
 
 function mkState(id, name, deck, commander) {
   const lib = shuffle([...deck]);
