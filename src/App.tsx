@@ -315,6 +315,14 @@ function getUserDisplayName(user) {
     || null;
 }
 
+// Saved player name (persists in localStorage while session is open)
+function getSavedPlayerName() {
+  return localStorage.getItem("commander_es_player_name") || "";
+}
+function setSavedPlayerName(name) {
+  localStorage.setItem("commander_es_player_name", name);
+}
+
 // Handle OAuth callback (token in URL hash)
 function handleAuthCallback() {
   const hash = window.location.hash;
@@ -351,7 +359,6 @@ async function saveCloudDeck(name, deck, commander, playerName) {
         name,
         deck,
         commander,
-        player_name: playerName,
         updated_at: new Date().toISOString()
       })
     });
@@ -3829,6 +3836,38 @@ function DeckSelectorModal({ decks, cloudDecks, onSelect, onNew, onClose }) {
   );
 }
 
+
+// ─── Player Name Modal ────────────────────────────────────────────────────────
+function PlayerNameModal({ user, onSave }) {
+  const suggested = getUserDisplayName(user) || "";
+  const [name, setName] = useState(suggested);
+
+  return (
+    <div style={{ position:"fixed",inset:0,background:"#000d",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950,fontFamily:"'Crimson Text',Georgia,serif" }}>
+      <div style={{ background:"#0d0d1e",border:"1px solid #ffd70066",borderRadius:18,padding:30,width:360,display:"flex",flexDirection:"column",gap:16,textAlign:"center" }}>
+        <div style={{ fontSize:36 }}>⚔️</div>
+        <div style={{ fontSize:18,fontWeight:800,color:"#ffd700" }}>¿Cómo quieres que te llamen?</div>
+        <div style={{ fontSize:12,color:"#8888aa" }}>Este nombre aparecerá en el tablero durante las partidas</div>
+        <input
+          value={name}
+          onChange={e => setName(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && name.trim() && onSave(name.trim())}
+          placeholder="Tu nombre de jugador..."
+          autoFocus
+          maxLength={24}
+          style={{ padding:"12px 16px",borderRadius:10,border:"1px solid #3a3a6a",background:"#080810",color:"#e8e0d0",fontSize:16,outline:"none",textAlign:"center",fontWeight:700 }}
+        />
+        <button
+          onClick={() => name.trim() && onSave(name.trim())}
+          disabled={!name.trim()}
+          style={{ padding:"13px 0",borderRadius:10,border:"none",background: name.trim() ? "linear-gradient(90deg,#ffd700,#ff8c00)" : "#222",color: name.trim() ? "#000":"#555",fontWeight:800,fontSize:15,cursor: name.trim() ? "pointer":"default" }}>
+          Confirmar →
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Auth Modal ───────────────────────────────────────────────────────────────
 function AuthModal({ onAuth, onClose }) {
   const [mode, setMode] = useState("login"); // "login" | "signup"
@@ -3897,7 +3936,7 @@ function AuthModal({ onAuth, onClose }) {
 }
 
 // ─── HOME SCREEN ─────────────────────────────────────────────────────────────
-function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClearSession, savedSession, user, onSignIn, onSignOut }) {
+function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClearSession, savedSession, user, onSignIn, onSignOut, onChangeName }) {
   const [decks, setDecks] = useState(getSavedDecks);
   const [cloudDecks, setCloudDecks] = useState([]);
   const [favoriteDeck, setFavoriteDeck] = useState(() => localStorage.getItem("commander_es_favorite") || "");
@@ -3963,6 +4002,11 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
               </div>
               <span style={{ fontSize:12, color:"#e8e0d0", maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.email}</span>
             </div>
+            <button onClick={onChangeName}
+              title="Cambiar nombre de jugador"
+              style={{ padding:"7px 12px", borderRadius:10, border:"1px solid #3a3a6a", background:"#1a1a2e", color:"#aaaaff", cursor:"pointer", fontSize:12 }}>
+              ✏ {getSavedPlayerName() || "Poner nombre"}
+            </button>
             <button onClick={onSignOut}
               style={{ padding:"7px 14px", borderRadius:10, border:"1px solid #4a2a2a", background:"#1a0a0a", color:"#ff8888", cursor:"pointer", fontSize:12, fontWeight:600, display:"flex", alignItems:"center", gap:5 }}>
               ↩ Cerrar sesión
@@ -4219,15 +4263,26 @@ export default function App() {
   });
   const [user, setUser] = useState(() => getCurrentUser());
   const [showAuth, setShowAuth] = useState(false);
+  const [playerName, setPlayerName] = useState(() => getSavedPlayerName());
+  const [showNameModal, setShowNameModal] = useState(false);
 
   // Handle OAuth callback on mount
   useEffect(() => {
     const token = handleAuthCallback();
     if (token) {
-      // Wait a tick for user to be saved then update state
-      setTimeout(() => setUser(getCurrentUser()), 500);
+      setTimeout(() => {
+        const u = getCurrentUser();
+        setUser(u);
+        // Show name modal if no name saved yet
+        if (u && !getSavedPlayerName()) setShowNameModal(true);
+      }, 500);
     }
   }, []);
+
+  // Show name modal when user logs in for first time
+  useEffect(() => {
+    if (user && !getSavedPlayerName()) setShowNameModal(true);
+  }, [user?.id]);
 
   const goHome = () => setStage("home");
 
@@ -4252,7 +4307,10 @@ export default function App() {
 
   if (stage === "home") return (
     <>
-    {showAuth && <AuthModal onAuth={(u) => { setUser(u); setShowAuth(false); }} onClose={() => setShowAuth(false)} />}
+    {showAuth && <AuthModal onAuth={(u) => { setUser(u); setShowAuth(false); if (!getSavedPlayerName()) setShowNameModal(true); }} onClose={() => setShowAuth(false)} />}
+    {showNameModal && user && (
+      <PlayerNameModal user={user} onSave={(name) => { setSavedPlayerName(name); setPlayerName(name); setShowNameModal(false); }} />
+    )}
     {showDeckSelector && (
       <DeckSelectorModal
         decks={getSavedDecks()}
@@ -4269,7 +4327,8 @@ export default function App() {
     <HomeScreen
       user={user}
       onSignIn={() => setShowAuth(true)}
-      onSignOut={() => { signOut(); setUser(null); }}
+      onSignOut={() => { signOut(); setUser(null); setSavedPlayerName(""); setPlayerName(""); }}
+      onChangeName={() => setShowNameModal(true)}
       onNewGame={async (preloadedDeck) => {
         if (preloadedDeck) { setDeckData(preloadedDeck); setStage("lobby"); return; }
         // Load decks and show selector if any exist
@@ -4309,7 +4368,7 @@ export default function App() {
     <DeckBuilder
       initialDeck={stage === "deck-edit" ? deckData?.deck : []}
       initialCommander={stage === "deck-edit" ? deckData?.commander : null}
-      initialPlayerName={stage === "deck-edit" ? deckData?.playerName : getUserDisplayName(user)}
+      initialPlayerName={stage === "deck-edit" ? deckData?.playerName : (playerName || getUserDisplayName(user))}
       initialDeckName={stage === "deck-edit" ? deckData?.editingName : undefined}
       onReady={d => {
         const joinCode = deckData?.joinCode;
@@ -4322,7 +4381,7 @@ export default function App() {
 
   if (stage === "lobby" || stage === "lobby-resume" || stage === "lobby-join") return (
     <Lobby
-      playerName={deckData.playerName || getUserDisplayName(user) || "Jugador"}
+      playerName={deckData.playerName || playerName || getUserDisplayName(user) || "Jugador"}
       deckData={deckData}
       resumeCode={stage === "lobby-resume" ? savedSession?.roomCode : stage === "lobby-join" ? deckData?.joinCode : null}
       onGameStart={handleGameStart}
