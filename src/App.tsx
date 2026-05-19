@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 
 // ─── Sound Engine (Web Audio API) ────────────────────────────────────────────
-const AudioCtx = typeof window !== "undefined" ? (window.AudioContext || window.webkitAudioContext) : null;
+var AudioCtx = typeof window !== "undefined" ? (window.AudioContext || window.webkitAudioContext) : null;
 let _actx = null;
 function getAudioCtx() { if (!_actx && AudioCtx) _actx = new AudioCtx(); return _actx; }
 function playTone(freq, dur, type = "sine", vol = 0.15, delay = 0) {
@@ -16,7 +16,7 @@ function playTone(freq, dur, type = "sine", vol = 0.15, delay = 0) {
     o.start(ctx.currentTime + delay); o.stop(ctx.currentTime + delay + dur + 0.01);
   } catch {}
 }
-const SFX = {
+var SFX = {
   draw:      () => { playTone(440,0.08,"sine",0.12); playTone(550,0.08,"sine",0.10,0.07); },
   play:      () => { playTone(330,0.12,"triangle",0.13); playTone(440,0.1,"triangle",0.10,0.1); },
   tap:       () => playTone(220,0.07,"square",0.07),
@@ -33,8 +33,8 @@ const SFX = {
 
 
 // ─── Supabase ─────────────────────────────────────────────────────────────────
-const SUPABASE_URL = "https://uiadnflgzuisymxbxbyi.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpYWRuZmxnenVpc3lteGJ4YnlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDY2MDksImV4cCI6MjA5NDI4MjYwOX0.rw-iCALIbf0pzc-9ENtKiklKPVPknrg95fsdNfqi9F8";
+var SUPABASE_URL = "https://uiadnflgzuisymxbxbyi.supabase.co";
+var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpYWRuZmxnenVpc3lteGJ4YnlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDY2MDksImV4cCI6MjA5NDI4MjYwOX0.rw-iCALIbf0pzc-9ENtKiklKPVPknrg95fsdNfqi9F8";
 
 class SupabaseRealtime {
   constructor() { this.ws = null; this.channel = null; this.heartbeat = null; this.ref = 1; this.onMessage = null; }
@@ -96,8 +96,8 @@ async function getCardImage(card) {
 function getCardName(c) { return c?.printed_name || c?.name || "?"; }
 
 // ─── Persistence ─────────────────────────────────────────────────────────────
-const DECK_STORAGE_KEY = "commander_es_decks";
-const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+var DECK_STORAGE_KEY = "commander_es_decks";
+var SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 function getSavedDecks() {
   try { return JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) || "[]"); } catch { return []; }
@@ -113,8 +113,8 @@ function deleteDeckFromStorage(name) {
 }
 
 // ─── Supabase Auth Client ────────────────────────────────────────────────────
-const SB_AUTH = SUPABASE_URL + "/auth/v1";
-const SB_REST = SUPABASE_URL + "/rest/v1";
+var SB_AUTH = SUPABASE_URL + "/auth/v1";
+var SB_REST = SUPABASE_URL + "/rest/v1";
 
 async function refreshAccessToken() {
   const refresh = localStorage.getItem("sb_refresh_token");
@@ -270,7 +270,7 @@ async function deleteCloudDeck(id) {
 }
 
 // Game session persistence via Supabase REST API
-const SB_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" };
+var SB_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" };
 
 async function saveGameSession(roomCode, myId, playersState, turn, phase, activePlayer) {
   try {
@@ -299,7 +299,7 @@ async function clearGameSession(roomCode, myId) {
 const uid = () => Math.random().toString(36).slice(2, 10);
 const shuffle = (arr) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const genCode = () => Math.random().toString(36).slice(2, 6).toUpperCase();
-const PHASES = ["Mantenimiento", "Robo", "Principal 1", "Ataque", "Principal 2", "Fin Turno"];
+var PHASES = ["Mantenimiento", "Robo", "Principal 1", "Ataque", "Principal 2", "Fin Turno"];
 function isLegendary(c) {
   const t = c?.type_line?.toLowerCase() || "";
   return t.includes("legendary") || t.includes("legendaria") || t.includes("legendario");
@@ -628,7 +628,7 @@ function SearchLibModal({ library, graveyard, zone, dest, onPick, onClose }) {
 
 
 // ─── Counter Modal ────────────────────────────────────────────────────────────
-const COUNTER_TYPES = [
+var COUNTER_TYPES = [
   { key: "+1/+1", label: "+1/+1", color: "#1a4a1a", text: "#7fff7f", desc: "Poder y resistencia" },
   { key: "-1/-1", label: "-1/-1", color: "#4a1a1a", text: "#ff8888", desc: "Reducir P/R" },
   { key: "loyalty", label: "Lealtad", color: "#1a2a5a", text: "#7fc4ff", desc: "Planeswalker" },
@@ -1246,7 +1246,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
 }
 
 // ─── LOBBY ────────────────────────────────────────────────────────────────────
-const AVATARS = ['🧙', '⚔️', '🐉', '🏴\u200d☠️', '🦁', '🐺', '🦊', '🐻', '🦅', '🦉', '🧝', '🧛', '🧟', '🧜', '🪄', '🔮', '💀', '🌙', '☀️', '⚡', '🔥', '❄️', '🌊', '🌿'];
+var AVATARS = ['🧙', '⚔️', '🐉', '🏴\u200d☠️', '🦁', '🐺', '🦊', '🐻', '🦅', '🦉', '🧝', '🧛', '🧟', '🧜', '🪄', '🔮', '💀', '🌙', '☀️', '⚡', '🔥', '❄️', '🌊', '🌿'];
 
 function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeCode }) {
   const googleName = getUserDisplayName(getCurrentUser());
@@ -1507,7 +1507,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
 
 
 // ─── Token Creator Modal ──────────────────────────────────────────────────────
-const TOKEN_PRESETS = [
+var TOKEN_PRESETS = [
   { name: "Soldado",  p: "1", t: "1", color: "#e8e0c0" },
   { name: "Zombie",   p: "2", t: "2", color: "#8a9a8a" },
   { name: "Dragón",   p: "5", t: "5", color: "#c04020" },
@@ -1974,7 +1974,7 @@ function ResolveModal({ modal, players, onResolve, onClose }) {
 
 
 // ─── Dice Roller Modal ────────────────────────────────────────────────────────
-const DICE = [
+var DICE = [
   { sides: 4,  icon: "▲", color: "#ff8844" },
   { sides: 6,  icon: "⬡", color: "#ffcc44" },
   { sides: 8,  icon: "◆", color: "#44ff88" },
@@ -2047,7 +2047,7 @@ function DiceModal({ onClose, playerName, onRoll }) {
 
 // ─── Abilities Modal ──────────────────────────────────────────────────────────
 // Map Scryfall keywords to our ability keys (auto-assigned when card enters battlefield)
-const KEYWORD_MAP = {
+var KEYWORD_MAP = {
   "lifelink":      "lifelink",
   "trample":       "trample",
   "deathtouch":    "deathtouch",
@@ -2077,7 +2077,7 @@ function cardAbilitiesFromKeywords(card) {
     .filter(Boolean);
 }
 
-const ABILITIES = [
+var ABILITIES = [
   { key: "lifelink",    name: "Vínculo vital",  en: "Lifelink",     icon: "💚", color: "#2a6a2a", text: "#88ff88",  desc: "El daño que hace cura al jugador" },
   { key: "trample",    name: "Arrollar",        en: "Trample",      icon: "🐂", color: "#5a3a1a", text: "#ffaa44",  desc: "El exceso de daño pasa al jugador" },
   { key: "deathtouch", name: "Toque mortal",    en: "Deathtouch",   icon: "💀", color: "#2a1a3a", text: "#cc88ff",  desc: "Mata a cualquier criatura que dañe" },
@@ -2206,7 +2206,7 @@ function DiceResultOverlay({ result, onClose }) {
 
 
 // ─── Mana Tracker ─────────────────────────────────────────────────────────────
-const MANA_DEFS = [
+var MANA_DEFS = [
   { key:"W", label:"Blanco",   color:"#f9f3d9", text:"#8a7a30", symbol:"☀" },
   { key:"U", label:"Azul",     color:"#b3d9f7", text:"#1a4a7a", symbol:"💧" },
   { key:"B", label:"Negro",    color:"#c8a0c8", text:"#4a1a4a", symbol:"💀" },
