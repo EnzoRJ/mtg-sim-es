@@ -440,7 +440,11 @@ function isLegendary(c) {
 function isLand(c) { const t = c?.type_line?.toLowerCase() || ""; return t.includes("land") || t.includes("tierra"); }
 
 function mkState(id, name, deck, commander, startLife = 40) {
-  const lib = shuffle([...deck]);
+  // Ensure commander is not in the library (filter by name and id)
+  const deckFiltered = commander
+    ? deck.filter(c => c.name !== commander.name && c.id !== commander.id)
+    : deck;
+  const lib = shuffle([...deckFiltered]);
   return {
     id, name, life: startLife, poison: 0, energy: 0, experience: 0,
     commanderDamage: {},
@@ -1346,7 +1350,12 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                 // Warn about format violations
                 const violations = Object.entries(formatWarnings).filter(([,v]) => v === "banned");
                 if (violations.length > 0 && !window.confirm(`Hay ${violations.length} carta(s) baneada(s) en ${format.label}:\n${violations.map(([n])=>n).join(", ")}\n\n¿Continuar de todas formas?`)) return;
-                const deckWithoutCmd = deck.filter(c => c.instanceId !== commander.instanceId);
+                // Remove commander from deck by name/id (instanceId may differ if loaded from storage)
+                const deckWithoutCmd = deck.filter(c =>
+                  c.instanceId !== commander.instanceId &&
+                  c.name !== commander.name &&
+                  c.id !== commander.id
+                );
                 onReady({ deck: shuffle(deckWithoutCmd), commander, playerName, format });
               }}
                 style={{ padding: "9px 22px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>▶ JUGAR</button>
