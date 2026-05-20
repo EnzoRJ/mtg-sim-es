@@ -91,6 +91,22 @@ var MANA_DEFS = [
   { key:"C", label:"Incoloro", color:"#d0d0d0", text:"#3a3a3a", symbol:"◇" },
 ];
 var PHASES = ["Mantenimiento", "Robo", "Principal 1", "Ataque", "Principal 2", "Fin Turno"];
+
+var FORMATS = [
+  { key: "commander",  label: "Commander",   icon: "⚔️",  desc: "100 cartas, comandante legendario, 40 vidas",        deckSize: 100, life: 40, singletons: true },
+  { key: "standard",  label: "Standard",    icon: "📅",  desc: "Máximo 4 copias, sets recientes",                    deckSize: 60,  life: 20, singletons: false },
+  { key: "modern",    label: "Modern",      icon: "🔧",  desc: "Máximo 4 copias, sets desde 2003",                   deckSize: 60,  life: 20, singletons: false },
+  { key: "legacy",    label: "Legacy",      icon: "📜",  desc: "Máximo 4 copias, casi todo permitido",               deckSize: 60,  life: 20, singletons: false },
+  { key: "vintage",   label: "Vintage",     icon: "🏺",  desc: "Máximo 4 copias, Power 9 restringido",               deckSize: 60,  life: 20, singletons: false },
+  { key: "pauper",    label: "Pauper",      icon: "🪙",  desc: "Solo cartas comunes, máximo 4 copias",               deckSize: 60,  life: 20, singletons: false },
+  { key: "pioneer",   label: "Pioneer",     icon: "🌄",  desc: "Máximo 4 copias, sets desde 2012",                   deckSize: 60,  life: 20, singletons: false },
+  { key: "brawl",     label: "Brawl",       icon: "🗡",  desc: "60 cartas, comandante, solo Standard",               deckSize: 60,  life: 25, singletons: true },
+  { key: "oathbreaker", label: "Oathbreaker", icon: "🔮", desc: "60 cartas, planeswalker como comandante",           deckSize: 60,  life: 20, singletons: true },
+  { key: "duel",      label: "Duel Commander", icon: "🥊", desc: "Commander 1vs1, 20 vidas",                        deckSize: 100, life: 20, singletons: true },
+  { key: "custom",    label: "Personalizado", icon: "✨", desc: "Sin restricciones",                                 deckSize: 0,   life: 20, singletons: false },
+];
+
+
 var AVATARS = ['🧙', '⚔️', '🐉', '🏴\u200d☠️', '🦁', '🐺', '🦊', '🐻', '🦅', '🦉', '🧝', '🧛', '🧟', '🧜', '🪄', '🔮', '💀', '🌙', '☀️', '⚡', '🔥', '❄️', '🌊', '🌿'];
 
 
@@ -422,10 +438,10 @@ function isLegendary(c) {
 }
 function isLand(c) { const t = c?.type_line?.toLowerCase() || ""; return t.includes("land") || t.includes("tierra"); }
 
-function mkState(id, name, deck, commander) {
+function mkState(id, name, deck, commander, startLife = 40) {
   const lib = shuffle([...deck]);
   return {
-    id, name, life: 40, poison: 0,
+    id, name, life: startLife, poison: 0, energy: 0, experience: 0,
     commanderDamage: {},
     commanderTax: 0,
     hand: lib.slice(0, 7).map(c => ({ ...c, instanceId: uid() })),
@@ -1030,9 +1046,9 @@ function MulliganModal({ player, mulliganCount, onKeep, onMulligan, onHome }) {
 }
 
 // ─── DECK BUILDER ─────────────────────────────────────────────────────────────
-function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPlayerName, initialDeckName }) {
+function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPlayerName, initialDeckName, initialFormat }) {
   const [search, setSearch] = useState(""); const [results, setResults] = useState([]);
-  const [deck, setDeck] = useState(() => initialDeck || []); const [commander, setCommander] = useState(() => initialCommander || null);
+  const [deck, setDeck] = useState(() => initialDeck || []); const [format, setFormat] = useState(() => initialFormat || FORMATS[0]); const [showFormatModal, setShowFormatModal] = useState(false); const [formatWarnings, setFormatWarnings] = useState({}); const [commander, setCommander] = useState(() => initialCommander || null);
   const [loading, setLoading] = useState(false); const [preview, setPreview] = useState(null);
   const [importText, setImportText] = useState(""); const [importLoading, setImportLoading] = useState(false);
   const [importProgress, setImportProgress] = useState({ done: 0, total: 0 });
@@ -1050,9 +1066,25 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
     deb.current = setTimeout(async () => { setLoading(true); setResults((await searchCards(search)).slice(0, 20)); setLoading(false); }, 500);
   }, [search, lang]);
 
+  const formatHasCommander = (fmt) => ["commander","duel","brawl","oathbreaker"].includes(fmt?.key);
+
+  const checkLegality = (card, fmt) => {
+    if (!fmt || fmt.key === "custom") return null;
+    const leg = card.legalities?.[fmt.key];
+    if (leg === "banned") return "banned";
+    if (leg === "not_legal") return "not_legal";
+    if (leg === "restricted") return "restricted";
+    return null;
+  };
+
   const addCard = async (card) => {
     const img = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null;
     setDeck(d => [...d, { ...card, image_url: img, instanceId: uid() }]);
+    // Check legality
+    const issue = checkLegality(card, format);
+    if (issue) {
+      setFormatWarnings(w => ({ ...w, [card.name]: issue }));
+    }
   };
   const setCmd = async (card) => {
     const img = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null;
@@ -1140,6 +1172,9 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
             card = { ...card, image_url: card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null };
           }
           cache[name] = card;
+          // Check legality in current format
+          const issue = checkLegality(card, format);
+          if (issue) setFormatWarnings(w => ({ ...w, [card.name]: issue }));
         } catch {}
       }
       if (cache[name]) {
@@ -1187,21 +1222,21 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
 
   const ctxItems = (card, source) => [
     source === "results" && { label: "➕ Agregar al mazo", action: () => addCard(card) },
-    source === "results" && { label: "➕➕ Agregar x4", action: () => [1,2,3,4].forEach(() => addCard(card)) },
-    isLegendary(card) && { label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "#ffd700" },
-    isLegendary(card) && source === "results" && { label: "⚔ + Agregar como Comandante", action: () => { addCard(card); setCmd(card); }, color: "#ffd700" },
-    source === "deck" && { label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "#ffd700" },
+    source === "results" && !format?.singletons && { label: "➕➕ Agregar x4", action: () => [1,2,3,4].forEach(() => addCard(card)) },
+    isLegendary(card) && formatHasCommander(format) && { label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "#ffd700" },
+    isLegendary(card) && source === "results" && formatHasCommander(format) && { label: "⚔ + Agregar como Comandante", action: () => { addCard(card); setCmd(card); }, color: "#ffd700" },
+    source === "deck" && formatHasCommander(format) && { label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "#ffd700" },
     source === "deck" && { label: "🗑 Quitar del mazo", action: () => setDeck(d => d.filter(c => c.instanceId !== card.instanceId)), color: "#ff8888" },
   ].filter(Boolean);
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#0a0a1a,#0d1b2a)", color: "#e8e0d0", fontFamily: "'Crimson Text',Georgia,serif", display: "flex", flexDirection: "column" }}
+    <div style={{ minHeight: "100vh", background: "radial-gradient(ellipse at 30% 10%, #160a28 0%, #0a0a1e 60%, #060616 100%)", color: "#e8e0d0", fontFamily: "'Crimson Text',Georgia,serif", display: "flex", flexDirection: "column" }}
       onClick={() => setDeckCtx(null)}>
       <div style={{ padding: "16px 28px", borderBottom: "1px solid #2a2a4a", background: "linear-gradient(90deg,#0a0a1a,#1a0a2e,#0a0a1a)", display: "flex", alignItems: "center", gap: 14 }}>
         <span style={{ fontSize: 26 }}>⚔️</span>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: 2, background: "linear-gradient(90deg,#ffd700,#ff8c00)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>COMMANDER ES</h1>
-          <div style={{ fontSize: 11, color: "#8888aa" }}>Formato Comandante · Multijugador Online · Cartas en Español</div>
+          <div style={{ fontSize: 11, color: "#8888aa" }}>Multijugador Online · Cartas en Español</div>
         </div>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, flexWrap:"wrap" }}>
           <span style={{ fontSize: 12, color: "#888" }}>Tu nombre:</span>
@@ -1290,12 +1325,28 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
         <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           <div style={{ padding: "10px 18px", borderBottom: "1px solid #2a2a4a", display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: "#ffd700" }}>Mi Mazo</span>
-            <span style={{ background: "#1a1a3e", borderRadius: 20, padding: "2px 9px", fontSize: 12, color: "#8888aa" }}>{deck.length}/100</span>
+            <span style={{ background: "#1a1a3e", borderRadius: 20, padding: "2px 9px", fontSize: 12, color: "#8888aa" }}>
+              {deck.length}{format.deckSize > 0 ? `/${format.deckSize-1}` : ""}
+            </span>
+            {Object.keys(formatWarnings).length > 0 && (
+              <span title="Hay cartas no legales en este formato" style={{ background:"#4a0a0a", borderRadius:20, padding:"2px 9px", fontSize:11, color:"#ff8888", cursor:"default" }}>
+                🚫 {Object.values(formatWarnings).filter(v=>v==="banned").length} ban
+              </span>
+            )}
             <div style={{ marginLeft: "auto" }}>
-              <button onClick={() => { if (!commander) return alert("Selecciona un Comandante."); if (deck.length < 5) return alert("Agrega más cartas."); const deckWithoutCmd = deck.filter(c => c.instanceId !== commander.instanceId); onReady({ deck: shuffle(deckWithoutCmd), commander, playerName }); }}
+              <button onClick={() => {
+                if (formatHasCommander(format) && !commander) return alert(`Selecciona un Comandante para el formato ${format.label}.`);
+                if (deck.length < 5) return alert("Agrega más cartas.");
+                // Warn about format violations
+                const violations = Object.entries(formatWarnings).filter(([,v]) => v === "banned");
+                if (violations.length > 0 && !window.confirm(`Hay ${violations.length} carta(s) baneada(s) en ${format.label}:\n${violations.map(([n])=>n).join(", ")}\n\n¿Continuar de todas formas?`)) return;
+                const deckWithoutCmd = deck.filter(c => c.instanceId !== commander.instanceId);
+                onReady({ deck: shuffle(deckWithoutCmd), commander, playerName, format });
+              }}
                 style={{ padding: "9px 22px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>▶ JUGAR</button>
             </div>
           </div>
+          {formatHasCommander(format) && (
           <div style={{ padding: "10px 18px 8px", borderBottom: "1px solid #1a1a2e" }}>
             <div style={{ fontSize: 10, color: "#ffd700", letterSpacing: 2, marginBottom: 6 }}>⚔ COMANDANTE</div>
             {commander
@@ -1305,6 +1356,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                 </div>
               : <div style={{ border: "2px dashed #3a3a6a", borderRadius: 8, padding: "10px 16px", color: "#555", fontSize: 12, textAlign: "center" }}>Busca una criatura legendaria y pulsa ⚔ (o click derecho → Elegir como Comandante)</div>}
           </div>
+          )}
           <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
             {Object.entries(grouped).sort(([a], [b]) => {
       const ORDER = ['Criatura Legendaria', 'Planeswalker Legendario', 'Legendario', 'Criatura', 'Planeswalker', 'Instantáneo', 'Conjuro', 'Encantamiento', 'Artefacto Encantamiento', 'Artefacto', 'Tierra', 'Batalla', 'Otro'];
@@ -1322,7 +1374,13 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                       style={{ position: "relative" }}>
                       <CardTile card={card} small onClick={() => {}} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
                       <button onClick={() => setDeck(d => d.filter(c => c.instanceId !== card.instanceId))} style={{ position: "absolute", top: -4, right: -4, width: 15, height: 15, borderRadius: "50%", border: "none", background: "#cc2222", color: "#fff", cursor: "pointer", fontSize: 9, padding: 0 }}>×</button>
-                      {isLegendary(card) && (
+                      {formatWarnings[card.name] && (
+                        <div title={formatWarnings[card.name]==="banned"?"Baneada en "+format.label:formatWarnings[card.name]==="restricted"?"Restringida (solo 1 copia)":"No legal en "+format.label}
+                          style={{ position:"absolute", bottom:-4, left:"50%", transform:"translateX(-50%)", background: formatWarnings[card.name]==="banned"?"#cc0000":formatWarnings[card.name]==="restricted"?"#ff8800":"#888", borderRadius:3, padding:"1px 4px", fontSize:7, color:"#fff", whiteSpace:"nowrap", pointerEvents:"none" }}>
+                          {formatWarnings[card.name]==="banned"?"🚫BAN":formatWarnings[card.name]==="restricted"?"⚠️REST":"✗"}
+                        </div>
+                      )}
+                      {isLegendary(card) && formatHasCommander(format) && (
                         <button onClick={() => setCmd(card)} title="Elegir como Comandante"
                           style={{ position: "absolute", top: -4, left: -4, width: 18, height: 18, borderRadius: "50%", border: "none", background: "#4a3a0a", color: "#ffd700", cursor: "pointer", fontSize: 10, padding: 0, fontWeight: 800 }}>⚔</button>
                       )}
@@ -1378,7 +1436,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
     const deck = deckData?.deck || [];
     const commander = deckData?.commander || null;
     const playerName = name || "Jugador";
-    myPlayerState.current = mkState(myId, name || "Jugador", deck, commander);
+    myPlayerState.current = mkState(myId, name || "Jugador", deck, commander, deckData?.format?.life || 40);
     return myPlayerState.current;
   };
 
@@ -1390,6 +1448,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
       avatar: avatar || "🧙",
       isHost: amHost,
       playerState: state,
+      format: deckData?.format || FORMATS[0],
     };
   };
 
@@ -1445,7 +1504,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
         : (p.playerState && p.playerState.library !== undefined
             ? p.playerState
             : mkState(p.id, p.name || "Jugador", [], null));
-      return { id: p.id, name: p.name || "Jugador", avatar: p.avatar || "🧙", isHost: p.isHost, playerState: state };
+      return { id: p.id, name: p.name || "Jugador", avatar: p.avatar || "🧙", isHost: p.isHost, playerState: state, format: p.format || FORMATS[0] };
     });
     // Broadcast — JSON serialization strips functions but playerState is plain data
     rtRef.current?.broadcast("game_start", { players: all });
@@ -1550,7 +1609,10 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
 
             {isHost && (
               <div style={{ fontSize:11, color:"#555", textAlign:"center", background:"#0a0a18", borderRadius:8, padding:"8px 12px" }}>
-                Comparte este código con tus amigos · Puedes comenzar cuando quieras
+                {deckData?.format && (
+                  <span style={{ color:"#ffd70088", marginRight:8 }}>{deckData.format.icon} {deckData.format.label} · ♥ {deckData.format.life} vidas</span>
+                )}
+                Comparte este código con tus amigos
               </div>
             )}
             {/* Save deck button in lobby */}
@@ -1612,7 +1674,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
 
 
 // ─── Token Creator Modal ──────────────────────────────────────────────────────
-function TokenModal({ onCreate, onClose }) {
+function TokenModal({ onCreate, onClose, cmdTokenSuggestions }) {
   const [tab, setTab] = useState("buscar");   // "buscar" | "manual"
   const [search, setSearch] = useState("");
   const [results, setResults] = useState([]);
@@ -1687,7 +1749,24 @@ function TokenModal({ onCreate, onClose }) {
 
           {/* Header */}
           <div style={{ padding:"16px 20px 0",flexShrink:0 }}>
-            <div style={{ fontSize:16,fontWeight:700,color:"#ffd700",marginBottom:12 }}>🪄 Crear Token</div>
+            <div style={{ fontSize:16,fontWeight:700,color:"#ffd700",marginBottom:8 }}>🪄 Crear Token</div>
+            {/* Commander token suggestions */}
+            {cmdTokenSuggestions?.length > 0 && (
+              <div style={{ marginBottom:10, padding:"8px 10px", background:"#0a0a18", borderRadius:8, border:"1px solid #ffd70033" }}>
+                <div style={{ fontSize:10, color:"#ffd700", marginBottom:6 }}>⚔ Tokens sugeridos para tu comandante:</div>
+                <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                  {cmdTokenSuggestions.map(t => (
+                    <button key={t.id}
+                      onClick={() => { onCreate([{ ...t, image_url:t.image_uris?.normal||null, instanceId:uid(), isToken:true, tapped:false, counters:[], abilities:[] }]); onClose(); }}
+                      style={{ padding:"3px 8px", borderRadius:6, border:"1px solid #3a3a6a", background:"#1a1a3e", color:"#e8e0d0", cursor:"pointer", fontSize:11, display:"flex", alignItems:"center", gap:5 }}>
+                      {t.image_uris?.normal && <img src={t.image_uris.normal} style={{ width:16,height:22,borderRadius:2,objectFit:"cover" }} />}
+                      <span>{t.name}</span>
+                      {t.power && <span style={{ color:"#666", fontSize:9 }}>{t.power}/{t.toughness}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Tabs */}
             <div style={{ display:"flex",borderBottom:"1px solid #2a2a4a" }}>
               {tabBtn("buscar","🔍 Buscar en Scryfall")}
@@ -2436,19 +2515,20 @@ class VoiceChat {
 // Layout: top-left, top-right, bottom-left, bottom-right, center = me
 // Positions: p1=bottom-center(me), p2=top-center, p3=left, p4=right  (adjusted by count)
 
-function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSession, roomCode }) {
+function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSession, roomCode, isSpectator }) {
   const [turn, setTurn] = useState(1);
   const [phase, setPhase] = useState(0);
   const [activePlayer, setActivePlayer] = useState(initialPlayers[0]?.id);
   const [players, setPlayers] = useState(() => {
     const entries = initialPlayers.map(p => {
-      const state = p.playerState || mkState(p.id, p.name || "Jugador", [], null);
+      const state = p.playerState || mkState(p.id, p.name || "Jugador", [], null, initialPlayers[0]?.format?.life || 40);
       return [p.id, state];
     });
     return Object.fromEntries(entries);
   });
   // Structured log: [{turn, phase, entries:[]}]
   const [turnLog, setTurnLog] = useState([{ turn:1, entries:["¡Partida comenzada!"] }]);
+  const [cmdTokenSuggestions, setCmdTokenSuggestions] = useState([]);
   const [logCollapsed, setLogCollapsed] = useState({}); // {turnN: bool}
   // Auto-open mulligan on game start
   const [ctxMenu, setCtxMenu] = useState(null);
@@ -2481,6 +2561,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [diceResult, setDiceResult] = useState(null); // {playerName, die, value, color} shown to all
   // Combat state
   const [attackers, setAttackers] = useState(new Set());
+  const [undoStack, setUndoStack] = useState([]);
   const [dragCard, setDragCard] = useState(null); // {instanceId, zone: 'battlefield'|'lands'|'hand'}
   const [dragOverId, setDragOverId] = useState(null);
   const [combatModal, setCombatModal] = useState(false);
@@ -2494,7 +2575,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const playerOrder = initialPlayers.map(p => p.id);
   // Map pid → avatar for use in sub-components
   const avatarMap = Object.fromEntries(initialPlayers.map(p => [p.id, p.avatar || "🧙"]));
-  const isMyTurn = activePlayer === myId;
+  const isMyTurn = !isSpectator && activePlayer === myId;
   const addLog = useCallback(msg => {
     setTurnLog(tl => {
       const updated = [...tl];
@@ -2594,6 +2675,19 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       const next = zone === "hand" ? { ...p, hand: arr } : { ...p, battlefield: arr };
       if (pid === myId) syncState(next);
       return { ...ps, [pid]: next };
+    });
+  };
+
+  const pushUndo = (state) => setUndoStack(s => [...s.slice(-9), state]); // keep last 10
+
+  const undoLastAction = () => {
+    setUndoStack(s => {
+      if (!s.length) return s;
+      const prev = s[s.length - 1];
+      setPlayers(ps => ({ ...ps, [myId]: prev }));
+      syncState(prev);
+      addLog("↩ Acción deshecha.");
+      return s.slice(0, -1);
     });
   };
 
@@ -3017,12 +3111,22 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     setSelCard(null); setCtxMenu(null);
   };
   const moveCard = (card, from, to) => { updMe(p => ({ ...p, [from]: p[from].filter(c => c.instanceId !== card.instanceId), [to]: to === "library_top" ? [card, ...p.library] : to === "library_bottom" ? [...p.library, card] : to === "hand" ? [...p.hand, card] : [card, ...p[to]] }), `${players[myId]?.name}: ${getCardName(card)} → ${to === "graveyard" ? "cementerio" : to === "exile" ? "exilio" : to === "hand" ? "mano" : "biblioteca"}.`); setCtxMenu(null); };
-  const playCommander = () => updMe(p => {
-    if (!p.commandZone.length) return p;
-    const [c, ...r] = p.commandZone;
-    const autoAbilities = cardAbilitiesFromKeywords(c);
-    return { ...p, commandZone: r, battlefield: [...p.battlefield, { ...c, tapped: false, counters: [], abilities: autoAbilities }] };
-  }, `${players[myId]?.name} invoca a su Comandante!`);
+  const playCommander = () => {
+    updMe(p => {
+      if (!p.commandZone.length) return p;
+      const [c, ...r] = p.commandZone;
+      const autoAbilities = cardAbilitiesFromKeywords(c);
+      // Fetch token suggestions for this commander
+      const cmdName = c.printed_name || c.name;
+      if (cmdName) {
+        fetch(`https://api.scryfall.com/cards/search?q=t:token+related:!"${encodeURIComponent(cmdName)}"&unique=cards`)
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d?.data?.length) setCmdTokenSuggestions(d.data.slice(0,6)); })
+          .catch(() => {});
+      }
+      return { ...p, commandZone: r, battlefield: [...p.battlefield, { ...c, tapped: false, counters: [], abilities: autoAbilities }] };
+    }, `${players[myId]?.name} invoca a su Comandante!`);
+  };
   const returnCmdToZone = (card, from, incrementTax = false) => updMe(p => ({
     ...p,
     [from]: p[from].filter(c => c.instanceId !== card.instanceId),
@@ -3059,6 +3163,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     });
   };
   const adjPoison = (pid, d) => { setPlayers(ps => { const next = { ...ps[pid], poison: Math.max(0, ps[pid].poison + d) }; if (pid === myId) syncState(next); return { ...ps, [pid]: next }; }); };
+  const adjEnergy = (pid, d) => { setPlayers(ps => { const next = { ...ps[pid], energy: Math.max(0, (ps[pid].energy||0) + d) }; if (pid === myId) syncState(next); return { ...ps, [pid]: next }; }); };
+  const adjExperience = (pid, d) => { setPlayers(ps => { const next = { ...ps[pid], experience: Math.max(0, (ps[pid].experience||0) + d) }; if (pid === myId) syncState(next); return { ...ps, [pid]: next }; }); };
   const adjCmdDmg = (fromPid, toPid, d) => {
     setPlayers(ps => {
       const p = ps[toPid]; const cur = p.commanderDamage[fromPid] || 0; const next = { ...p, commanderDamage: { ...p.commanderDamage, [fromPid]: Math.max(0, cur + d) } };
@@ -3234,10 +3340,26 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
           {/* Poison — only show if > 0 or is me */}
           {(isMe || p.poison > 0) && (
-            <div style={{ display: "flex", alignItems: "center", gap: 1, flexShrink:0 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:1, flexShrink:0 }}>
               {isMe && <button onClick={() => adjPoison(pid, -1)} style={mbtn("#3a1a3a","#ff88ff")}>−</button>}
-              <span style={{ fontSize: 9, color: p.poison >= 10 ? "#ff44ff" : p.poison > 0 ? "#cc88ff" : "#555" }}>☠{p.poison}</span>
+              <span style={{ fontSize:9, color:p.poison>=10?"#ff44ff":p.poison>0?"#cc88ff":"#555" }}>☠{p.poison}</span>
               {isMe && <button onClick={() => adjPoison(pid, 1)} style={mbtn("#1a1a4a","#88aaff")}>+</button>}
+            </div>
+          )}
+          {/* Energy ⚡ */}
+          {(isMe || (p.energy||0) > 0) && (
+            <div style={{ display:"flex", alignItems:"center", gap:1, flexShrink:0 }}>
+              {isMe && <button onClick={() => adjEnergy(pid,-1)} style={mbtn("#0a2030","#44ccff")}>−</button>}
+              <span style={{ fontSize:9, color:(p.energy||0)>0?"#44ccff":"#555" }}>⚡{p.energy||0}</span>
+              {isMe && <button onClick={() => adjEnergy(pid,1)} style={mbtn("#0a2030","#44ccff")}>+</button>}
+            </div>
+          )}
+          {/* Experience ✨ */}
+          {(isMe || (p.experience||0) > 0) && (
+            <div style={{ display:"flex", alignItems:"center", gap:1, flexShrink:0 }}>
+              {isMe && <button onClick={() => adjExperience(pid,-1)} style={mbtn("#1a0a30","#cc88ff")}>−</button>}
+              <span style={{ fontSize:9, color:(p.experience||0)>0?"#cc88ff":"#555" }}>✨{p.experience||0}</span>
+              {isMe && <button onClick={() => adjExperience(pid,1)} style={mbtn("#1a0a30","#cc88ff")}>+</button>}
             </div>
           )}
 
@@ -3249,6 +3371,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           ))}
 
           {speaking[pid] && <span style={{ fontSize:10, color:"#44ff88", animation:"pulse 0.5s infinite", flexShrink:0 }}>🎙</span>}
+          {p.energy > 0 && <span style={{ fontSize:9, color:"#88eeff", background:"#0a2a3a", borderRadius:4, padding:"0 4px", flexShrink:0 }}>⚡{p.energy}</span>}
+          {p.experience > 0 && <span style={{ fontSize:9, color:"#ddaaff", background:"#1a0a3a", borderRadius:4, padding:"0 4px", flexShrink:0 }}>✨{p.experience}</span>}
           <span style={{ fontSize: 9, color: "#8888aa", marginLeft: "auto", flexShrink:0 }}>🤚{p.hand.length}</span>
         </div>
 
@@ -3671,7 +3795,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         />
       )}
       {/* Token Modal */}
-      {tokenModal && <TokenModal onCreate={createToken} onClose={() => setTokenModal(false)} />}
+      {tokenModal && <TokenModal cmdTokenSuggestions={cmdTokenSuggestions} onCreate={createToken} onClose={() => setTokenModal(false)} />}
 
       {/* Life History */}
       {lifeHistoryOpen && <LifeHistoryPanel players={players} lifeHistory={lifeHistory} onClose={() => setLifeHistoryOpen(false)} />}
@@ -3684,6 +3808,12 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
       {/* Mana Tracker */}
       {manaOpen && <ManaTracker mana={mana} onChange={setMana} onClose={() => setManaOpen(false)} />}
+      {/* Spectator banner */}
+      {isSpectator && (
+        <div style={{ position:"fixed", top:8, left:"50%", transform:"translateX(-50%)", background:"#0d0d1eee", border:"1px solid #3a3a6a", borderRadius:20, padding:"6px 18px", fontSize:12, color:"#8888aa", zIndex:500, pointerEvents:"none" }}>
+          👁 Modo Espectador — Solo lectura
+        </div>
+      )}
       {/* Dice Result Overlay — visible to all players */}
       <DiceResultOverlay result={diceResult} />
       {/* Abilities Modal */}
@@ -3868,6 +3998,102 @@ function PlayerNameModal({ user, onSave }) {
   );
 }
 
+
+// ─── Format Selector Modal ────────────────────────────────────────────────────
+function FormatSelectorModal({ currentFormat, onSelect, onClose }) {
+  return (
+    <div style={{ position:"fixed",inset:0,background:"#000d",display:"flex",alignItems:"center",justifyContent:"center",zIndex:950 }} onClick={onClose}>
+      <div style={{ background:"#0d0d1e",border:"1px solid #3a3a6a",borderRadius:18,padding:24,width:520,maxHeight:"85vh",overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18 }}>
+          <div>
+            <div style={{ fontSize:16,fontWeight:800,color:"#ffd700" }}>📋 Seleccionar Formato</div>
+            <div style={{ fontSize:11,color:"#8888aa",marginTop:3 }}>Define las reglas de tu partida</div>
+          </div>
+          <button onClick={onClose} style={{ background:"none",border:"none",color:"#888",cursor:"pointer",fontSize:18 }}>✕</button>
+        </div>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+          {FORMATS.map(f => (
+            <button key={f.key} onClick={() => { onSelect(f); onClose(); }}
+              style={{ padding:"14px 14px",borderRadius:12,border: currentFormat?.key===f.key ? "2px solid #ffd700" : "1px solid #2a2a4a",
+                background: currentFormat?.key===f.key ? "#1a140a" : "#0a0a18",cursor:"pointer",textAlign:"left",transition:"all 0.15s" }}
+              onMouseOver={e=>{e.currentTarget.style.border="1px solid #ffd70066";e.currentTarget.style.background="#1a1a2e";}}
+              onMouseOut={e=>{e.currentTarget.style.border=currentFormat?.key===f.key?"2px solid #ffd700":"1px solid #2a2a4a";e.currentTarget.style.background=currentFormat?.key===f.key?"#1a140a":"#0a0a18";}}>
+              <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:5 }}>
+                <span style={{ fontSize:20 }}>{f.icon}</span>
+                <span style={{ fontSize:13,fontWeight:800,color: currentFormat?.key===f.key?"#ffd700":"#e8e0d0" }}>{f.label}</span>
+                {currentFormat?.key===f.key && <span style={{ marginLeft:"auto",fontSize:10,color:"#ffd700" }}>✓ Activo</span>}
+              </div>
+              <div style={{ fontSize:10,color:"#8888aa",lineHeight:1.4 }}>{f.desc}</div>
+              <div style={{ display:"flex",gap:6,marginTop:6 }}>
+                {f.deckSize>0 && <span style={{ fontSize:9,color:"#aaa",background:"#1a1a3e",borderRadius:4,padding:"1px 6px" }}>{f.deckSize} cartas</span>}
+                <span style={{ fontSize:9,color:"#aaa",background:"#1a1a3e",borderRadius:4,padding:"1px 6px" }}>♥ {f.life}</span>
+                {f.singletons && <span style={{ fontSize:9,color:"#88ff88",background:"#1a3a1a",borderRadius:4,padding:"1px 6px" }}>1 copia</span>}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ─── Tutorial Component ───────────────────────────────────────────────────────
+const TUTORIAL_STEPS = [
+  { title: "¡Bienvenido a MTG Arena ES!", body: "Un simulador de Magic: The Gathering multijugador online. Te guiaremos por las funciones principales.", icon: "🃏" },
+  { title: "Selecciona un Formato", body: "Antes de crear tu mazo, elige el formato de juego: Commander, Standard, Legacy y más. Cada uno tiene sus propias reglas y vidas iniciales.", icon: "📋" },
+  { title: "Construye tu Mazo", body: "Busca cartas por nombre, importa una lista completa, o carga un mazo guardado. Las cartas no legales en tu formato se marcan automáticamente.", icon: "🔍" },
+  { title: "El Comandante", body: "En formatos Commander, busca una criatura legendaria y asígnala como comandante con click derecho → ⚔ Elegir como Comandante.", icon: "⚔️" },
+  { title: "Crear o Unirse a una Partida", body: "Crea una nueva partida y comparte el código de 4 letras con tus amigos. También puedes unirte como espectador para ver sin jugar.", icon: "🔗" },
+  { title: "El Tablero de Juego", body: "Durante la partida: panel izquierdo = fases del turno, panel derecho = acciones. Click derecho en cualquier carta para ver todas las opciones disponibles.", icon: "🎮" },
+  { title: "Acciones con Cartas", body: "Doble click para girar/desgirar. Click derecho para jugar al campo, mover a la mano, añadir contadores, declarar atacante y más.", icon: "🖱️" },
+  { title: "Contadores y Estadísticas", body: "Cada jugador tiene contadores de vida ❤, veneno ☠, energía ⚡ y experiencia ✨. Usa los botones + / − para ajustarlos durante la partida.", icon: "📊" },
+  { title: "Chat de Voz", body: "Activa el micrófono con el botón 🎙 en el panel de acciones para comunicarte con los otros jugadores en tiempo real.", icon: "🎙" },
+  { title: "¡Listo para jugar!", body: "Tus mazos se guardan automáticamente en la nube si estás con sesión iniciada. ¡Buena suerte en tus partidas!", icon: "✨" },
+];
+
+function Tutorial({ onClose }) {
+  const [step, setStep] = useState(0);
+  const s = TUTORIAL_STEPS[step];
+  const isLast = step === TUTORIAL_STEPS.length - 1;
+
+  return (
+    <div style={{ position:"fixed",inset:0,background:"#000c",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,fontFamily:"'Crimson Text',Georgia,serif" }}>
+      <div style={{ background:"#0d0d1e",border:"1px solid #ffd70066",borderRadius:20,padding:32,width:420,display:"flex",flexDirection:"column",gap:20,textAlign:"center",boxShadow:"0 20px 60px #000a" }}>
+        {/* Step indicator */}
+        <div style={{ display:"flex",justifyContent:"center",gap:5 }}>
+          {TUTORIAL_STEPS.map((_,i) => (
+            <div key={i} onClick={() => setStep(i)}
+              style={{ width: i===step?20:6,height:6,borderRadius:3,background:i===step?"#ffd700":i<step?"#ffd70066":"#2a2a4a",cursor:"pointer",transition:"all 0.2s" }} />
+          ))}
+        </div>
+        {/* Content */}
+        <div style={{ fontSize:48 }}>{s.icon}</div>
+        <div>
+          <div style={{ fontSize:18,fontWeight:800,color:"#ffd700",marginBottom:8 }}>{s.title}</div>
+          <div style={{ fontSize:14,color:"#c0b090",lineHeight:1.6 }}>{s.body}</div>
+        </div>
+        {/* Navigation */}
+        <div style={{ display:"flex",gap:10 }}>
+          {step > 0 && (
+            <button onClick={() => setStep(s => s-1)}
+              style={{ flex:1,padding:"10px 0",borderRadius:10,border:"1px solid #3a3a6a",background:"transparent",color:"#888",cursor:"pointer",fontSize:14 }}>
+              ← Anterior
+            </button>
+          )}
+          <button onClick={() => isLast ? onClose() : setStep(s => s+1)}
+            style={{ flex:2,padding:"10px 0",borderRadius:10,border:"none",background:"linear-gradient(90deg,#ffd700,#ff8c00)",color:"#000",fontWeight:800,fontSize:14,cursor:"pointer" }}>
+            {isLast ? "¡Empezar a jugar! ✦" : "Siguiente →"}
+          </button>
+        </div>
+        <button onClick={onClose} style={{ background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:12 }}>
+          Saltar tutorial
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Auth Modal ───────────────────────────────────────────────────────────────
 function AuthModal({ onAuth, onClose }) {
   const [mode, setMode] = useState("login"); // "login" | "signup"
@@ -3893,7 +4119,7 @@ function AuthModal({ onAuth, onClose }) {
         {/* Header */}
         <div style={{ textAlign:"center" }}>
           <div style={{ fontSize:28,marginBottom:6 }}>⚔️</div>
-          <div style={{ fontSize:18,fontWeight:800,color:"#ffd700" }}>Commander ES</div>
+          <div style={{ fontSize:18,fontWeight:800,color:"#ffd700" }}>MTG Arena ES</div>
           <div style={{ fontSize:12,color:"#8888aa",marginTop:4 }}>
             {mode === "login" ? "Inicia sesión para guardar tus mazos en la nube" : "Crea una cuenta para guardar tus mazos"}
           </div>
@@ -3936,7 +4162,7 @@ function AuthModal({ onAuth, onClose }) {
 }
 
 // ─── HOME SCREEN ─────────────────────────────────────────────────────────────
-function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClearSession, savedSession, user, onSignIn, onSignOut, onChangeName }) {
+function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClearSession, savedSession, user, onSignIn, onSignOut, onChangeName, onSpectate, onShowTutorial }) {
   const [decks, setDecks] = useState(getSavedDecks);
   const [cloudDecks, setCloudDecks] = useState([]);
   const [favoriteDeck, setFavoriteDeck] = useState(() => localStorage.getItem("commander_es_favorite") || "");
@@ -3991,9 +4217,12 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
   };
 
   return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#0a0a1a 0%,#0d1b2a 50%,#0a0a1a 100%)", color:"#e8e0d0", fontFamily:"'Crimson Text',Georgia,serif", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:28, padding:"24px 16px" }}>
+    <div style={{ minHeight:"100vh", background:"radial-gradient(ellipse at 50% 0%, #160a28 0%, #0a0a1e 45%, #060616 100%)", color:"#e8e0d0", fontFamily:"'Crimson Text',Georgia,serif", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:24, padding:"24px 16px" }}>
+      {/* App name top-left */}
+      <div style={{ position:"absolute", top:18, left:20, fontSize:13, fontWeight:800, color:"#ffd70066", letterSpacing:2, zIndex:1 }}>MTG ES</div>
+
       {/* User bar */}
-      <div style={{ position:"absolute", top:16, right:20, display:"flex", alignItems:"center", gap:10 }}>
+      <div style={{ position:"absolute", top:16, right:20, display:"flex", alignItems:"center", gap:10, zIndex:1 }}>
         {user ? (
           <>
             <div style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 14px", borderRadius:20, background:"#1a1a2e", border:"1px solid #2a2a4a" }}>
@@ -4021,12 +4250,24 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
 
       {/* Logo */}
       <div style={{ textAlign:"center" }}>
-        <div style={{ fontSize:52, marginBottom:10 }}>⚔️</div>
-        <h1 style={{ margin:0, fontSize:40, fontWeight:800, letterSpacing:4, background:"linear-gradient(90deg,#ffd700,#ff8c00,#ffd700)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>COMMANDER ES</h1>
-        <div style={{ fontSize:13, color:"#8888aa", marginTop:6, letterSpacing:2 }}>Magic: The Gathering · Formato Comandante · Online</div>
+        {/* Animated card suit icons */}
+        <div style={{ display:"flex", justifyContent:"center", gap:16, marginBottom:10, fontSize:28 }}>
+          <span style={{ opacity:0.7 }}>♠</span>
+          <span style={{ opacity:0.9, color:"#e8e0d0" }}>🃏</span>
+          <span style={{ opacity:0.7, color:"#cc4444" }}>♥</span>
+          <span style={{ opacity:0.9, color:"#e8e0d0" }}>🎴</span>
+          <span style={{ opacity:0.7, color:"#cc4444" }}>♦</span>
+        </div>
+        <h1 style={{ margin:0, fontSize:38, fontWeight:900, letterSpacing:3, background:"linear-gradient(90deg,#c0a060,#ffd700,#ff8c00,#ffd700,#c0a060)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>MTG ARENA ES</h1>
+        <div style={{ fontSize:12, color:"#8888aa", marginTop:5, letterSpacing:3, textTransform:"uppercase" }}>Magic: The Gathering · Multijugador Online</div>
+        <div style={{ display:"flex", justifyContent:"center", gap:8, marginTop:8, flexWrap:"wrap" }}>
+          {["Commander","Standard","Legacy","Modern","Vintage","Pauper"].map(f => (
+            <span key={f} style={{ fontSize:10, color:"#666", background:"#0d0d1a", borderRadius:20, padding:"2px 9px", border:"1px solid #2a2a3a" }}>{f}</span>
+          ))}
+        </div>
       </div>
 
-      <div style={{ display:"flex", flexDirection:"column", gap:12, width:"100%", maxWidth:440 }}>
+      <div style={{ display:"flex", flexDirection:"column", gap:12, width:"100%", maxWidth:440, position:"relative", zIndex:1 }}>
 
         {/* Resume session */}
         {savedSession && (
@@ -4047,7 +4288,7 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
         {!user ? (
           /* Not logged in — show sign in prompt */
           <div style={{ background:"#0d0d1e", border:"1px solid #ffd70033", borderRadius:14, padding:"20px 18px", textAlign:"center", display:"flex", flexDirection:"column", gap:12 }}>
-            <div style={{ fontSize:14, color:"#ffd700", fontWeight:700 }}>⚔️ Para jugar necesitas una cuenta</div>
+            <div style={{ fontSize:14, color:"#ffd700", fontWeight:700 }}>🃏 Para jugar necesitas una cuenta</div>
             <div style={{ fontSize:12, color:"#8888aa" }}>Inicia sesión para crear o unirte a una partida y guardar tus mazos en la nube</div>
             <button onClick={onSignIn} style={{ padding:"14px 0", borderRadius:10, border:"none", background:"linear-gradient(90deg,#ffd700,#ff8c00)", color:"#000", fontWeight:800, fontSize:15, cursor:"pointer" }}>
               ✦ Iniciar sesión / Crear cuenta
@@ -4056,10 +4297,12 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
         ) : (
           <>
             <div style={{ display:"flex", gap:10 }}>
-              <button onClick={() => onNewGame(null)} style={{ flex:1, padding:"17px 0", borderRadius:12, border:"1px solid #ffd70044", background:"linear-gradient(135deg,#1a140a,#2a1f0a)", color:"#ffd700", fontSize:16, cursor:"pointer", fontWeight:700 }}>
+              <button onClick={() => onNewGame(null)}
+                style={{ flex:1, padding:"18px 0", borderRadius:14, border:"none", background:"linear-gradient(135deg,#c0a030,#ffd700,#ff8c00)", color:"#0a0500", fontSize:15, cursor:"pointer", fontWeight:900, letterSpacing:1, boxShadow:"0 4px 20px #ffd70033" }}>
                 ✦ Nueva Partida
               </button>
-              <button onClick={() => { setShowJoin(v => !v); }} style={{ flex:1, padding:"17px 0", borderRadius:12, border:"1px solid #3a6a9a44", background: showJoin ? "#0d1e30" : "linear-gradient(135deg,#0a1a2a,#0d2a3a)", color:"#7fc4ff", fontSize:16, cursor:"pointer", fontWeight:700 }}>
+              <button onClick={() => { setShowJoin(v => !v); }}
+                style={{ flex:1, padding:"18px 0", borderRadius:14, border:"1px solid #3a6a9a66", background: showJoin ? "#0d2a4a" : "linear-gradient(135deg,#0a1a2a,#0d2040)", color:"#7fc4ff", fontSize:15, cursor:"pointer", fontWeight:800, letterSpacing:1 }}>
                 🔗 Unirse
               </button>
             </div>
@@ -4078,6 +4321,10 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
                     Unirse →
                   </button>
                 </div>
+                <button onClick={() => joinCode.length===4 && onSpectate && onSpectate(joinCode)} disabled={joinCode.length<4}
+                  style={{ width:"100%", padding:"8px 0", borderRadius:8, border:"1px solid #2a3a4a", background:"transparent", color: joinCode.length===4?"#8888aa":"#333", cursor: joinCode.length===4?"pointer":"default", fontSize:12 }}>
+                  👁 Entrar como espectador
+                </button>
               </div>
             )}
           </>
@@ -4224,6 +4471,11 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
           )}
         </div>}
 
+        {/* Tutorial button */}
+        <button onClick={() => onShowTutorial && onShowTutorial()}
+          style={{ background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:12,textDecoration:"underline" }}>
+          ❓ Ver tutorial
+        </button>
       </div>
     </div>
   );
@@ -4262,6 +4514,7 @@ export default function App() {
     try { const s = localStorage.getItem("commander_es_session"); return s ? JSON.parse(s) : null; } catch { return null; }
   });
   const [user, setUser] = useState(() => getCurrentUser());
+  const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem("mtg_tutorial_done"));
   const [showAuth, setShowAuth] = useState(false);
   const [playerName, setPlayerName] = useState(() => getSavedPlayerName());
   const [showNameModal, setShowNameModal] = useState(false);
@@ -4307,6 +4560,7 @@ export default function App() {
 
   if (stage === "home") return (
     <>
+    {showTutorial && <Tutorial onClose={() => { setShowTutorial(false); localStorage.setItem("mtg_tutorial_done","1"); }} />}
     {showAuth && <AuthModal onAuth={(u) => { setUser(u); setShowAuth(false); if (!getSavedPlayerName()) setShowNameModal(true); }} onClose={() => setShowAuth(false)} />}
     {showNameModal && user && (
       <PlayerNameModal user={user} onSave={(name) => { setSavedPlayerName(name); setPlayerName(name); setShowNameModal(false); }} />
@@ -4329,6 +4583,7 @@ export default function App() {
       onSignIn={() => setShowAuth(true)}
       onSignOut={() => { signOut(); setUser(null); setSavedPlayerName(""); setPlayerName(""); }}
       onChangeName={() => setShowNameModal(true)}
+      onShowTutorial={() => setShowTutorial(true)}
       onNewGame={async (preloadedDeck) => {
         if (preloadedDeck) { setDeckData(preloadedDeck); setStage("lobby"); return; }
         // Load decks and show selector if any exist
@@ -4341,6 +4596,13 @@ export default function App() {
         } else {
           setStage("deck");
         }
+      }}
+      onSpectate={(code) => {
+        // Join as spectator — no deck needed
+        const rt = new SupabaseRealtime();
+        rt.joinRoom(code);
+        setGameData({ players: [], myId: "spectator_" + uid(), rt, roomCode: code, isSpectator: true });
+        setStage("game");
       }}
       onJoinGame={(code) => {
         setDeckData(prev => ({ ...(prev || { deck: [], commander: null }), playerName: prev?.playerName || "Jugador", joinCode: code }));
@@ -4396,6 +4658,7 @@ export default function App() {
         myId={gameData.myId}
         rtInstance={gameData.rt}
         roomCode={gameData.roomCode}
+        isSpectator={gameData.isSpectator}
         onExit={handleExit}
         onClearSession={handleClearSession}
         onHome={goHome}
