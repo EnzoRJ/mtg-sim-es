@@ -486,7 +486,12 @@ function CardTile({ card, onClick, onDoubleClick, onRightClick, onHover, onHover
       title={faceDown ? "?" : getCardName(card)}
       style={{ width: w, height: h, borderRadius: 5, overflow: "hidden", cursor: "pointer", flexShrink: 0, transform: tapped ? "rotate(90deg)" : "none", transition: "transform 0.2s", boxShadow: selected ? "0 0 0 2px #ffd700,0 4px 16px #0008" : "0 2px 8px #0005", border: selected ? "2px solid #ffd700" : "2px solid #2a2a4a", background: "#1a1a2e", position: "relative" }}>
       {faceDown
-        ? <img src="https://cards.scryfall.io/normal/back/0/0/00000000-0000-0000-0000-000000000000.jpg" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+        ? <div style={{ width:"100%", height:"100%", background:"linear-gradient(160deg,#1a2a4a 0%,#0d1a2e 40%,#1a0a2a 100%)", display:"flex", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
+                <div style={{ position:"absolute", inset:4, border:"2px solid #3a4a6a", borderRadius:4 }} />
+                <div style={{ position:"absolute", inset:6, border:"1px solid #2a3a5a", borderRadius:3 }} />
+                <div style={{ fontSize:28, opacity:0.6 }}>🌟</div>
+                <div style={{ position:"absolute", bottom:0, left:0, right:0, height:3, background:"linear-gradient(90deg,#1a2a8a,#8a1a8a,#1a2a8a)" }} />
+              </div>
         : imgUrl
           ? <><div style={{ position: "absolute", inset: 0, display: loaded ? "none" : "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "#888", padding: 3, textAlign: "center" }}>{getCardName(card)}</div><img src={imgUrl} alt={getCardName(card)} onLoad={() => setLoaded(true)} style={{ width: "100%", height: "100%", objectFit: "cover", display: loaded ? "block" : "none" }} /></>
           : card?.isToken
@@ -3290,7 +3295,10 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           onClick={isMe ? () => libActions.draw(p.id, 1) : undefined}
           onContextMenu={e => { if (!isMe) return; e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, title: `Biblioteca (${p.library.length})`, items: libraryMenu(p, p.id, isMe, libActions) }); }}
           style={{ width: 52, height: 73, borderRadius: 5, overflow: "hidden", border: "2px solid #3a5a8a", cursor: isMe ? "pointer" : "default", position: "relative", flexShrink: 0 }}>
-          <img src="https://cards.scryfall.io/normal/back/0/0/00000000-0000-0000-0000-000000000000.jpg" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <div style={{ width:"100%", height:"100%", background:"linear-gradient(160deg,#1a2a4a,#0d1a2e,#1a0a2a)", display:"flex", alignItems:"center", justifyContent:"center", position:"relative" }}>
+          <div style={{ position:"absolute", inset:3, border:"1px solid #3a4a6a", borderRadius:3 }} />
+          <div style={{ fontSize:16, opacity:0.5 }}>🌟</div>
+        </div>
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", fontSize: 10, color: "#fff", fontWeight: 800, background: "#000b", padding: "2px 0" }}>{p.library.length}</div>
         </div>
         {isMe && <div style={{ position: "absolute", bottom: -14, left: 0, right: 0, fontSize: 8, color: "#8888aa", textAlign: "center" }}>Biblioteca</div>}
@@ -3578,8 +3586,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       </div>
                     ))
                   : p.hand.map(card=>(
-                      <div key={card.instanceId} style={{width:38,height:52,borderRadius:4,overflow:"hidden",flexShrink:0,border:"2px solid #2a3a5a"}}>
-                    <img src="https://cards.scryfall.io/normal/back/0/0/00000000-0000-0000-0000-000000000000.jpg" style={{width:"100%",height:"100%",objectFit:"cover"}} />
+                      <div key={card.instanceId} style={{width:38,height:52,borderRadius:4,overflow:"hidden",flexShrink:0,border:"2px solid #2a3a5a",background:"linear-gradient(160deg,#1a2a4a,#0d1a2e,#1a0a2a)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    <span style={{fontSize:12,opacity:0.5}}>🌟</span>
                   </div>
                     ))
                 }
