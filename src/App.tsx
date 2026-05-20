@@ -211,9 +211,9 @@ var SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 function getSavedDecks() {
   try { return JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) || "[]"); } catch { return []; }
 }
-function saveDeckToStorage(name, deck, commander, playerName) {
+function saveDeckToStorage(name, deck, commander, playerName, format) {
   const decks = getSavedDecks().filter(d => d.name !== name);
-  decks.unshift({ name, deck, commander, playerName, savedAt: Date.now() });
+  decks.unshift({ name, deck, commander, playerName, format: format || FORMATS[0], savedAt: Date.now() });
   localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify(decks.slice(0, 20))); // max 20 decks
 }
 function deleteDeckFromStorage(name) {
@@ -363,7 +363,7 @@ function handleAuthCallback() {
 }
 
 // Cloud deck operations
-async function saveCloudDeck(name, deck, commander, playerName) {
+async function saveCloudDeck(name, deck, commander, playerName, format) {
   const user = getCurrentUser();
   if (!user) return { ok: false, error: "No hay sesión activa" };
   try {
@@ -375,6 +375,7 @@ async function saveCloudDeck(name, deck, commander, playerName) {
         name,
         deck,
         commander,
+        format: format || FORMATS[0],
         updated_at: new Date().toISOString()
       })
     });
@@ -1252,7 +1253,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
               const currentUser = getCurrentUser();
               if (currentUser) {
                 // Logged in: save only to cloud
-                const result = await saveCloudDeck(deckName, deck, commander, playerName);
+                const result = await saveCloudDeck(deckName, deck, commander, playerName, format);
                 if (result.ok) {
                   alert(`✓ Mazo "${deckName}" guardado en la nube ☁`);
                 } else {
@@ -1260,7 +1261,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                 }
               } else {
                 // Not logged in: save locally
-                saveDeckToStorage(deckName, deck, commander, playerName);
+                saveDeckToStorage(deckName, deck, commander, playerName, format);
                 setSavedDecks(getSavedDecks());
                 alert(`✓ Mazo "${deckName}" guardado localmente. Inicia sesión para guardarlo en la nube.`);
               }
@@ -3916,7 +3917,10 @@ function DeckSelectorModal({ decks, cloudDecks, onSelect, onNew, onClose }) {
           <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14 }}>
             <div>
               <div style={{ fontSize:18,fontWeight:800,color:"#ffd700" }}>📚 Elige un mazo</div>
-              <div style={{ fontSize:12,color:"#8888aa",marginTop:3 }}>{allDecks.length} mazo{allDecks.length!==1?"s":""} guardado{allDecks.length!==1?"s":""}</div>
+              <div style={{ fontSize:12,color:"#8888aa",marginTop:3,display:"flex",alignItems:"center",gap:6 }}>
+              <span>{allDecks.length} mazo{allDecks.length!==1?"s":""}</span>
+              {allDecks[0]?.format && <span style={{color:"#ffd70088"}}>{allDecks[0].format.icon} {allDecks[0].format.label}</span>}
+            </div>
             </div>
             <button onClick={onNew}
               style={{ padding:"10px 20px",borderRadius:10,border:"none",background:"linear-gradient(90deg,#ffd700,#ff8c00)",color:"#000",fontWeight:800,fontSize:13,cursor:"pointer" }}>
@@ -4174,6 +4178,7 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
   const [decks, setDecks] = useState(getSavedDecks);
   const [cloudDecks, setCloudDecks] = useState([]);
   const [favoriteDeck, setFavoriteDeck] = useState(() => localStorage.getItem("commander_es_favorite") || "");
+  const [filterFormat, setFilterFormat] = useState("all");
   const toggleFavorite = (name) => {
     const newFav = favoriteDeck === name ? "" : name;
     setFavoriteDeck(newFav);
@@ -4348,12 +4353,15 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
             </div>
             {cloudDecks.length > 0 && (
               <div style={{ maxHeight:180, overflowY:"auto" }}>
-                {cloudDecks.map(d => (
+                {(filterFormat==='all' ? cloudDecks : cloudDecks.filter(d => (d.format?.key||'commander') === filterFormat)).map(d => (
                   <div key={d.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 14px", borderBottom:"1px solid #1a1a2e" }}>
                     {d.commander?.image_url && <img src={d.commander.image_url} style={{ width:32,height:44,borderRadius:3,objectFit:"cover",flexShrink:0 }} />}
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontSize:13, fontWeight:700, color:"#e8e0d0", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.name}</div>
-                      <div style={{ fontSize:10, color:"#8888aa" }}>{(d.deck||[]).length + 1} cartas · {d.commander ? getCardName(d.commander) : "Sin comandante"}</div>
+                      <div style={{ fontSize:10, color:"#8888aa", display:"flex", gap:6, alignItems:"center" }}>
+                        {d.format && <span style={{ color:"#ffd70088" }}>{d.format.icon} {d.format.label}</span>}
+                        <span>{(d.deck||[]).length + 1} cartas</span>
+                      </div>
                     </div>
                     <button onClick={() => onNewGame({ deck: d.deck, commander: d.commander, playerName: d.player_name })}
                       title="Jugar con este mazo"
@@ -4518,6 +4526,8 @@ export default function App() {
   const [gameData, setGameData] = useState(null);
   const [showDeckSelector, setShowDeckSelector] = useState(false);
   const [cloudDecksForSelector, setCloudDecksForSelector] = useState([]);
+  const [showFormatPicker, setShowFormatPicker] = useState(false);
+  const [selectedFormat, setSelectedFormat] = useState(FORMATS[0]);
   const [savedSession, setSavedSession] = useState(() => {
     try { const s = localStorage.getItem("commander_es_session"); return s ? JSON.parse(s) : null; } catch { return null; }
   });
@@ -4573,13 +4583,37 @@ export default function App() {
     {showNameModal && user && (
       <PlayerNameModal user={user} onSave={(name) => { setSavedPlayerName(name); setPlayerName(name); setShowNameModal(false); }} />
     )}
+    {showFormatPicker && (
+      <FormatSelectorModal
+        currentFormat={selectedFormat}
+        onSelect={async (f) => {
+          setSelectedFormat(f);
+          setShowFormatPicker(false);
+          // Load decks for this format
+          const localDecks = getSavedDecks().filter(d => !d.format || d.format.key === f.key);
+          let cloud = [];
+          if (user) {
+            const all = await loadCloudDecks();
+            cloud = all.filter(d => !d.format || d.format.key === f.key);
+          }
+          setCloudDecksForSelector(cloud.map(d => ({ ...d, _local: false })));
+          const combined = [...cloud, ...localDecks];
+          if (combined.length > 0) {
+            setShowDeckSelector(true);
+          } else {
+            setStage("deck");
+          }
+        }}
+        onClose={() => setShowFormatPicker(false)}
+      />
+    )}
     {showDeckSelector && (
       <DeckSelectorModal
-        decks={getSavedDecks()}
+        decks={getSavedDecks().filter(d => !d.format || d.format.key === selectedFormat.key)}
         cloudDecks={cloudDecksForSelector}
         onSelect={(d) => {
           setShowDeckSelector(false);
-          setDeckData({ deck: d.deck, commander: d.commander, playerName: d.player_name || d.playerName || getUserDisplayName(user) || "Jugador" });
+          setDeckData({ deck: d.deck, commander: d.commander, playerName: d.player_name || d.playerName || getUserDisplayName(user) || "Jugador", format: d.format || selectedFormat });
           setStage("lobby");
         }}
         onNew={() => { setShowDeckSelector(false); setStage("deck"); }}
@@ -4594,16 +4628,8 @@ export default function App() {
       onShowTutorial={() => setShowTutorial(true)}
       onNewGame={async (preloadedDeck) => {
         if (preloadedDeck) { setDeckData(preloadedDeck); setStage("lobby"); return; }
-        // Load decks and show selector if any exist
-        const localDecks = getSavedDecks();
-        let cloud = [];
-        if (user) cloud = await loadCloudDecks();
-        setCloudDecksForSelector(cloud);
-        if (localDecks.length > 0 || cloud.length > 0) {
-          setShowDeckSelector(true);
-        } else {
-          setStage("deck");
-        }
+        // Show format selector first, then deck selector
+        setShowFormatPicker(true);
       }}
       onSpectate={(code) => {
         // Join as spectator — no deck needed
@@ -4640,6 +4666,7 @@ export default function App() {
       initialCommander={stage === "deck-edit" ? deckData?.commander : null}
       initialPlayerName={stage === "deck-edit" ? deckData?.playerName : (playerName || getUserDisplayName(user))}
       initialDeckName={stage === "deck-edit" ? deckData?.editingName : undefined}
+      initialFormat={stage === "deck-edit" ? deckData?.format : selectedFormat}
       onReady={d => {
         const joinCode = deckData?.joinCode;
         setDeckData({ ...d, joinCode });
