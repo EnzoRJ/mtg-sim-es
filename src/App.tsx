@@ -3548,7 +3548,10 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   <div onClick={isMe?()=>libActions.draw(p.id,1):undefined}
                     onContextMenu={e=>{if(!isMe)return;e.preventDefault();e.stopPropagation();setCtxMenu({x:e.clientX,y:e.clientY,title:`Biblioteca (${p.library.length})`,items:libraryMenu(p,p.id,isMe,libActions)});}}
                     style={{width:cardW,height:cardH,borderRadius:5,overflow:"hidden",border:"2px solid #3a5a8a",cursor:isMe?"pointer":"default",position:"relative"}}>
-                    <img src="https://cards.scryfall.io/normal/back/0/0/00000000-0000-0000-0000-000000000000.jpg" style={{width:"100%",height:"100%",objectFit:"cover"}} />
+                    <div style={{width:"100%",height:"100%",background:"linear-gradient(160deg,#1a2a4a 0%,#0d1a2e 40%,#1a0a2a 100%)",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
+                      <div style={{position:"absolute",inset:2,border:"1px solid #3a4a6a",borderRadius:3}}/>
+                      <span style={{fontSize:10,opacity:0.5}}>🌟</span>
+                    </div>
                     <div style={{position:"absolute",bottom:2,left:0,right:0,textAlign:"center",fontSize:10,color:"#fff",fontWeight:800,background:"#000a",borderRadius:"0 0 4px 4px",padding:"1px 0"}}>{p.library.length}</div>
                   </div>
                 </div>
