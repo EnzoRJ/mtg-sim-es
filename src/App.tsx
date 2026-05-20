@@ -4190,7 +4190,7 @@ function AuthModal({ onAuth, onClose }) {
 }
 
 // ─── HOME SCREEN ─────────────────────────────────────────────────────────────
-function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClearSession, savedSession, user, onSignIn, onSignOut, onChangeName, onSpectate, onShowTutorial }) {
+function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClearSession, savedSession, user, onSignIn, onSignOut, onChangeName, onSpectate, onShowTutorial, onQuickFormat }) {
   const [decks, setDecks] = useState(getSavedDecks);
   const [cloudDecks, setCloudDecks] = useState([]);
   const [favoriteDeck, setFavoriteDeck] = useState(() => localStorage.getItem("commander_es_favorite") || "");
@@ -4289,9 +4289,15 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
         </div>
         <h1 style={{ margin:0, fontSize:38, fontWeight:900, letterSpacing:3, background:"linear-gradient(90deg,#c0a060,#ffd700,#ff8c00,#ffd700,#c0a060)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>MTG ARENA ES</h1>
         <div style={{ fontSize:12, color:"#8888aa", marginTop:5, letterSpacing:3, textTransform:"uppercase" }}>Magic: The Gathering · Multijugador Online</div>
-        <div style={{ display:"flex", justifyContent:"center", gap:8, marginTop:8, flexWrap:"wrap" }}>
-          {["Commander","Standard","Legacy","Modern","Vintage","Pauper"].map(f => (
-            <span key={f} style={{ fontSize:10, color:"#666", background:"#0d0d1a", borderRadius:20, padding:"2px 9px", border:"1px solid #2a2a3a" }}>{f}</span>
+        <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:10, flexWrap:"wrap" }}>
+          {FORMATS.filter(f => ["commander","standard","legacy","modern","vintage","pauper"].includes(f.key)).map(f => (
+            <button key={f.key}
+              onClick={() => user ? onQuickFormat(f) : onSignIn()}
+              style={{ fontSize:11, color:"#aaa", background:"#0d0d1a", borderRadius:20, padding:"4px 12px", border:"1px solid #2a2a3a", cursor:"pointer", transition:"all 0.15s", fontFamily:"inherit" }}
+              onMouseOver={e => { e.currentTarget.style.background="#1a1a3e"; e.currentTarget.style.color="#ffd700"; e.currentTarget.style.borderColor="#ffd70044"; }}
+              onMouseOut={e => { e.currentTarget.style.background="#0d0d1a"; e.currentTarget.style.color="#aaa"; e.currentTarget.style.borderColor="#2a2a3a"; }}>
+              {f.icon} {f.label}
+            </button>
           ))}
         </div>
       </div>
@@ -4642,6 +4648,22 @@ export default function App() {
       onSignOut={() => { signOut(); setUser(null); setSavedPlayerName(""); setPlayerName(""); }}
       onChangeName={() => setShowNameModal(true)}
       onShowTutorial={() => setShowTutorial(true)}
+      onQuickFormat={async (f) => {
+        setSelectedFormat(f);
+        const localDecks = getSavedDecks().filter(d => !d.format || d.format.key === f.key);
+        let cloud = [];
+        if (user) {
+          const all = await loadCloudDecks();
+          cloud = all.filter(d => !d.format || d.format.key === f.key);
+        }
+        setCloudDecksForSelector(cloud);
+        const combined = [...cloud, ...localDecks];
+        if (combined.length > 0) {
+          setShowDeckSelector(true);
+        } else {
+          setStage("deck");
+        }
+      }}
       onNewGame={async (preloadedDeck) => {
         if (preloadedDeck) { setDeckData(preloadedDeck); setStage("lobby"); return; }
         // Show format selector first, then deck selector
