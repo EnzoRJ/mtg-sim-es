@@ -1622,22 +1622,26 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
               </div>
             )}
             {/* Save deck button in lobby */}
-            <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-              <input value={lobbyDeckName} onChange={e=>setLobbyDeckName(e.target.value)} placeholder="Nombre del mazo..."
-                style={{ flex:1, padding:"6px 10px", borderRadius:7, border:"1px solid #3a3a6a", background:"#080810", color:"#e8e0d0", fontSize:12, outline:"none" }} />
-              <button onClick={async () => {
-                const user = getCurrentUser();
-                if (user) {
-                  const res = await saveCloudDeck(lobbyDeckName, deckData.deck, deckData.commander, name);
-                  alert(res.ok ? `✓ Mazo "${lobbyDeckName}" guardado en la nube ☁` : `✗ Error: ${res.error}`);
-                } else {
-                  saveDeckToStorage(lobbyDeckName, deckData.deck, deckData.commander, name);
-                  alert(`✓ Mazo "${lobbyDeckName}" guardado`);
-                }
-              }}
-                style={{ padding:"6px 12px", borderRadius:7, border:"none", background:"#1a4a1a", color:"#7fff7f", cursor:"pointer", fontSize:11, fontWeight:700, flexShrink:0 }}>
-                💾 Guardar
-              </button>
+            <div style={{ background:"#0a0a18", border:"1px solid #2a2a4a", borderRadius:10, padding:"10px 12px" }}>
+              <div style={{ fontSize:10, color:"#8888aa", marginBottom:7, letterSpacing:1 }}>💾 GUARDAR MAZO ANTES DE JUGAR</div>
+              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                <input value={lobbyDeckName} onChange={e=>setLobbyDeckName(e.target.value)} placeholder="Nombre del mazo..."
+                  style={{ flex:1, padding:"7px 10px", borderRadius:7, border:"1px solid #3a3a6a", background:"#080810", color:"#e8e0d0", fontSize:13, outline:"none" }} />
+                <button onClick={async () => {
+                  const user = getCurrentUser();
+                  if (user) {
+                    const res = await saveCloudDeck(lobbyDeckName, deckData.deck, deckData.commander, name, deckData.format);
+                    alert(res.ok ? `✓ Mazo "${lobbyDeckName}" guardado en la nube ☁` : `✗ Error: ${res.error}`);
+                  } else {
+                    saveDeckToStorage(lobbyDeckName, deckData.deck, deckData.commander, name, deckData.format);
+                    alert(`✓ Mazo "${lobbyDeckName}" guardado`);
+                  }
+                }}
+                  style={{ padding:"7px 14px", borderRadius:7, border:"none", background:"linear-gradient(90deg,#1a6a1a,#2a8a2a)", color:"#7fff7f", cursor:"pointer", fontSize:12, fontWeight:700, flexShrink:0, whiteSpace:"nowrap" }}>
+                  💾 Guardar
+                </button>
+              </div>
+              <div style={{ fontSize:10, color:"#555", marginTop:5 }}>Guarda este mazo en tu colección para usarlo en futuras partidas</div>
             </div>
 
             {/* Players list */}
