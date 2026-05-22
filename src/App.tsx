@@ -3486,51 +3486,50 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         {/* Header bar */}
         <div style={{ padding: "2px 6px", display: "flex", alignItems: "center", gap: 4, background: isActive ? "#1a140a" : "#0d0d18", borderBottom: "1px solid #2a2a4a", flexShrink: 0, flexWrap: "nowrap", minHeight: 24 }}>
           <div style={{ width: 5, height: 5, borderRadius: "50%", background: isActive ? "#ffd700" : "#333", flexShrink: 0 }} />
-          <span style={{ fontSize: 13, flexShrink: 0 }}>{avatarMap[pid] || "🧙"}</span>
-          <span style={{ fontWeight: 700, fontSize: 10, color: isActive ? "#ffd700" : "#e8e0d0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 70 }}>{p.name}{isMe ? " (tú)" : ""}</span>
+          <span title={p.name} style={{ fontSize: 13, flexShrink: 0 }}>{avatarMap[pid] || "🧙"}</span>
+          <span title={p.name} style={{ fontWeight: 700, fontSize: 10, color: isActive ? "#ffd700" : "#e8e0d0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 70 }}>{p.name}{isMe ? " (tú)" : ""}</span>
 
           {/* Life */}
-          <div style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
-            {isMe && <button onClick={() => adjLife(pid, -1)} style={mbtn("#4a1a1a", "#ff8888")}>−</button>}
-            <span style={{ fontSize: 13, fontWeight: 800, color: p.life <= 10 ? "#ff4444" : p.life >= 50 ? "#44ff88" : "#e8e0d0", minWidth: 22, textAlign: "center" }}>{p.life}</span>
-            {isMe && <button onClick={() => adjLife(pid, 1)} style={mbtn("#1a4a1a", "#88ff88")}>+</button>}
-            <span style={{ fontSize: 8, color: "#888" }}>❤</span>
+          <div title="Vida" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
+            {isMe && <button title="Reducir vida" onClick={() => adjLife(pid, -1)} style={mbtn("#4a1a1a", "#ff8888")}>−</button>}
+            <span title={`Vida: ${p.life}`} style={{ fontSize: 13, fontWeight: 800, color: p.life <= 10 ? "#ff4444" : p.life >= 50 ? "#44ff88" : "#e8e0d0", minWidth: 22, textAlign: "center" }}>{p.life}</span>
+            {isMe && <button title="Aumentar vida" onClick={() => adjLife(pid, 1)} style={mbtn("#1a4a1a", "#88ff88")}>+</button>}
+            <span title="Vida" style={{ fontSize: 8, color: "#888" }}>❤</span>
           </div>
 
           {/* Poison — only show if > 0 or is me */}
           {(isMe || p.poison > 0) && (
-            <div style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
-              {isMe && <button onClick={() => adjPoison(pid, -1)} style={mbtn("#3a1a3a", "#ff88ff")}>−</button>}
-              <span style={{ fontSize: 9, color: p.poison >= 10 ? "#ff44ff" : p.poison > 0 ? "#cc88ff" : "#555" }}>☠{p.poison}</span>
-              {isMe && <button onClick={() => adjPoison(pid, 1)} style={mbtn("#1a1a4a", "#88aaff")}>+</button>}
+            <div title="Contadores de veneno (10 = eliminado)" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
+              {isMe && <button title="Reducir veneno" onClick={() => adjPoison(pid, -1)} style={mbtn("#3a1a3a", "#ff88ff")}>−</button>}
+              <span title={`Veneno: ${p.poison}`} style={{ fontSize: 9, color: p.poison >= 10 ? "#ff44ff" : p.poison > 0 ? "#cc88ff" : "#555" }}>☠{p.poison}</span>
+              {isMe && <button title="Agregar veneno" onClick={() => adjPoison(pid, 1)} style={mbtn("#1a1a4a", "#88aaff")}>+</button>}
             </div>
           )}
           {/* Energy ⚡ */}
           {(isMe || (p.energy || 0) > 0) && (
-            <div style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
-              {isMe && <button onClick={() => adjEnergy(pid, -1)} style={mbtn("#0a2030", "#44ccff")}>−</button>}
-              <span style={{ fontSize: 9, color: (p.energy || 0) > 0 ? "#44ccff" : "#555" }}>⚡{p.energy || 0}</span>
-              {isMe && <button onClick={() => adjEnergy(pid, 1)} style={mbtn("#0a2030", "#44ccff")}>+</button>}
+            <div title="Contadores de energía" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
+              {isMe && <button title="Reducir energía" onClick={() => adjEnergy(pid, -1)} style={mbtn("#0a2030", "#44ccff")}>−</button>}
+              <span title={`Energía: ${p.energy || 0}`} style={{ fontSize: 9, color: (p.energy || 0) > 0 ? "#44ccff" : "#555" }}>⚡{p.energy || 0}</span>
+              {isMe && <button title="Agregar energía" onClick={() => adjEnergy(pid, 1)} style={mbtn("#0a2030", "#44ccff")}>+</button>}
             </div>
           )}
           {/* Experience ✨ */}
           {(isMe || (p.experience || 0) > 0) && (
-            <div style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
-              {isMe && <button onClick={() => adjExperience(pid, -1)} style={mbtn("#1a0a30", "#cc88ff")}>−</button>}
-              <span style={{ fontSize: 9, color: (p.experience || 0) > 0 ? "#cc88ff" : "#555" }}>✨{p.experience || 0}</span>
-              {isMe && <button onClick={() => adjExperience(pid, 1)} style={mbtn("#1a0a30", "#cc88ff")}>+</button>}
+            <div title="Contadores de experiencia" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
+              {isMe && <button title="Reducir experiencia" onClick={() => adjExperience(pid, -1)} style={mbtn("#1a0a30", "#cc88ff")}>−</button>}
+              <span title={`Experiencia: ${p.experience || 0}`} style={{ fontSize: 9, color: (p.experience || 0) > 0 ? "#cc88ff" : "#555" }}>✨{p.experience || 0}</span>
+              {isMe && <button title="Agregar experiencia" onClick={() => adjExperience(pid, 1)} style={mbtn("#1a0a30", "#cc88ff")}>+</button>}
             </div>
           )}
 
           {/* Commander damage */}
           {Object.entries(p.commanderDamage).filter(([, v]) => v > 0).map(([fromPid, dmg]) => (
-            <span key={fromPid} style={{ fontSize: 8, color: "#ff8844", background: "#2a1a0a", borderRadius: 3, padding: "0 3px", flexShrink: 0 }}>
+            <span key={fromPid} title={`Daño de comandante de ${players[fromPid]?.name || "oponente"}: ${dmg}`} style={{ fontSize: 8, color: "#ff8844", background: "#2a1a0a", borderRadius: 3, padding: "0 3px", flexShrink: 0 }}>
               ⚔{dmg}
             </span>
           ))}
 
-          {speaking[pid] && <span style={{ fontSize: 10, color: "#44ff88", animation: "pulse 0.5s infinite", flexShrink: 0 }}>🎙</span>}
-          {p.energy > 0 && <span style={{ fontSize: 9, color: "#88eeff", background: "#0a2a3a", borderRadius: 4, padding: "0 4px", flexShrink: 0 }}>⚡{p.energy}</span>}
+          {speaking[pid] && <span title="Hablando por voz" style={{ fontSize: 10, color: "#44ff88", animation: "pulse 0.5s infinite", flexShrink: 0 }}>🎙</span>}
           {p.experience > 0 && <span style={{ fontSize: 9, color: "#ddaaff", background: "#1a0a3a", borderRadius: 4, padding: "0 4px", flexShrink: 0 }}>✨{p.experience}</span>}
           <span style={{ fontSize: 9, color: "#8888aa", marginLeft: "auto", flexShrink: 0 }}>🤚{p.hand.length}</span>
         </div>
@@ -3819,55 +3818,78 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         </div>
 
         {/* RIGHT: Actions + Log panel */}
-        <div style={{ width: 68, flexShrink: 0, background: "#06060e", borderLeft: "1px solid #1a1a2e", display: "flex", flexDirection: "column", alignItems: "center", padding: "6px 4px", gap: 3, overflowY: "auto" }}>
-          {/* Action buttons */}
+        <div style={{ width: 68, flexShrink: 0, background: "#06060e", borderLeft: "1px solid #1a1a2e", display: "flex", flexDirection: "column", alignItems: "center", padding: "4px 4px", gap: 2, overflowY: "auto" }}>
+          {/* PRIMARY buttons — always visible */}
           {[
             { icon: "📚", label: "Robar", action: () => libActions.draw(myId, 1), color: "#7fc4ff" },
             { icon: "⟲", label: "Destapar", action: untapAll, color: "#88ff88" },
-            { icon: "↩", label: "Deshacer", action: undo, color: history.length ? "#ffcc88" : "#333", disabled: !history.length },
             { icon: "🪄", label: "Token", action: () => setTokenModal(true), color: "#cc88ff" },
             { icon: "🎲", label: "Dado", action: () => setDiceModal(true), color: "#ffaa44" },
+            { icon: "💬", label: "Chat", action: () => setChatOpen(o => !o), color: chatOpen ? "#7fc4ff" : "#888" },
+            { icon: "🎙", label: voiceEnabled ? (muted ? "Silenc." : "Voz ON") : "Voz", action: toggleVoice, color: voiceEnabled ? (muted ? "#ff8888" : "#44ff88") : "#555" },
+          ].map(btn => (
+            <button key={btn.label} onClick={btn.action} title={btn.label}
+              style={{ width: "100%", padding: "4px 2px", borderRadius: 6, border: "1px solid #1a1a2e", background: "#0a0a14", color: btn.color, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+              <span style={{ fontSize: 14 }}>{btn.icon}</span>
+              <span style={{ fontSize: 7, lineHeight: 1 }}>{btn.label}</span>
+            </button>
+          ))}
+
+          {/* Separator */}
+          <div style={{ width: "80%", height: 1, background: "#1a1a2e", margin: "2px 0", flexShrink: 0 }} />
+
+          {/* SECONDARY buttons — smaller */}
+          {[
+            { icon: "↩", label: "Deshacer", action: undo, color: history.length ? "#ffcc88" : "#333", disabled: !history.length },
             { icon: "✨", label: "Habil.", action: () => setAbilitiesModal(true), color: "#88eeff" },
             { icon: "❤", label: "Vida", action: () => setLifeHistoryOpen(o => !o), color: "#ff8888" },
             { icon: "💎", label: "Maná", action: () => setManaOpen(o => !o), color: manaOpen ? "#ffd700" : "#888" },
-            { icon: "⚔", label: "Cmd Dmg", action: () => setCmdDmgOpen(o => !o), color: cmdDmgOpen ? "#ff8844" : "#888" },
-            { icon: "💬", label: "Chat", action: () => setChatOpen(o => !o), color: chatOpen ? "#7fc4ff" : "#888" },
+            { icon: "⚔", label: "CmdDmg", action: () => setCmdDmgOpen(o => !o), color: cmdDmgOpen ? "#ff8844" : "#888" },
             { icon: "📝", label: "Notas", action: () => setNotesOpen(o => !o), color: notesOpen ? "#88ff88" : "#888" },
-            { icon: "🎙", label: voiceEnabled ? (muted ? "Silenc." : "Voz ON") : "Voz", action: toggleVoice, color: voiceEnabled ? (muted ? "#ff8888" : "#44ff88") : "#555" },
-            ...(voiceEnabled ? [{ icon: muted ? "🔇" : "🔊", label: muted ? "Unmute" : "Mute", action: toggleMute, color: muted ? "#ff4444" : "#88ff88" }] : []),
             { icon: "🔍", label: "Buscar", action: () => setCardSearch(s => ({ ...s, open: !s.open, query: "", results: [] })), color: cardSearch.open ? "#ffd700" : "#888" },
+            ...(voiceEnabled ? [{ icon: muted ? "🔇" : "🔊", label: muted ? "Unmute" : "Mute", action: toggleMute, color: muted ? "#ff4444" : "#88ff88" }] : []),
+          ].map(btn => (
+            <button key={btn.label} onClick={btn.action} disabled={btn.disabled} title={btn.label}
+              style={{ width: "100%", padding: "3px 2px", borderRadius: 5, border: "1px solid #141420", background: "#080810", color: btn.color, cursor: btn.disabled ? "default" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 0, opacity: btn.disabled ? 0.3 : 1 }}>
+              <span style={{ fontSize: 12 }}>{btn.icon}</span>
+              <span style={{ fontSize: 6, lineHeight: 1 }}>{btn.label}</span>
+            </button>
+          ))}
+
+          {/* Separator */}
+          <div style={{ width: "80%", height: 1, background: "#1a1a2e", margin: "2px 0", flexShrink: 0 }} />
+
+          {/* UTILITY buttons — icon only, smallest */}
+          {[
             {
               icon: "📤", label: "Exportar", action: () => {
                 const txt = exportGameState(players, playerOrder, turn, phase, turnLog, roomCode);
                 const blob = new Blob([txt], { type: "text/plain" });
                 const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
                 a.download = `partida-${roomCode}-T${turn}.txt`; a.click();
-              }, color: "#88aaff"
+              }, color: "#555"
             },
             {
               icon: "🔄", label: "Reiniciar", action: () => {
-                if (window.confirm("¿Reiniciar la partida con los mismos jugadores y mazos?")) {
-                  // Reset all players to initial state
+                if (window.confirm("¿Reiniciar la partida?")) {
                   const newPlayers = {};
                   initialPlayers.forEach(p => {
                     newPlayers[p.id] = mkState(p.id, p.name, p.playerState?.fullDeck || p.playerState?.library || [], p.playerState?.commandZone?.[0] || null, p.format?.life || 40);
                   });
-                  setPlayers(newPlayers);
-                  setTurn(1); setPhase(0);
+                  setPlayers(newPlayers); setTurn(1); setPhase(0);
                   setActivePlayer(initialPlayers[0]?.id);
                   setTurnLog([{ turn: 1, entries: ["¡Partida reiniciada!"] }]);
-                  setAttackers(new Set());
-                  addLog("🔄 Partida reiniciada.");
+                  setAttackers(new Set()); addLog("🔄 Partida reiniciada.");
                   rt.current?.broadcast("notification", { msg: "🔄 La partida fue reiniciada", from: myId });
                 }
-              }, color: "#8888aa"
+              }, color: "#555"
             },
-            { icon: "✕", label: "Salir", action: onExit, color: "#666" },
+            { icon: "✕", label: "Salir", action: onExit, color: "#444" },
           ].map(btn => (
-            <button key={btn.label} onClick={btn.action} disabled={btn.disabled} title={btn.label}
-              style={{ width: "100%", padding: "5px 2px", borderRadius: 6, border: "1px solid #1a1a2e", background: "#0a0a14", color: btn.color, cursor: btn.disabled ? "default" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 1, opacity: btn.disabled ? 0.3 : 1 }}>
-              <span style={{ fontSize: 14 }}>{btn.icon}</span>
-              <span style={{ fontSize: 7, lineHeight: 1 }}>{btn.label}</span>
+            <button key={btn.label} onClick={btn.action} title={btn.label}
+              style={{ width: "100%", padding: "3px 2px", borderRadius: 5, border: "none", background: "transparent", color: btn.color, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <span style={{ fontSize: 12 }}>{btn.icon}</span>
+              <span style={{ fontSize: 6, lineHeight: 1 }}>{btn.label}</span>
             </button>
           ))}
           {/* Card Search Panel */}
