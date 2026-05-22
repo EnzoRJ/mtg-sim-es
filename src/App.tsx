@@ -2626,8 +2626,7 @@ function exportGameState(players, playerOrder, turn, phase, turnLog, roomCode) {
     g.entries.forEach(e => lines.push(`  - ${e}`));
   });
 
-  return lines.join("
-");
+  return lines.join("\n");
 }
 // ─── GAME BOARD ───────────────────────────────────────────────────────────────
 // Layout: top-left, top-right, bottom-left, bottom-right, center = me
