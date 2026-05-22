@@ -3518,34 +3518,37 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           <span title={p.name} style={{ fontWeight: 700, fontSize: 10, color: isActive ? "#ffd700" : "#e8e0d0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 70 }}>{p.name}{isMe ? " (tú)" : ""}</span>
 
           {/* Life */}
-          <div title="Vida" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
+          <div title="Vida" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, background: "#0d0a0a", borderRadius: 4, padding: "0 3px" }}>
             {isMe && <button title="Reducir vida" onClick={() => adjLife(pid, -1)} style={mbtn("#4a1a1a", "#ff8888")}>−</button>}
-            <span title={`Vida: ${p.life}`} style={{ fontSize: 13, fontWeight: 800, color: p.life <= 10 ? "#ff4444" : p.life >= 50 ? "#44ff88" : "#e8e0d0", minWidth: 22, textAlign: "center" }}>{p.life}</span>
+            <span style={{ fontSize: 7, color: "#ff6666", lineHeight: 1 }}>❤</span>
+            <span title={`Vida: ${p.life}`} style={{ fontSize: 12, fontWeight: 800, color: p.life <= 10 ? "#ff4444" : p.life >= 50 ? "#44ff88" : "#e8e0d0", minWidth: 20, textAlign: "center" }}>{p.life}</span>
             {isMe && <button title="Aumentar vida" onClick={() => adjLife(pid, 1)} style={mbtn("#1a4a1a", "#88ff88")}>+</button>}
-            <span title="Vida" style={{ fontSize: 8, color: "#888" }}>❤</span>
           </div>
 
-          {/* Poison — only show if > 0 or is me */}
+          {/* Poison */}
           {(isMe || p.poison > 0) && (
-            <div title="Contadores de veneno (10 = eliminado)" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
+            <div title="Veneno (10 = eliminado)" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, background: "#0d0a14", borderRadius: 4, padding: "0 3px" }}>
               {isMe && <button title="Reducir veneno" onClick={() => adjPoison(pid, -1)} style={mbtn("#3a1a3a", "#ff88ff")}>−</button>}
-              <span title={`Veneno: ${p.poison}`} style={{ fontSize: 9, color: p.poison >= 10 ? "#ff44ff" : p.poison > 0 ? "#cc88ff" : "#555" }}>☠{p.poison}</span>
+              <span style={{ fontSize: 7, color: "#cc88ff", lineHeight: 1 }}>☠</span>
+              <span title={`Veneno: ${p.poison}`} style={{ fontSize: 9, fontWeight: 700, color: p.poison >= 10 ? "#ff44ff" : p.poison > 0 ? "#cc88ff" : "#888", minWidth: 12, textAlign: "center" }}>{p.poison}</span>
               {isMe && <button title="Agregar veneno" onClick={() => adjPoison(pid, 1)} style={mbtn("#1a1a4a", "#88aaff")}>+</button>}
             </div>
           )}
-          {/* Energy ⚡ */}
+          {/* Energy */}
           {(isMe || (p.energy || 0) > 0) && (
-            <div title="Contadores de energía" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
+            <div title="Energía" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, background: "#0a1a20", borderRadius: 4, padding: "0 3px" }}>
               {isMe && <button title="Reducir energía" onClick={() => adjEnergy(pid, -1)} style={mbtn("#0a2030", "#44ccff")}>−</button>}
-              <span title={`Energía: ${p.energy || 0}`} style={{ fontSize: 9, color: (p.energy || 0) > 0 ? "#44ccff" : "#555" }}>⚡{p.energy || 0}</span>
+              <span style={{ fontSize: 7, color: "#44ccff", lineHeight: 1 }}>⚡</span>
+              <span title={`Energía: ${p.energy || 0}`} style={{ fontSize: 9, fontWeight: 700, color: (p.energy || 0) > 0 ? "#44ccff" : "#888", minWidth: 12, textAlign: "center" }}>{p.energy || 0}</span>
               {isMe && <button title="Agregar energía" onClick={() => adjEnergy(pid, 1)} style={mbtn("#0a2030", "#44ccff")}>+</button>}
             </div>
           )}
-          {/* Experience ✨ */}
+          {/* Experience */}
           {(isMe || (p.experience || 0) > 0) && (
-            <div title="Contadores de experiencia" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
+            <div title="Experiencia" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, background: "#140a20", borderRadius: 4, padding: "0 3px" }}>
               {isMe && <button title="Reducir experiencia" onClick={() => adjExperience(pid, -1)} style={mbtn("#1a0a30", "#cc88ff")}>−</button>}
-              <span title={`Experiencia: ${p.experience || 0}`} style={{ fontSize: 9, color: (p.experience || 0) > 0 ? "#cc88ff" : "#555" }}>✨{p.experience || 0}</span>
+              <span style={{ fontSize: 7, color: "#cc88ff", lineHeight: 1 }}>✨</span>
+              <span title={`Experiencia: ${p.experience || 0}`} style={{ fontSize: 9, fontWeight: 700, color: (p.experience || 0) > 0 ? "#cc88ff" : "#888", minWidth: 12, textAlign: "center" }}>{p.experience || 0}</span>
               {isMe && <button title="Agregar experiencia" onClick={() => adjExperience(pid, 1)} style={mbtn("#1a0a30", "#cc88ff")}>+</button>}
             </div>
           )}
