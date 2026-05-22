@@ -211,9 +211,9 @@ var SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 function getSavedDecks() {
   try { return JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) || "[]"); } catch { return []; }
 }
-function saveDeckToStorage(name, deck, commander, playerName, format) {
+function saveDeckToStorage(name, deck, commander, playerName, format, sideboard) {
   const decks = getSavedDecks().filter(d => d.name !== name);
-  decks.unshift({ name, deck, commander, playerName, format: format || FORMATS[0], savedAt: Date.now() });
+  decks.unshift({ name, deck, commander, playerName, format: format || FORMATS[0], sideboard: sideboard || [], savedAt: Date.now() });
   localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify(decks.slice(0, 20))); // max 20 decks
 }
 function deleteDeckFromStorage(name) {
@@ -363,7 +363,7 @@ function handleAuthCallback() {
 }
 
 // Cloud deck operations
-async function saveCloudDeck(name, deck, commander, playerName, format) {
+async function saveCloudDeck(name, deck, commander, playerName, format, sideboard) {
   const user = getCurrentUser();
   if (!user) return { ok: false, error: "No hay sesión activa" };
   try {
@@ -376,6 +376,7 @@ async function saveCloudDeck(name, deck, commander, playerName, format) {
         deck,
         commander,
         format: format || FORMATS[0],
+        sideboard: sideboard || [],
         updated_at: new Date().toISOString()
       })
     });
@@ -439,14 +440,14 @@ function isLegendary(c) {
 }
 function isLand(c) { const t = c?.type_line?.toLowerCase() || ""; return t.includes("land") || t.includes("tierra"); }
 
-function mkState(id, name, deck, commander, startLife = 40) {
+function mkState(id, name, deck, commander, startLife = 40, sideboard = []) {
   // Ensure commander is not in the library (filter by name and id)
   const deckFiltered = commander
     ? deck.filter(c => c.name !== commander.name && c.id !== commander.id)
     : deck;
   const lib = shuffle([...deckFiltered]);
   return {
-    id, name, life: startLife, poison: 0, energy: 0, experience: 0,
+    id, name, life: startLife, poison: 0, energy: 0, experience: 0, sideboard: sideboard || [],
     commanderDamage: {},
     commanderTax: 0,
     hand: lib.slice(0, 7).map(c => ({ ...c, instanceId: uid() })),
@@ -571,6 +572,7 @@ function CtxMenu({ menu, onClose }) {
         .has-sub:hover > .submenu-panel { display: block !important; }
         .has-sub:hover > button { background: #2a2a5a !important; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes slideDown { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
       `}</style>
       <div style={{ position:"fixed", inset:0, zIndex:500 }} onClick={onClose}>
         <div style={{ position:"absolute", left, top, background:"#161630", border:"1px solid #3a3a6a", borderRadius:10, padding:7, minWidth: W, boxShadow:"0 8px 40px #000c" }}
@@ -665,6 +667,9 @@ function libraryMenu(p, pid, isMe, actions) {
         { label: "Fondo → Top",          action: () => actions.bottomToTop(pid) },
         "---",
         { label: "🔄 Revelar hasta tierra", action: () => actions.revealUntilLand(pid) },
+        { label: "🔎 Tutor → Mano",           action: () => actions.tutorToHand(pid) },
+        { label: "🔎 Tutor → Campo",           action: () => actions.tutorToBattlefield(pid) },
+        { label: "🔎 Tutor → Tope biblioteca", action: () => actions.tutorToTop(pid) },
         { label: "🔎 Buscar carta específica", action: () => actions.searchLib(pid) },
       ],
     },
@@ -719,10 +724,10 @@ function ScryModal({ cards, onDone, title }) {
 }
 
 // ─── Search Library Modal ─────────────────────────────────────────────────────
-function SearchLibModal({ library, graveyard, zone, dest, onPick, onClose }) {
+function SearchLibModal({ library, graveyard, sideboard, zone, dest, onPick, onClose }) {
   const [q, setQ] = useState("");
   const [hover, setHover] = useState(null);
-  const cards = zone === "graveyard" ? (graveyard || []) : (library || []);
+  const cards = zone === "graveyard" ? (graveyard || []) : zone === "sideboard" ? (sideboard || []) : (library || []);
   const filtered = cards.filter(c => {
     if (!q.trim()) return true;
     const s = q.toLowerCase();
@@ -1056,9 +1061,9 @@ function MulliganModal({ player, mulliganCount, onKeep, onMulligan, onHome }) {
 }
 
 // ─── DECK BUILDER ─────────────────────────────────────────────────────────────
-function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPlayerName, initialDeckName, initialFormat }) {
+function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPlayerName, initialDeckName, initialFormat, initialSideboard }) {
   const [search, setSearch] = useState(""); const [results, setResults] = useState([]);
-  const [deck, setDeck] = useState(() => initialDeck || []); const [format, setFormat] = useState(() => initialFormat || FORMATS[0]); const [showFormatModal, setShowFormatModal] = useState(false); const [formatWarnings, setFormatWarnings] = useState({}); const [commander, setCommander] = useState(() => initialCommander || null);
+  const [deck, setDeck] = useState(() => initialDeck || []); const [sideboard, setSideboard] = useState(() => initialSideboard || []); const [format, setFormat] = useState(() => initialFormat || FORMATS[0]); const [showFormatModal, setShowFormatModal] = useState(false); const [formatWarnings, setFormatWarnings] = useState({}); const [commander, setCommander] = useState(() => initialCommander || null);
   const [loading, setLoading] = useState(false); const [preview, setPreview] = useState(null);
   const [importText, setImportText] = useState(""); const [importLoading, setImportLoading] = useState(false);
   const [importProgress, setImportProgress] = useState({ done: 0, total: 0 });
@@ -1233,6 +1238,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
   const ctxItems = (card, source) => [
     source === "results" && { label: "➕ Agregar al mazo", action: () => addCard(card) },
     source === "results" && !format?.singletons && { label: "➕➕ Agregar x4", action: () => [1,2,3,4].forEach(() => addCard(card)) },
+    source === "results" && !formatHasCommander(format) && sideboard.length < 15 && { label: "↔ Agregar al Sideboard", action: () => setSideboard(s => [...s, { ...card, image_url: card.image_uris?.normal || card.image_url, instanceId: uid() }]), color: "#88aaff" },
     isLegendary(card) && formatHasCommander(format) && { label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "#ffd700" },
     isLegendary(card) && source === "results" && formatHasCommander(format) && { label: "⚔ + Agregar como Comandante", action: () => { addCard(card); setCmd(card); }, color: "#ffd700" },
     source === "deck" && formatHasCommander(format) && { label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "#ffd700" },
@@ -1257,7 +1263,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
               const currentUser = getCurrentUser();
               if (currentUser) {
                 // Logged in: save only to cloud
-                const result = await saveCloudDeck(deckName, deck, commander, playerName, format);
+                const result = await saveCloudDeck(deckName, deck, commander, playerName, format, sideboard);
                 if (result.ok) {
                   alert(`✓ Mazo "${deckName}" guardado en la nube ☁`);
                 } else {
@@ -1265,7 +1271,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                 }
               } else {
                 // Not logged in: save locally
-                saveDeckToStorage(deckName, deck, commander, playerName, format);
+                saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard);
                 setSavedDecks(getSavedDecks());
                 alert(`✓ Mazo "${deckName}" guardado localmente. Inicia sesión para guardarlo en la nube.`);
               }
@@ -1304,6 +1310,29 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                     {isLegendary(card) && <button onClick={() => setCmd(card)} style={{ padding: "3px 8px", borderRadius: 4, border: "none", background: "#4a3a0a", color: "#ffd700", cursor: "pointer", fontSize: 11 }}>⚔</button>}
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+          {tab === "sideboard" && (
+            <div style={{ flex:1, padding:14, display:"flex", flexDirection:"column", gap:10, overflowY:"auto" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div style={{ fontSize:12, color:"#8888aa" }}>Sideboard ({sideboard.length}/15)</div>
+                {sideboard.length > 0 && <button onClick={() => setSideboard([])} style={{ background:"none", border:"none", color:"#ff8888", cursor:"pointer", fontSize:11 }}>Vaciar</button>}
+              </div>
+              {sideboard.length >= 15 && <div style={{ fontSize:11, color:"#ff8888", background:"#2a0a0a", borderRadius:6, padding:"6px 10px" }}>⚠ Sideboard completo (máx. 15 cartas)</div>}
+              <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                {sideboard.map((card, i) => (
+                  <div key={card.instanceId} style={{ position:"relative", width:52 }}>
+                    <CardTile card={card} small onClick={() => {}} onHover={(c,x,y) => setHover({card:c,x,y})} onHoverEnd={() => setHover(null)} />
+                    <button onClick={() => setSideboard(s => s.filter(c => c.instanceId !== card.instanceId))}
+                      style={{ position:"absolute", top:-4, right:-4, width:15, height:15, borderRadius:"50%", border:"none", background:"#cc2222", color:"#fff", cursor:"pointer", fontSize:9, padding:0 }}>×</button>
+                  </div>
+                ))}
+                {sideboard.length === 0 && (
+                  <div style={{ border:"2px dashed #2a2a4a", borderRadius:8, padding:"16px", color:"#444", fontSize:12, textAlign:"center", width:"100%" }}>
+                    Busca cartas y usa click derecho → Agregar al Sideboard
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1356,7 +1385,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                   c.name !== commander.name &&
                   c.id !== commander.id
                 );
-                onReady({ deck: shuffle(deckWithoutCmd), commander, playerName, format });
+                onReady({ deck: shuffle(deckWithoutCmd), commander, playerName, format, sideboard });
               }}
                 style={{ padding: "9px 22px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>▶ JUGAR</button>
             </div>
@@ -1451,7 +1480,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
     const deck = deckData?.deck || [];
     const commander = deckData?.commander || null;
     const playerName = name || "Jugador";
-    myPlayerState.current = mkState(myId, name || "Jugador", deck, commander, deckData?.format?.life || 40);
+    myPlayerState.current = mkState(myId, name || "Jugador", deck, commander, deckData?.format?.life || 40, deckData?.sideboard || []);
     return myPlayerState.current;
   };
 
@@ -2530,6 +2559,76 @@ class VoiceChat {
   }
 }
 
+
+// ─── Commander Damage Panel ───────────────────────────────────────────────────
+function CmdDmgPanel({ myPid, players, playerOrder, avatarMap, onAdjust, onClose }) {
+  const opponents = playerOrder.filter(pid => pid !== myPid);
+  const myState = players[myPid];
+
+  return (
+    <div style={{ position:"fixed", bottom:60, left:90, background:"#0d0d1e", border:"1px solid #3a3a6a", borderRadius:14, padding:14, zIndex:400, boxShadow:"0 8px 32px #000a", minWidth:220 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+        <span style={{ fontSize:12, fontWeight:700, color:"#ffd700" }}>⚔ Daño de Comandante</span>
+        <button onClick={onClose} style={{ background:"none", border:"none", color:"#888", cursor:"pointer", fontSize:14 }}>✕</button>
+      </div>
+      <div style={{ fontSize:10, color:"#555", marginBottom:8 }}>21+ daño = eliminado</div>
+      {opponents.map(pid => {
+        const dmg = myState?.commanderDamage?.[pid] || 0;
+        const pct = Math.min(100, (dmg / 21) * 100);
+        return (
+          <div key={pid} style={{ marginBottom:10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+              <span style={{ fontSize:16 }}>{avatarMap?.[pid] || "🧙"}</span>
+              <span style={{ fontSize:12, color:"#e8e0d0", flex:1 }}>{players[pid]?.name}</span>
+              <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+                <button onClick={() => onAdjust(pid, -1)} style={{ width:22, height:22, borderRadius:"50%", border:"none", background:"#4a1a1a", color:"#ff8888", cursor:"pointer", fontSize:13, fontWeight:800, padding:0 }}>−</button>
+                <span style={{ fontSize:16, fontWeight:800, color: dmg >= 21 ? "#ff4444" : dmg >= 15 ? "#ff8844" : "#e8e0d0", minWidth:28, textAlign:"center" }}>{dmg}</span>
+                <button onClick={() => onAdjust(pid, 1)} style={{ width:22, height:22, borderRadius:"50%", border:"none", background:"#1a4a1a", color:"#88ff88", cursor:"pointer", fontSize:13, fontWeight:800, padding:0 }}>+</button>
+              </div>
+              {dmg >= 21 && <span style={{ fontSize:10, color:"#ff4444", fontWeight:800 }}>☠</span>}
+            </div>
+            <div style={{ height:4, borderRadius:2, background:"#1a1a2e", overflow:"hidden" }}>
+              <div style={{ height:"100%", borderRadius:2, background: dmg >= 21 ? "#ff4444" : dmg >= 15 ? "#ff8844" : "#ffd700", width:`${pct}%`, transition:"width 0.3s" }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
+function exportGameState(players, playerOrder, turn, phase, turnLog, roomCode) {
+  const lines = [];
+  lines.push(`# MTG Arena ES — Exportar Partida`);
+  lines.push(`Sala: ${roomCode} | Turno: ${turn} | Fase: ${PHASES[phase]}`);
+  lines.push(`Fecha: ${new Date().toLocaleString()}`);
+  lines.push("");
+
+  playerOrder.forEach(pid => {
+    const p = players[pid];
+    if (!p) return;
+    lines.push(`## ${p.name}`);
+    lines.push(`- Vida: ${p.life} | Veneno: ${p.poison} | Energía: ${p.energy || 0} | Experiencia: ${p.experience || 0}`);
+    if (Object.values(p.commanderDamage || {}).some(v => v > 0)) {
+      lines.push(`- Daño de comandante recibido: ${Object.entries(p.commanderDamage).filter(([,v])=>v>0).map(([k,v])=>`${players[k]?.name}: ${v}`).join(", ")}`);
+    }
+    lines.push(`- Biblioteca: ${p.library.length} | Mano: ${p.hand.length} | Campo: ${p.battlefield.length}`);
+    lines.push(`- Cementerio: ${p.graveyard.length} | Exilio: ${p.exile.length}`);
+    if (p.commandZone?.length) lines.push(`- Zona de Comandante: ${p.commandZone.map(c => c.printed_name || c.name).join(", ")}`);
+    if (p.battlefield.length) lines.push(`- En campo: ${p.battlefield.map(c => `${c.printed_name||c.name}${c.tapped?" (girada)":""}`).join(", ")}`);
+    lines.push("");
+  });
+
+  lines.push("## Log de la Partida");
+  turnLog.forEach(g => {
+    lines.push(`### Turno ${g.turn}`);
+    g.entries.forEach(e => lines.push(`  - ${e}`));
+  });
+
+  return lines.join("
+");
+}
 // ─── GAME BOARD ───────────────────────────────────────────────────────────────
 // Layout: top-left, top-right, bottom-left, bottom-right, center = me
 // Positions: p1=bottom-center(me), p2=top-center, p3=left, p4=right  (adjusted by count)
@@ -2573,6 +2672,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [cardSearchCtx, setCardSearchCtx] = useState(null);
   const [diceModal, setDiceModal] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [notifications, setNotifications] = useState([]); // [{id, msg, from, ts}]
   const [muted, setMuted] = useState(false);
   const [speaking, setSpeaking] = useState({}); // {pid: bool}
   const voiceRef = useRef(null);
@@ -2589,12 +2689,14 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [lifeHistoryOpen, setLifeHistoryOpen] = useState(false);
   const [mana, setMana] = useState({ W:0, U:0, B:0, R:0, G:0, C:0 });
   const [manaOpen, setManaOpen] = useState(false);
+  const [cmdDmgOpen, setCmdDmgOpen] = useState(false);
   const [lifeHistory, setLifeHistory] = useState(() => Object.fromEntries(initialPlayers.map(p => [p.id, [40]])));
   const rt = useRef(rtInstance);
   const playerOrder = initialPlayers.map(p => p.id);
   // Map pid → avatar for use in sub-components
   const avatarMap = Object.fromEntries(initialPlayers.map(p => [p.id, p.avatar || "🧙"]));
   const isMyTurn = !isSpectator && activePlayer === myId;
+  const isTwoPlayer = playerOrder.length === 2;
   const addLog = useCallback(msg => {
     setTurnLog(tl => {
       const updated = [...tl];
@@ -2636,7 +2738,10 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     if (rt.current) {
       const prevOnMsg = rt.current.onMessage;
       rt.current.onMessage = (event, payload) => {
-        if (event === "webrtc_signal" && payload.to === myId) {
+        if (event === "notification" && payload.from !== myId) {
+            showNotification(payload.msg, payload.from);
+          }
+          if (event === "webrtc_signal" && payload.to === myId) {
           vc.handleSignal(payload.from, payload);
         }
         prevOnMsg?.(event, payload);
@@ -2669,6 +2774,12 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     const newMuted = !muted;
     setMuted(newMuted);
     vc?.setMuted(newMuted);
+  };
+
+  const showNotification = (msg, from) => {
+    const id = uid();
+    setNotifications(n => [...n, { id, msg, from }]);
+    setTimeout(() => setNotifications(n => n.filter(x => x.id !== id)), 4000);
   };
 
   const syncState = (state, logMsg) => {
@@ -3584,6 +3695,19 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       : <div style={{width:cardW,height:cardH,borderRadius:5,border:"2px dashed #3a3a5a",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:1}}><div style={{fontSize:12}}>✨</div><div style={{fontSize:8,color:"#555"}}>{p.exile.length}</div></div>}
                   </div>
                 </div>
+
+                {/* Sideboard — only show for non-commander formats */}
+                {(p.sideboard||[]).length > 0 && (
+                  <div style={zoneSlotStyle()}>
+                    <div style={labelStyle}>SB</div>
+                    <div onClick={()=>setShowZone({pid:p.id,zone:"sideboard"})} style={{cursor:"pointer"}}>
+                      <div style={{width:cardW,height:cardH,borderRadius:5,border:"2px solid #3a4a6a",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:1,background:"#1a1a3e",cursor:"pointer"}}>
+                        <div style={{fontSize:10}}>↔</div>
+                        <div style={{fontSize:8,color:"#88aaff",fontWeight:800}}>{(p.sideboard||[]).length}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* DIVIDER — flexible space */}
@@ -3644,9 +3768,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
         {/* CENTER: Player grids */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", gap: 4, padding: 4 }}>
-          {/* Opponents row — equal split */}
+          {/* Opponents row — in 2-player mode takes 50% height */}
           {opponentSlots.length > 0 && (
-            <div style={{ flex: 1, display: "flex", gap: 4, minHeight: 0 }}>
+            <div style={{ flex: isTwoPlayer ? 1 : 1, display: "flex", gap: 4, minHeight: 0 }}>
               {opponentSlots.map(p => (
                 <div key={p.id} style={{ flex: 1, minWidth: 0 }}>
                   {renderPlayerPanel(p.id, false, 0)}
@@ -3654,7 +3778,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
               ))}
             </div>
           )}
-          {/* My panel — always same proportion as opponents */}
+          {/* My panel — 50% in 2-player */}
           <div style={{ flex: 1, minHeight: 0 }}>
             {renderPlayerPanel(myId, true, 0)}
           </div>
@@ -3672,11 +3796,34 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             { icon: "✨", label: "Habil.", action: () => setAbilitiesModal(true), color: "#88eeff" },
             { icon: "❤", label: "Vida", action: () => setLifeHistoryOpen(o=>!o), color: "#ff8888" },
             { icon: "💎", label: "Maná", action: () => setManaOpen(o=>!o), color: manaOpen?"#ffd700":"#888" },
+            { icon: "⚔", label: "Cmd Dmg", action: () => setCmdDmgOpen(o=>!o), color: cmdDmgOpen?"#ff8844":"#888" },
             { icon: "💬", label: "Chat", action: () => setChatOpen(o=>!o), color: chatOpen?"#7fc4ff":"#888" },
             { icon: "📝", label: "Notas", action: () => setNotesOpen(o=>!o), color: notesOpen?"#88ff88":"#888" },
             { icon: "🎙", label: voiceEnabled ? (muted ? "Silenc." : "Voz ON") : "Voz", action: toggleVoice, color: voiceEnabled ? (muted ? "#ff8888" : "#44ff88") : "#555" },
             ...(voiceEnabled ? [{ icon: muted ? "🔇" : "🔊", label: muted ? "Unmute" : "Mute", action: toggleMute, color: muted ? "#ff4444" : "#88ff88" }] : []),
             { icon: "🔍", label: "Buscar", action: () => setCardSearch(s=>({...s,open:!s.open,query:"",results:[]})), color: cardSearch.open?"#ffd700":"#888" },
+            { icon: "📤", label: "Exportar", action: () => {
+                const txt = exportGameState(players, playerOrder, turn, phase, turnLog, roomCode);
+                const blob = new Blob([txt], { type: "text/plain" });
+                const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+                a.download = `partida-${roomCode}-T${turn}.txt`; a.click();
+              }, color: "#88aaff" },
+            { icon: "🔄", label: "Reiniciar", action: () => {
+                if (window.confirm("¿Reiniciar la partida con los mismos jugadores y mazos?")) {
+                  // Reset all players to initial state
+                  const newPlayers = {};
+                  initialPlayers.forEach(p => {
+                    newPlayers[p.id] = mkState(p.id, p.name, p.playerState?.fullDeck || p.playerState?.library || [], p.playerState?.commandZone?.[0] || null, p.format?.life || 40);
+                  });
+                  setPlayers(newPlayers);
+                  setTurn(1); setPhase(0);
+                  setActivePlayer(initialPlayers[0]?.id);
+                  setTurnLog([{ turn:1, entries:["¡Partida reiniciada!"] }]);
+                  setAttackers(new Set());
+                  addLog("🔄 Partida reiniciada.");
+                  rt.current?.broadcast("notification", { msg: "🔄 La partida fue reiniciada", from: myId });
+                }
+              }, color: "#8888aa" },
             { icon: "✕", label: "Salir", action: onExit, color: "#666" },
           ].map(btn => (
             <button key={btn.label} onClick={btn.action} disabled={btn.disabled} title={btn.label}
@@ -3807,7 +3954,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         const pid = typeof searchLibModal === "string" ? searchLibModal : searchLibModal.pid;
         const zone = typeof searchLibModal === "string" ? "library" : (searchLibModal.zone || "library");
         const dest = typeof searchLibModal === "string" ? "hand" : (searchLibModal.dest || "hand");
-        return <SearchLibModal library={players[pid]?.library || []} graveyard={players[pid]?.graveyard || []} zone={zone} dest={dest} onPick={resolveSearchLib} onClose={() => setSearchLibModal(null)} />;
+        return <SearchLibModal library={players[pid]?.library || []} graveyard={players[pid]?.graveyard || []} sideboard={players[pid]?.sideboard || []} zone={zone} dest={dest} onPick={resolveSearchLib} onClose={() => setSearchLibModal(null)} />;
       })()}
 
       {/* Resolve Modal (Cascade, Discover, Impulse, etc.) */}
@@ -3833,6 +3980,16 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
       {/* Mana Tracker */}
       {manaOpen && <ManaTracker mana={mana} onChange={setMana} onClose={() => setManaOpen(false)} />}
+      {cmdDmgOpen && <CmdDmgPanel myPid={myId} players={players} playerOrder={playerOrder} avatarMap={avatarMap} onAdjust={(fromPid, d) => adjCmdDmg(fromPid, myId, d)} onClose={() => setCmdDmgOpen(false)} />}
+      {/* Notifications */}
+      <div style={{ position:"fixed", top:16, left:"50%", transform:"translateX(-50%)", zIndex:600, display:"flex", flexDirection:"column", gap:6, alignItems:"center", pointerEvents:"none" }}>
+        {notifications.map(n => (
+          <div key={n.id} style={{ background:"#1a1a2eee", border:"1px solid #3a3a6a", borderRadius:10, padding:"8px 16px", fontSize:12, color:"#e8e0d0", boxShadow:"0 4px 16px #000a", animation:"slideDown 0.3s ease" }}>
+            {n.msg}
+          </div>
+        ))}
+      </div>
+
       {/* Spectator banner */}
       {isSpectator && (
         <div style={{ position:"fixed", top:8, left:"50%", transform:"translateX(-50%)", background:"#0d0d1eee", border:"1px solid #3a3a6a", borderRadius:20, padding:"6px 18px", fontSize:12, color:"#8888aa", zIndex:500, pointerEvents:"none" }}>
@@ -4705,6 +4862,7 @@ export default function App() {
       initialPlayerName={stage === "deck-edit" ? deckData?.playerName : (playerName || getUserDisplayName(user))}
       initialDeckName={stage === "deck-edit" ? deckData?.editingName : undefined}
       initialFormat={stage === "deck-edit" ? deckData?.format : selectedFormat}
+      initialSideboard={stage === "deck-edit" ? deckData?.sideboard : []}
       onReady={d => {
         const joinCode = deckData?.joinCode;
         setDeckData({ ...d, joinCode });
