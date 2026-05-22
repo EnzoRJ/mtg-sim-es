@@ -939,6 +939,7 @@ function CounterModal({ card, onUpdate, onClose }) {
         <button onClick={onClose} style={{ marginTop:14, width:"100%", padding:"9px 0", borderRadius:8, border:"none", background:"linear-gradient(90deg,#ffd700,#ff8c00)", color:"#000", fontWeight:800, cursor:"pointer" }}>Listo</button>
       </div>
     </div>
+    </>
   );
 }
 
