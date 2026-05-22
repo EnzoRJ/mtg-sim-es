@@ -830,295 +830,296 @@ function CounterModal({ card, onUpdate, onClose }) {
   const btnS = (bg, col) => ({ width: 28, height: 28, borderRadius: "50%", border: "none", background: bg, color: col, cursor: "pointer", fontSize: 16, fontWeight: 800, padding: 0, flexShrink: 0 });
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#000c", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700 }} onClick={onClose}>
-      <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 16, padding: 22, width: 440, maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#ffd700" }}>🎯 Contadores</div>
-            <div style={{ fontSize: 11, color: "#8888aa" }}>{card.printed_name || card.name}</div>
+    <>
+      <div style={{ position: "fixed", inset: 0, background: "#000c", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700 }} onClick={onClose}>
+        <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 16, padding: 22, width: 440, maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#ffd700" }}>🎯 Contadores</div>
+              <div style={{ fontSize: 11, color: "#8888aa" }}>{card.printed_name || card.name}</div>
+            </div>
+            <button onClick={onClose} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 18 }}>✕</button>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 18 }}>✕</button>
-        </div>
 
-        {/* ── P/R TRACKER ─────────────────────────────────────────────── */}
-        <div style={{ background: "#0a0a18", border: "1px solid #3a3a6a", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
-          <div style={{ fontSize: 11, color: "#ffd700", fontWeight: 700, marginBottom: 12, letterSpacing: 1 }}>⚔ PODER / RESISTENCIA</div>
-          <div style={{ display: "flex", gap: 16, justifyContent: "center", alignItems: "center" }}>
+          {/* ── P/R TRACKER ─────────────────────────────────────────────── */}
+          <div style={{ background: "#0a0a18", border: "1px solid #3a3a6a", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: "#ffd700", fontWeight: 700, marginBottom: 12, letterSpacing: 1 }}>⚔ PODER / RESISTENCIA</div>
+            <div style={{ display: "flex", gap: 16, justifyContent: "center", alignItems: "center" }}>
 
-            {/* Power */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-              <div style={{ fontSize: 10, color: "#8888aa", letterSpacing: 1 }}>PODER</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button onClick={() => adjPow(-1)} style={btnS("#4a1a1a", "#ff8888")}>−</button>
-                <div style={{ width: 52, height: 52, borderRadius: 10, background: dispPow > 0 ? "#1a4a1a" : dispPow < 0 ? "#4a1a1a" : "#1a1a2e", border: `2px solid ${dispPow > 0 ? "#88ff88" : dispPow < 0 ? "#ff8888" : "#3a3a6a"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ fontSize: 22, fontWeight: 900, color: dispPow > 0 ? "#88ff88" : dispPow < 0 ? "#ff8888" : "#e8e0d0" }}>
-                    {dispPow > 0 ? `+${dispPow}` : dispPow}
-                  </span>
+              {/* Power */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                <div style={{ fontSize: 10, color: "#8888aa", letterSpacing: 1 }}>PODER</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button onClick={() => adjPow(-1)} style={btnS("#4a1a1a", "#ff8888")}>−</button>
+                  <div style={{ width: 52, height: 52, borderRadius: 10, background: dispPow > 0 ? "#1a4a1a" : dispPow < 0 ? "#4a1a1a" : "#1a1a2e", border: `2px solid ${dispPow > 0 ? "#88ff88" : dispPow < 0 ? "#ff8888" : "#3a3a6a"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontSize: 22, fontWeight: 900, color: dispPow > 0 ? "#88ff88" : dispPow < 0 ? "#ff8888" : "#e8e0d0" }}>
+                      {dispPow > 0 ? `+${dispPow}` : dispPow}
+                    </span>
+                  </div>
+                  <button onClick={() => adjPow(+1)} style={btnS("#1a4a1a", "#88ff88")}>+</button>
                 </div>
-                <button onClick={() => adjPow(+1)} style={btnS("#1a4a1a", "#88ff88")}>+</button>
               </div>
-            </div>
 
-            {/* Separator */}
-            <div style={{ fontSize: 28, color: "#555", fontWeight: 300 }}>/</div>
+              {/* Separator */}
+              <div style={{ fontSize: 28, color: "#555", fontWeight: 300 }}>/</div>
 
-            {/* Toughness */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-              <div style={{ fontSize: 10, color: "#8888aa", letterSpacing: 1 }}>RESISTENCIA</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button onClick={() => adjTgh(-1)} style={btnS("#4a1a1a", "#ff8888")}>−</button>
-                <div style={{ width: 52, height: 52, borderRadius: 10, background: dispTgh > 0 ? "#1a4a1a" : dispTgh < 0 ? "#4a1a1a" : "#1a1a2e", border: `2px solid ${dispTgh > 0 ? "#88ff88" : dispTgh < 0 ? "#ff8888" : "#3a3a6a"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ fontSize: 22, fontWeight: 900, color: dispTgh > 0 ? "#88ff88" : dispTgh < 0 ? "#ff8888" : "#e8e0d0" }}>
-                    {dispTgh > 0 ? `+${dispTgh}` : dispTgh}
-                  </span>
+              {/* Toughness */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                <div style={{ fontSize: 10, color: "#8888aa", letterSpacing: 1 }}>RESISTENCIA</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button onClick={() => adjTgh(-1)} style={btnS("#4a1a1a", "#ff8888")}>−</button>
+                  <div style={{ width: 52, height: 52, borderRadius: 10, background: dispTgh > 0 ? "#1a4a1a" : dispTgh < 0 ? "#4a1a1a" : "#1a1a2e", border: `2px solid ${dispTgh > 0 ? "#88ff88" : dispTgh < 0 ? "#ff8888" : "#3a3a6a"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontSize: 22, fontWeight: 900, color: dispTgh > 0 ? "#88ff88" : dispTgh < 0 ? "#ff8888" : "#e8e0d0" }}>
+                      {dispTgh > 0 ? `+${dispTgh}` : dispTgh}
+                    </span>
+                  </div>
+                  <button onClick={() => adjTgh(+1)} style={btnS("#1a4a1a", "#88ff88")}>+</button>
                 </div>
-                <button onClick={() => adjTgh(+1)} style={btnS("#1a4a1a", "#88ff88")}>+</button>
               </div>
+
             </div>
 
-          </div>
-
-          {/* Net display + reset */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-            <div style={{ fontSize: 11, color: "#8888aa" }}>
-              Modificador neto: <span style={{ fontWeight: 800, color: dispPow === 0 && dispTgh === 0 ? "#555" : "#ffd700" }}>
-                {dispPow > 0 ? `+${dispPow}` : dispPow}/{dispTgh > 0 ? `+${dispTgh}` : dispTgh}
-              </span>
-              {(pp > 0 || mm > 0) && <span style={{ fontSize: 9, color: "#555", marginLeft: 6 }}>(incluye {pp > 0 ? `${pp}×+1/+1 ` : ""}{mm > 0 ? `${mm}×-1/-1` : ""} )</span>}
+            {/* Net display + reset */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+              <div style={{ fontSize: 11, color: "#8888aa" }}>
+                Modificador neto: <span style={{ fontWeight: 800, color: dispPow === 0 && dispTgh === 0 ? "#555" : "#ffd700" }}>
+                  {dispPow > 0 ? `+${dispPow}` : dispPow}/{dispTgh > 0 ? `+${dispTgh}` : dispTgh}
+                </span>
+                {(pp > 0 || mm > 0) && <span style={{ fontSize: 9, color: "#555", marginLeft: 6 }}>(incluye {pp > 0 ? `${pp}×+1/+1 ` : ""}{mm > 0 ? `${mm}×-1/-1` : ""} )</span>}
+              </div>
+              {(extraPow !== 0 || extraTgh !== 0) && (
+                <button onClick={resetPR} style={{ padding: "3px 10px", borderRadius: 5, border: "1px solid #4a2a2a", background: "#1a0a0a", color: "#ff8888", cursor: "pointer", fontSize: 10 }}>
+                  Resetear P/R
+                </button>
+              )}
             </div>
-            {(extraPow !== 0 || extraTgh !== 0) && (
-              <button onClick={resetPR} style={{ padding: "3px 10px", borderRadius: 5, border: "1px solid #4a2a2a", background: "#1a0a0a", color: "#ff8888", cursor: "pointer", fontSize: 10 }}>
-                Resetear P/R
-              </button>
-            )}
           </div>
-        </div>
 
-        {/* Active counters summary */}
-        {Object.keys(counts).filter(k => k !== "+pow" && k !== "-pow" && k !== "+tgh" && k !== "-tgh").length > 0 && (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14, padding: "8px 10px", background: "#0a0a18", borderRadius: 8 }}>
-            {Object.entries(counts).filter(([t]) => t !== "+pow" && t !== "-pow" && t !== "+tgh" && t !== "-tgh").map(([type, n]) => {
-              const def = COUNTER_TYPES.find(t => t.key === type) || { color: "#2a2a2a", text: "#ccc" };
-              return (
-                <div key={type} style={{ display: "flex", alignItems: "center", gap: 3, background: def.color, borderRadius: 20, padding: "3px 8px" }}>
-                  <button onClick={() => remove(type)} style={{ background: "none", border: "none", color: def.text, cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}>−</button>
-                  <span style={{ color: def.text, fontSize: 13, fontWeight: 800, minWidth: 16, textAlign: "center" }}>{n}</span>
-                  <span style={{ color: def.text, fontSize: 11 }}>{type}</span>
-                  <button onClick={() => add(type)} style={{ background: "none", border: "none", color: def.text, cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}>+</button>
-                  <button onClick={() => clear(type)} style={{ background: "none", border: "none", color: def.text + "88", cursor: "pointer", fontSize: 10, padding: 0 }}>✕</button>
+          {/* Active counters summary */}
+          {Object.keys(counts).filter(k => k !== "+pow" && k !== "-pow" && k !== "+tgh" && k !== "-tgh").length > 0 && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14, padding: "8px 10px", background: "#0a0a18", borderRadius: 8 }}>
+              {Object.entries(counts).filter(([t]) => t !== "+pow" && t !== "-pow" && t !== "+tgh" && t !== "-tgh").map(([type, n]) => {
+                const def = COUNTER_TYPES.find(t => t.key === type) || { color: "#2a2a2a", text: "#ccc" };
+                return (
+                  <div key={type} style={{ display: "flex", alignItems: "center", gap: 3, background: def.color, borderRadius: 20, padding: "3px 8px" }}>
+                    <button onClick={() => remove(type)} style={{ background: "none", border: "none", color: def.text, cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}>−</button>
+                    <span style={{ color: def.text, fontSize: 13, fontWeight: 800, minWidth: 16, textAlign: "center" }}>{n}</span>
+                    <span style={{ color: def.text, fontSize: 11 }}>{type}</span>
+                    <button onClick={() => add(type)} style={{ background: "none", border: "none", color: def.text, cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}>+</button>
+                    <button onClick={() => clear(type)} style={{ background: "none", border: "none", color: def.text + "88", cursor: "pointer", fontSize: 10, padding: 0 }}>✕</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Counter type grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+            {COUNTER_TYPES.filter(t => t.key !== "custom").map(ct => (
+              <div key={ct.key} style={{ background: ct.color + "44", border: `1px solid ${ct.color}`, borderRadius: 8, padding: "7px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ fontSize: 12, color: ct.text, fontWeight: 700 }}>{ct.label}</div>
+                  <div style={{ fontSize: 9, color: "#8888aa" }}>{ct.desc}</div>
                 </div>
-              );
-            })}
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <button onClick={() => remove(ct.key)} style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "#4a1a1a", color: "#ff8888", cursor: "pointer", fontSize: 15, fontWeight: 800, padding: 0 }}>−</button>
+                  <span style={{ color: ct.text, fontWeight: 800, minWidth: 18, textAlign: "center", fontSize: 14 }}>{counts[ct.key] || 0}</span>
+                  <button onClick={() => add(ct.key)} style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "#1a4a1a", color: "#7fff7f", cursor: "pointer", fontSize: 15, fontWeight: 800, padding: 0 }}>+</button>
+                </div>
+              </div>
+            ))}
           </div>
-        )}
 
-        {/* Counter type grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
-          {COUNTER_TYPES.filter(t => t.key !== "custom").map(ct => (
-            <div key={ct.key} style={{ background: ct.color + "44", border: `1px solid ${ct.color}`, borderRadius: 8, padding: "7px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontSize: 12, color: ct.text, fontWeight: 700 }}>{ct.label}</div>
-                <div style={{ fontSize: 9, color: "#8888aa" }}>{ct.desc}</div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <button onClick={() => remove(ct.key)} style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "#4a1a1a", color: "#ff8888", cursor: "pointer", fontSize: 15, fontWeight: 800, padding: 0 }}>−</button>
-                <span style={{ color: ct.text, fontWeight: 800, minWidth: 18, textAlign: "center", fontSize: 14 }}>{counts[ct.key] || 0}</span>
-                <button onClick={() => add(ct.key)} style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "#1a4a1a", color: "#7fff7f", cursor: "pointer", fontSize: 15, fontWeight: 800, padding: 0 }}>+</button>
-              </div>
-            </div>
-          ))}
+          {/* Custom counter */}
+          <div style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center" }}>
+            <input value={customName} onChange={e => setCustomName(e.target.value)} placeholder="Nombre contador custom..." style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 12, outline: "none" }} />
+            <button onClick={() => { if (customName.trim()) { add("custom"); } }} style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "#2a2a4a", color: "#cccccc", cursor: "pointer", fontSize: 12 }}>+ Agregar</button>
+          </div>
+
+          <button onClick={onClose} style={{ marginTop: 14, width: "100%", padding: "9px 0", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, cursor: "pointer" }}>Listo</button>
         </div>
-
-        {/* Custom counter */}
-        <div style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center" }}>
-          <input value={customName} onChange={e => setCustomName(e.target.value)} placeholder="Nombre contador custom..." style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 12, outline: "none" }} />
-          <button onClick={() => { if (customName.trim()) { add("custom"); } }} style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "#2a2a4a", color: "#cccccc", cursor: "pointer", fontSize: 12 }}>+ Agregar</button>
-        </div>
-
-        <button onClick={onClose} style={{ marginTop: 14, width: "100%", padding: "9px 0", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, cursor: "pointer" }}>Listo</button>
       </div>
-    </div>
-  );
+      );
 }
 
 
-// ─── Mulligan Modal (Commander London Mulligan) ───────────────────────────────
-// Commander rule: first mulligan is FREE (draw 7, keep 7).
-// From the second mulligan onward, put back (mulliganCount - 1) cards to library bottom.
-// mulliganCount=0 → initial hand shown before any decision
-// mulliganCount=1 → first mulligan taken, FREE (no put-back)
-// mulliganCount=2 → second mulligan, put back 1
-// mulliganCount=3 → put back 2, etc.
-function MulliganModal({ player, mulliganCount, onKeep, onMulligan, onHome }) {
+      // ─── Mulligan Modal (Commander London Mulligan) ───────────────────────────────
+      // Commander rule: first mulligan is FREE (draw 7, keep 7).
+      // From the second mulligan onward, put back (mulliganCount - 1) cards to library bottom.
+      // mulliganCount=0 → initial hand shown before any decision
+      // mulliganCount=1 → first mulligan taken, FREE (no put-back)
+      // mulliganCount=2 → second mulligan, put back 1
+      // mulliganCount=3 → put back 2, etc.
+      function MulliganModal({player, mulliganCount, onKeep, onMulligan, onHome}) {
   // In Commander the first mulligan (count=1) is free: mustPutBack = max(0, count-1)
   const mustPutBack = Math.max(0, mulliganCount - 1);
-  const [selected, setSelected] = useState(new Set());
-  const [hover, setHover] = useState(null);
-  const hand = player?.hand || [];
+      const [selected, setSelected] = useState(new Set());
+      const [hover, setHover] = useState(null);
+      const hand = player?.hand || [];
 
   const toggle = (iid) => {
-    setSelected(s => {
-      const next = new Set(s);
-      if (next.has(iid)) next.delete(iid);
-      else if (next.size < mustPutBack) next.add(iid);
-      return next;
-    });
+        setSelected(s => {
+          const next = new Set(s);
+          if (next.has(iid)) next.delete(iid);
+          else if (next.size < mustPutBack) next.add(iid);
+          return next;
+        });
   };
 
-  const canConfirm = mustPutBack === 0 || selected.size === mustPutBack;
+      const canConfirm = mustPutBack === 0 || selected.size === mustPutBack;
 
-  // Label helpers
-  const title = mulliganCount === 0
-    ? "🃏 Mano inicial"
-    : mulliganCount === 1
+      // Label helpers
+      const title = mulliganCount === 0
+      ? "🃏 Mano inicial"
+      : mulliganCount === 1
       ? "🔄 Mulligan #1 — Gratuito"
       : `🔄 Mulligan #${mulliganCount}`;
 
-  const subtitle = mulliganCount === 0
-    ? "¿Guardas esta mano o haces mulligan?"
-    : mustPutBack === 0
+      const subtitle = mulliganCount === 0
+      ? "¿Guardas esta mano o haces mulligan?"
+      : mustPutBack === 0
       ? "Mulligan gratuito — robaste 7. ¿Guardas o sigues?"
       : `Selecciona ${mustPutBack} carta${mustPutBack > 1 ? "s" : ""} para poner al fondo de tu biblioteca`;
 
   const hint = mulliganCount >= 2
-    ? `Commander London: pones ${mustPutBack} al fondo (te quedan ${7 - mustPutBack} efectivas)`
-    : mulliganCount === 1
+      ? `Commander London: pones ${mustPutBack} al fondo (te quedan ${7 - mustPutBack} efectivas)`
+      : mulliganCount === 1
       ? "En Commander el primer mulligan es gratis — conservas las 7"
       : null;
 
   const nextMulliganLabel = (() => {
     const nextPenalty = Math.max(0, mulliganCount); // after this mulligan, penalty = mulliganCount
-    return `🔄 Mulligan${nextPenalty > 0 ? ` (devolver ${nextPenalty})` : " (gratis)"}`;
+      return `🔄 Mulligan${nextPenalty > 0 ? ` (devolver ${nextPenalty})` : " (gratis)"}`;
   })();
 
-  return (
-    <>
-      <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 800, fontFamily: "'Crimson Text',Georgia,serif" }}>
-        <div style={{ background: "#0a0a1a", border: "2px solid #ffd70066", borderRadius: 18, padding: 28, maxWidth: 700, width: "95vw" }}>
-          <div style={{ textAlign: "center", marginBottom: 18 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: mulliganCount === 1 ? "#88ff88" : "#ffd700" }}>{title}</div>
-            <div style={{ fontSize: 13, color: "#aaa", marginTop: 6 }}>{subtitle}</div>
-            {hint && <div style={{ fontSize: 11, color: "#555", marginTop: 4, fontStyle: "italic" }}>{hint}</div>}
-          </div>
+      return (
+      <>
+        <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 800, fontFamily: "'Crimson Text',Georgia,serif" }}>
+          <div style={{ background: "#0a0a1a", border: "2px solid #ffd70066", borderRadius: 18, padding: 28, maxWidth: 700, width: "95vw" }}>
+            <div style={{ textAlign: "center", marginBottom: 18 }}>
+              <div style={{ fontSize: 22, fontWeight: 800, color: mulliganCount === 1 ? "#88ff88" : "#ffd700" }}>{title}</div>
+              <div style={{ fontSize: 13, color: "#aaa", marginTop: 6 }}>{subtitle}</div>
+              {hint && <div style={{ fontSize: 11, color: "#555", marginTop: 4, fontStyle: "italic" }}>{hint}</div>}
+            </div>
 
-          {/* Hand */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginBottom: 22 }}>
-            {hand.map(card => {
-              const marked = selected.has(card.instanceId);
-              return (
-                <div key={card.instanceId}
-                  onClick={() => mustPutBack > 0 && toggle(card.instanceId)}
-                  onMouseEnter={e => setHover({ card, x: e.clientX, y: e.clientY })}
-                  onMouseMove={e => setHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
-                  onMouseLeave={() => setHover(null)}
-                  style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: mustPutBack > 0 ? "pointer" : "default" }}>
-                  <div style={{ position: "relative" }}>
-                    <div style={{
-                      position: "absolute", inset: 0, borderRadius: 6, zIndex: 2, pointerEvents: "none",
-                      background: marked ? "#ff000033" : "transparent",
-                      border: marked ? "3px solid #ff4444" : "3px solid transparent",
-                      transition: "all 0.15s"
-                    }} />
-                    {card.image_url
-                      ? <img src={card.image_url} style={{ width: 74, borderRadius: 6, display: "block" }} />
-                      : <div style={{ width: 74, height: 103, borderRadius: 6, background: "#1a1a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#888", textAlign: "center", padding: 4 }}>{getCardName(card)}</div>}
+            {/* Hand */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginBottom: 22 }}>
+              {hand.map(card => {
+                const marked = selected.has(card.instanceId);
+                return (
+                  <div key={card.instanceId}
+                    onClick={() => mustPutBack > 0 && toggle(card.instanceId)}
+                    onMouseEnter={e => setHover({ card, x: e.clientX, y: e.clientY })}
+                    onMouseMove={e => setHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
+                    onMouseLeave={() => setHover(null)}
+                    style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: mustPutBack > 0 ? "pointer" : "default" }}>
+                    <div style={{ position: "relative" }}>
+                      <div style={{
+                        position: "absolute", inset: 0, borderRadius: 6, zIndex: 2, pointerEvents: "none",
+                        background: marked ? "#ff000033" : "transparent",
+                        border: marked ? "3px solid #ff4444" : "3px solid transparent",
+                        transition: "all 0.15s"
+                      }} />
+                      {card.image_url
+                        ? <img src={card.image_url} style={{ width: 74, borderRadius: 6, display: "block" }} />
+                        : <div style={{ width: 74, height: 103, borderRadius: 6, background: "#1a1a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#888", textAlign: "center", padding: 4 }}>{getCardName(card)}</div>}
+                    </div>
+                    {marked && <div style={{ fontSize: 9, color: "#ff8888", fontWeight: 700 }}>↓ fondo</div>}
                   </div>
-                  {marked && <div style={{ fontSize: 9, color: "#ff8888", fontWeight: 700 }}>↓ fondo</div>}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
 
-          {/* Buttons */}
-          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-            <button
-              onClick={() => canConfirm && onKeep([...selected])}
-              disabled={!canConfirm}
-              style={{ padding: "12px 32px", borderRadius: 10, border: "none", background: canConfirm ? "linear-gradient(90deg,#1a5a1a,#2a8a2a)" : "#222", color: canConfirm ? "#7fff7f" : "#444", fontWeight: 800, fontSize: 15, cursor: canConfirm ? "pointer" : "default", transition: "all 0.2s" }}>
-              {mustPutBack === 0 ? "✅ Guardar mano" : `✅ Confirmar (${selected.size}/${mustPutBack} seleccionadas)`}
-            </button>
-            <button
-              onClick={onMulligan}
-              style={{ padding: "12px 28px", borderRadius: 10, border: "1px solid #ffd70055", background: "#1a140a", color: "#ffd700", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
-              {nextMulliganLabel}
-            </button>
-          </div>
-          {/* Home button */}
-          {onHome && (
-            <div style={{ textAlign: "center", marginTop: 8 }}>
-              <button onClick={onHome}
-                style={{ padding: "5px 16px", borderRadius: 6, border: "1px solid #333", background: "transparent", color: "#666", cursor: "pointer", fontSize: 11 }}>
-                🏠 Volver al inicio
+            {/* Buttons */}
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+              <button
+                onClick={() => canConfirm && onKeep([...selected])}
+                disabled={!canConfirm}
+                style={{ padding: "12px 32px", borderRadius: 10, border: "none", background: canConfirm ? "linear-gradient(90deg,#1a5a1a,#2a8a2a)" : "#222", color: canConfirm ? "#7fff7f" : "#444", fontWeight: 800, fontSize: 15, cursor: canConfirm ? "pointer" : "default", transition: "all 0.2s" }}>
+                {mustPutBack === 0 ? "✅ Guardar mano" : `✅ Confirmar (${selected.size}/${mustPutBack} seleccionadas)`}
+              </button>
+              <button
+                onClick={onMulligan}
+                style={{ padding: "12px 28px", borderRadius: 10, border: "1px solid #ffd70055", background: "#1a140a", color: "#ffd700", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+                {nextMulliganLabel}
               </button>
             </div>
-          )}
+            {/* Home button */}
+            {onHome && (
+              <div style={{ textAlign: "center", marginTop: 8 }}>
+                <button onClick={onHome}
+                  style={{ padding: "5px 16px", borderRadius: 6, border: "1px solid #333", background: "transparent", color: "#666", cursor: "pointer", fontSize: 11 }}>
+                  🏠 Volver al inicio
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-      {/* HoverZoom rendered outside modal so it's never clipped */}
-      {hover && <HoverZoom card={hover.card} x={hover.x} y={hover.y} />}
-    </>
-  );
+        {/* HoverZoom rendered outside modal so it's never clipped */}
+        {hover && <HoverZoom card={hover.card} x={hover.x} y={hover.y} />}
+      </>
+      );
 }
 
-// ─── DECK BUILDER ─────────────────────────────────────────────────────────────
-function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPlayerName, initialDeckName, initialFormat, initialSideboard }) {
+      // ─── DECK BUILDER ─────────────────────────────────────────────────────────────
+      function DeckBuilder({onReady, onHome, initialDeck, initialCommander, initialPlayerName, initialDeckName, initialFormat, initialSideboard}) {
   const [search, setSearch] = useState(""); const [results, setResults] = useState([]);
-  const [deck, setDeck] = useState(() => initialDeck || []); const [sideboard, setSideboard] = useState(() => initialSideboard || []); const [format, setFormat] = useState(() => initialFormat || FORMATS[0]); const [showFormatModal, setShowFormatModal] = useState(false); const [formatWarnings, setFormatWarnings] = useState({}); const [commander, setCommander] = useState(() => initialCommander || null);
-  const [loading, setLoading] = useState(false); const [preview, setPreview] = useState(null);
-  const [importText, setImportText] = useState(""); const [importLoading, setImportLoading] = useState(false);
-  const [importProgress, setImportProgress] = useState({ done: 0, total: 0 });
+  const [deck, setDeck] = useState(() => initialDeck || []); const [sideboard, setSideboard] = useState(() => initialSideboard || []); const [format, setFormat] = useState(() => initialFormat || FORMATS[0]); const [showFormatModal, setShowFormatModal] = useState(false); const [formatWarnings, setFormatWarnings] = useState({ }); const [commander, setCommander] = useState(() => initialCommander || null);
+      const [loading, setLoading] = useState(false); const [preview, setPreview] = useState(null);
+      const [importText, setImportText] = useState(""); const [importLoading, setImportLoading] = useState(false);
+      const [importProgress, setImportProgress] = useState({done: 0, total: 0 });
   const [tab, setTab] = useState(initialDeck?.length > 0 ? "mazo" : "buscar"); const [playerName, setPlayerName] = useState(initialPlayerName || "Jugador");
-  const [deckCtx, setDeckCtx] = useState(null);
-  const [hover, setHover] = useState(null); // {card, x, y}
-  const [savedDecks, setSavedDecks] = useState(getSavedDecks);
-  const [deckName, setDeckName] = useState(initialDeckName || "Mi Mazo");
-  const lang = "es"; // always Spanish, fallback to English if not found
-  const deb = useRef(null);
+      const [deckCtx, setDeckCtx] = useState(null);
+      const [hover, setHover] = useState(null); // {card, x, y}
+      const [savedDecks, setSavedDecks] = useState(getSavedDecks);
+      const [deckName, setDeckName] = useState(initialDeckName || "Mi Mazo");
+      const lang = "es"; // always Spanish, fallback to English if not found
+      const deb = useRef(null);
 
   useEffect(() => {
-    clearTimeout(deb.current);
-    if (!search.trim()) { setResults([]); return; }
-    deb.current = setTimeout(async () => { setLoading(true); setResults((await searchCards(search)).slice(0, 20)); setLoading(false); }, 500);
+        clearTimeout(deb.current);
+      if (!search.trim()) {setResults([]); return; }
+    deb.current = setTimeout(async () => {setLoading(true); setResults((await searchCards(search)).slice(0, 20)); setLoading(false); }, 500);
   }, [search, lang]);
 
-  const formatHasCommander = (fmt) => ["commander", "duel", "brawl", "oathbreaker"].includes(fmt?.key);
+  const formatHasCommander = (fmt) => ["commander","duel","brawl","oathbreaker"].includes(fmt?.key);
 
   const checkLegality = (card, fmt) => {
     if (!fmt || fmt.key === "custom") return null;
-    const leg = card.legalities?.[fmt.key];
-    if (leg === "banned") return "banned";
-    if (leg === "not_legal") return "not_legal";
-    if (leg === "restricted") return "restricted";
-    return null;
+      const leg = card.legalities?.[fmt.key];
+      if (leg === "banned") return "banned";
+      if (leg === "not_legal") return "not_legal";
+      if (leg === "restricted") return "restricted";
+      return null;
   };
 
   const addCard = async (card) => {
     const img = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null;
-    setDeck(d => [...d, { ...card, image_url: img, instanceId: uid() }]);
-    // Check legality
-    const issue = checkLegality(card, format);
-    if (issue) {
-      setFormatWarnings(w => ({ ...w, [card.name]: issue }));
+    setDeck(d => [...d, {...card, image_url: img, instanceId: uid() }]);
+      // Check legality
+      const issue = checkLegality(card, format);
+      if (issue) {
+        setFormatWarnings(w => ({ ...w, [card.name]: issue }));
     }
   };
   const setCmd = async (card) => {
     const img = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null;
-    setCommander({ ...card, image_url: img || card.image_url, instanceId: card.instanceId || uid() });
-    // Auto-fill deck name with commander's name if still default/empty
-    const cmdName = card.printed_name || card.name || "";
+      setCommander({...card, image_url: img || card.image_url, instanceId: card.instanceId || uid() });
+      // Auto-fill deck name with commander's name if still default/empty
+      const cmdName = card.printed_name || card.name || "";
     if (cmdName) setDeckName(prev => (!prev || prev === "Mi Mazo") ? cmdName : prev);
   };
 
   const handleImport = async () => {
-    setImportLoading(true);
+        setImportLoading(true);
     const lines = importText.split("\n").map(l => l.trim()).filter(Boolean);
     const validLines = lines.filter(l => !l.startsWith("//") && !l.startsWith("#") && l.trim());
     const total = validLines.reduce((s, l) => { const m = l.match(/^(\d+)x?\s+/); return s + (m ? parseInt(m[1]) : 1); }, 0);
-    setImportProgress({ done: 0, total });
-    const out = [];
-    const cache = {};
-    let done = 0;
-    for (const line of lines) {
+      setImportProgress({done: 0, total });
+      const out = [];
+      const cache = { };
+      let done = 0;
+      for (const line of lines) {
       // Skip comment lines
       if (line.startsWith("//") || line.startsWith("#")) continue;
       const m = line.match(/^(\d+)x?\s+(.+)$/i);
@@ -1129,366 +1130,366 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
       await new Promise(r => setTimeout(r, 120));
       if (!cache[name]) {
         const targetLang = "es"; // always try Spanish first
-        try {
-          let card = null;
-          // Fetch via allorigins proxy to bypass Vercel CORS restrictions
-          const proxyBase = "https://api.allorigins.win/get?url=";
-          const scryBase = "https://api.scryfall.com/cards/search";
+      try {
+        let card = null;
+      // Fetch via allorigins proxy to bypass Vercel CORS restrictions
+      const proxyBase = "https://api.allorigins.win/get?url=";
+      const scryBase = "https://api.scryfall.com/cards/search";
 
           const sfFetch = async (url) => {
             try {
               // Try direct first (works ~50% of time from Vercel)
               const r = await fetch(url);
-              if (r.ok) return await r.json();
+      if (r.ok) return await r.json();
             } catch { }
-            try {
+      try {
               // Fallback: allorigins proxy
               const proxy = proxyBase + encodeURIComponent(url);
-              const r = await fetch(proxy);
-              if (r.ok) {
+      const r = await fetch(proxy);
+      if (r.ok) {
                 const wrapper = await r.json();
-                return JSON.parse(wrapper.contents);
+      return JSON.parse(wrapper.contents);
               }
             } catch { }
-            return null;
+      return null;
           };
 
-          // Step 1: Get English card
-          let enCard = null;
-          const q1 = `!"${name}"`;
-          const d1 = await sfFetch(`${scryBase}?q=${encodeURIComponent(q1)}&unique=cards&order=released`);
-          if (d1?.data?.[0]) enCard = d1.data[0];
-          if (!enCard) {
+      // Step 1: Get English card
+      let enCard = null;
+      const q1 = `!"${name}"`;
+      const d1 = await sfFetch(`${scryBase}?q=${encodeURIComponent(q1)}&unique=cards&order=released`);
+      if (d1?.data?.[0]) enCard = d1.data[0];
+      if (!enCard) {
             const d2 = await sfFetch(`${scryBase}?q=${encodeURIComponent(name)}&unique=cards&order=released`);
-            if (d2?.data?.[0]) enCard = d2.data[0];
+      if (d2?.data?.[0]) enCard = d2.data[0];
           }
-          if (!enCard) { continue; }
+      if (!enCard) { continue; }
 
-          // Step 2: Try Spanish
-          let esCard = null;
-          const qEs = `!"${enCard.name}" lang:es`;
-          const dEs = await sfFetch(`${scryBase}?q=${encodeURIComponent(qEs)}&order=released&dir=desc`);
-          if (dEs?.data?.[0]?.image_uris) esCard = dEs.data[0];
+      // Step 2: Try Spanish
+      let esCard = null;
+      const qEs = `!"${enCard.name}" lang:es`;
+      const dEs = await sfFetch(`${scryBase}?q=${encodeURIComponent(qEs)}&order=released&dir=desc`);
+      if (dEs?.data?.[0]?.image_uris) esCard = dEs.data[0];
 
-          if (esCard) {
-            card = {
-              ...enCard,
-              image_url: esCard.image_uris?.normal || esCard.card_faces?.[0]?.image_uris?.normal || null,
-              printed_name: esCard.printed_name || enCard.name,
-              printed_text: esCard.printed_text || enCard.oracle_text,
-              type_line: esCard.printed_type_line || enCard.type_line,
-            };
+      if (esCard) {
+        card = {
+          ...enCard,
+          image_url: esCard.image_uris?.normal || esCard.card_faces?.[0]?.image_uris?.normal || null,
+          printed_name: esCard.printed_name || enCard.name,
+          printed_text: esCard.printed_text || enCard.oracle_text,
+          type_line: esCard.printed_type_line || enCard.type_line,
+        };
           } else {
-            card = { ...enCard, image_url: enCard.image_uris?.normal || enCard.card_faces?.[0]?.image_uris?.normal || null };
+        card = { ...enCard, image_url: enCard.image_uris?.normal || enCard.card_faces?.[0]?.image_uris?.normal || null };
           }
-          if (!card) { continue; }
+      if (!card) { continue; }
 
-          if (card && !card.image_url) {
-            card = { ...card, image_url: card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null };
+      if (card && !card.image_url) {
+        card = { ...card, image_url: card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || null };
           }
-          cache[name] = card;
-          // Check legality in current format
-          const issue = checkLegality(card, format);
-          if (issue) setFormatWarnings(w => ({ ...w, [card.name]: issue }));
+      cache[name] = card;
+      // Check legality in current format
+      const issue = checkLegality(card, format);
+          if (issue) setFormatWarnings(w => ({...w, [card.name]: issue }));
         } catch { }
       }
       if (cache[name]) {
-        for (let i = 0; i < n; i++) out.push({ ...cache[name], instanceId: uid() });
-        done += n;
-        setImportProgress({ done, total });
+        for (let i = 0; i < n; i++) out.push({...cache[name], instanceId: uid() });
+      done += n;
+      setImportProgress({done, total});
       }
     }
-    setDeck(d => [...d, ...out]); setImportLoading(false); setImportProgress({ done: 0, total: 0 }); setTab("mazo");
+    setDeck(d => [...d, ...out]); setImportLoading(false); setImportProgress({done: 0, total: 0 }); setTab("mazo");
   };
 
   const normalizeType = (typeLine) => {
     if (!typeLine) return "Otro";
-    const t = typeLine.toLowerCase();
-    const leg = t.includes("legendary") || t.includes("legendaria") || t.includes("legendario");
-    const cre = t.includes("creature") || t.includes("criatura");
-    const art = t.includes("artifact") || t.includes("artefacto");
-    const enc = t.includes("enchantment") || t.includes("encantamiento");
-    const pla = t.includes("planeswalker");
-    const ins = t.includes("instant") || t.includes("instantáneo");
-    const sor = t.includes("sorcery") || t.includes("conjuro");
-    const lan = t.includes("land") || t.includes("tierra");
-    const bat = t.includes("battle") || t.includes("batalla");
-    if (leg && cre) return "Criatura Legendaria";
-    if (leg && pla) return "Planeswalker Legendario";
-    if (leg) return "Legendario";
-    if (cre) return "Criatura";
-    if (ins) return "Instantáneo";
-    if (sor) return "Conjuro";
-    if (enc && art) return "Artefacto Encantamiento";
-    if (enc) return "Encantamiento";
-    if (art) return "Artefacto";
-    if (pla) return "Planeswalker";
-    if (lan) return "Tierra";
-    if (bat) return "Batalla";
-    return "Otro";
+      const t = typeLine.toLowerCase();
+      const leg = t.includes("legendary") || t.includes("legendaria") || t.includes("legendario");
+      const cre = t.includes("creature") || t.includes("criatura");
+      const art = t.includes("artifact") || t.includes("artefacto");
+      const enc = t.includes("enchantment") || t.includes("encantamiento");
+      const pla = t.includes("planeswalker");
+      const ins = t.includes("instant") || t.includes("instantáneo");
+      const sor = t.includes("sorcery") || t.includes("conjuro");
+      const lan = t.includes("land") || t.includes("tierra");
+      const bat = t.includes("battle") || t.includes("batalla");
+      if (leg && cre) return "Criatura Legendaria";
+      if (leg && pla) return "Planeswalker Legendario";
+      if (leg) return "Legendario";
+      if (cre) return "Criatura";
+      if (ins) return "Instantáneo";
+      if (sor) return "Conjuro";
+      if (enc && art) return "Artefacto Encantamiento";
+      if (enc) return "Encantamiento";
+      if (art) return "Artefacto";
+      if (pla) return "Planeswalker";
+      if (lan) return "Tierra";
+      if (bat) return "Batalla";
+      return "Otro";
   };
   const grouped = deck.reduce((a, c) => {
     const t = normalizeType(c.type_line);
-    if (!a[t]) a[t] = [];
-    a[t].push(c);
-    return a;
-  }, {});
+      if (!a[t]) a[t] = [];
+      a[t].push(c);
+      return a;
+  }, { });
   const tabBtn = (t, label) => <button onClick={() => setTab(t)} style={{ flex: 1, padding: "10px 0", border: "none", cursor: "pointer", background: tab === t ? "#1a1a3e" : "transparent", color: tab === t ? "#ffd700" : "#888", fontWeight: 600, fontSize: 13, borderBottom: tab === t ? "2px solid #ffd700" : "2px solid transparent" }}>{label}</button>;
 
   const ctxItems = (card, source) => [
-    source === "results" && { label: "➕ Agregar al mazo", action: () => addCard(card) },
-    source === "results" && !format?.singletons && { label: "➕➕ Agregar x4", action: () => [1, 2, 3, 4].forEach(() => addCard(card)) },
-    source === "results" && !formatHasCommander(format) && sideboard.length < 15 && { label: "↔ Agregar al Sideboard", action: () => setSideboard(s => [...s, { ...card, image_url: card.image_uris?.normal || card.image_url, instanceId: uid() }]), color: "#88aaff" },
-    isLegendary(card) && formatHasCommander(format) && { label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "#ffd700" },
-    isLegendary(card) && source === "results" && formatHasCommander(format) && { label: "⚔ + Agregar como Comandante", action: () => { addCard(card); setCmd(card); }, color: "#ffd700" },
-    source === "deck" && formatHasCommander(format) && { label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "#ffd700" },
-    source === "deck" && { label: "🗑 Quitar del mazo", action: () => setDeck(d => d.filter(c => c.instanceId !== card.instanceId)), color: "#ff8888" },
-  ].filter(Boolean);
+      source === "results" && {label: "➕ Agregar al mazo", action: () => addCard(card) },
+      source === "results" && !format?.singletons && {label: "➕➕ Agregar x4", action: () => [1,2,3,4].forEach(() => addCard(card)) },
+      source === "results" && !formatHasCommander(format) && sideboard.length < 15 && {label: "↔ Agregar al Sideboard", action: () => setSideboard(s => [...s, {...card, image_url: card.image_uris?.normal || card.image_url, instanceId: uid() }]), color: "#88aaff" },
+      isLegendary(card) && formatHasCommander(format) && {label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "#ffd700" },
+      isLegendary(card) && source === "results" && formatHasCommander(format) && {label: "⚔ + Agregar como Comandante", action: () => {addCard(card); setCmd(card); }, color: "#ffd700" },
+      source === "deck" && formatHasCommander(format) && {label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "#ffd700" },
+      source === "deck" && {label: "🗑 Quitar del mazo", action: () => setDeck(d => d.filter(c => c.instanceId !== card.instanceId)), color: "#ff8888" },
+      ].filter(Boolean);
 
-  return (
-    <div style={{ minHeight: "100vh", background: "radial-gradient(ellipse at 30% 10%, #160a28 0%, #0a0a1e 60%, #060616 100%)", color: "#e8e0d0", fontFamily: "'Crimson Text',Georgia,serif", display: "flex", flexDirection: "column" }}
-      onClick={() => setDeckCtx(null)}>
-      <div style={{ padding: "16px 28px", borderBottom: "1px solid #2a2a4a", background: "linear-gradient(90deg,#0a0a1a,#1a0a2e,#0a0a1a)", display: "flex", alignItems: "center", gap: 14 }}>
-        <span style={{ fontSize: 26 }}>⚔️</span>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: 2, background: "linear-gradient(90deg,#ffd700,#ff8c00)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>COMMANDER ES</h1>
-          <div style={{ fontSize: 11, color: "#8888aa" }}>Multijugador Online · Cartas en Español</div>
-        </div>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, color: "#888" }}>Tu nombre:</span>
-          <input value={playerName} onChange={e => setPlayerName(e.target.value)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 14, outline: "none", width: 120 }} />
-          <input value={deckName} onChange={e => setDeckName(e.target.value)} placeholder="Nombre del mazo" style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 13, outline: "none", width: 140 }} />
-          <button onClick={async () => {
-            if (!commander) return alert("Selecciona un comandante primero.");
-            const currentUser = getCurrentUser();
-            if (currentUser) {
-              // Logged in: save only to cloud
-              const result = await saveCloudDeck(deckName, deck, commander, playerName, format, sideboard);
-              if (result.ok) {
-                alert(`✓ Mazo "${deckName}" guardado en la nube ☁`);
-              } else {
-                alert(`✗ Error al guardar: ${result.error}`);
-              }
-            } else {
-              // Not logged in: save locally
-              saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard);
-              setSavedDecks(getSavedDecks());
-              alert(`✓ Mazo "${deckName}" guardado localmente. Inicia sesión para guardarlo en la nube.`);
-            }
-          }}
-            style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#1a4a1a", color: "#7fff7f", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
-            💾 Guardar
-          </button>
-          {onHome && <button onClick={onHome} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", fontSize: 12 }}>🏠</button>}
-        </div>
-      </div>
-
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {/* Search panel */}
-        <div style={{ width: 290, borderRight: "1px solid #2a2a4a", display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", borderBottom: "1px solid #2a2a4a" }}>{tabBtn("buscar", "🔍 Buscar")}{tabBtn("importar", "📋 Importar")}</div>
-          {tab === "buscar" && (
-            <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-              <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 7 }}>
-
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cartas en español..." style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
-              </div>
-              <div style={{ flex: 1, overflowY: "auto", padding: "0 10px 10px" }}>
-                {loading && <div style={{ color: "#888", textAlign: "center", padding: 16 }}>Buscando...</div>}
-                {results.map(card => (
-                  <div key={card.id}
-                    onMouseEnter={e => { setPreview(card); setHover({ card: { ...card, image_url: card.image_uris?.normal }, x: e.clientX, y: e.clientY }); }}
-                    onMouseMove={e => setHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
-                    onMouseLeave={() => { setPreview(null); setHover(null); }}
-                    onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setDeckCtx({ x: e.clientX, y: e.clientY, items: ctxItems(card, "results"), title: getCardName(card) }); }}
-                    style={{ display: "flex", gap: 8, alignItems: "center", padding: "7px 0", borderBottom: "1px solid #1a1a2e", cursor: "context-menu" }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600 }}>{getCardName(card)}</div>
-                      <div style={{ fontSize: 10, color: "#8888aa" }}>{card.type_line}</div>
-                    </div>
-                    <button onClick={() => addCard(card)} style={{ padding: "3px 8px", borderRadius: 4, border: "none", background: "#1a4a1a", color: "#7fff7f", cursor: "pointer", fontSize: 11 }}>+</button>
-                    {isLegendary(card) && <button onClick={() => setCmd(card)} style={{ padding: "3px 8px", borderRadius: 4, border: "none", background: "#4a3a0a", color: "#ffd700", cursor: "pointer", fontSize: 11 }}>⚔</button>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {tab === "sideboard" && (
-            <div style={{ flex: 1, padding: 14, display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontSize: 12, color: "#8888aa" }}>Sideboard ({sideboard.length}/15)</div>
-                {sideboard.length > 0 && <button onClick={() => setSideboard([])} style={{ background: "none", border: "none", color: "#ff8888", cursor: "pointer", fontSize: 11 }}>Vaciar</button>}
-              </div>
-              {sideboard.length >= 15 && <div style={{ fontSize: 11, color: "#ff8888", background: "#2a0a0a", borderRadius: 6, padding: "6px 10px" }}>⚠ Sideboard completo (máx. 15 cartas)</div>}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {sideboard.map((card, i) => (
-                  <div key={card.instanceId} style={{ position: "relative", width: 52 }}>
-                    <CardTile card={card} small onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
-                    <button onClick={() => setSideboard(s => s.filter(c => c.instanceId !== card.instanceId))}
-                      style={{ position: "absolute", top: -4, right: -4, width: 15, height: 15, borderRadius: "50%", border: "none", background: "#cc2222", color: "#fff", cursor: "pointer", fontSize: 9, padding: 0 }}>×</button>
-                  </div>
-                ))}
-                {sideboard.length === 0 && (
-                  <div style={{ border: "2px dashed #2a2a4a", borderRadius: 8, padding: "16px", color: "#444", fontSize: 12, textAlign: "center", width: "100%" }}>
-                    Busca cartas y usa click derecho → Agregar al Sideboard
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          {tab === "importar" && (
-            <div style={{ flex: 1, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={{ fontSize: 11, color: "#8888aa" }}>Una carta por línea. Ej: "4x Sol Ring"</div>
-              <textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder={"1x Sol Ring\n1x Command Tower\n..."} style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 12, resize: "none", outline: "none", fontFamily: "monospace" }} />
-              {importLoading ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#7fc4ff" }}>
-                    <span>Importando cartas...</span>
-                    <span>{importProgress.done}/{importProgress.total}</span>
-                  </div>
-                  <div style={{ height: 8, borderRadius: 4, background: "#1a1a2e", overflow: "hidden" }}>
-                    <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#1a4a8a,#7fc4ff)", width: importProgress.total > 0 ? `${Math.round(importProgress.done / importProgress.total * 100)}%` : "0%", transition: "width 0.3s ease" }} />
-                  </div>
-                  <div style={{ fontSize: 10, color: "#555", textAlign: "center" }}>
-                    {importProgress.total > 0 ? `${Math.round(importProgress.done / importProgress.total * 100)}%` : "Preparando..."}
-                  </div>
-                </div>
-              ) : (
-                <button onClick={handleImport} style={{ padding: "10px 0", borderRadius: 8, border: "none", background: "#1a4a8a", color: "#7fc4ff", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>Importar lista</button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Deck */}
-        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: "10px 18px", borderBottom: "1px solid #2a2a4a", display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "#ffd700" }}>Mi Mazo</span>
-            <span style={{ background: "#1a1a3e", borderRadius: 20, padding: "2px 9px", fontSize: 12, color: "#8888aa" }}>
-              {deck.length}{format.deckSize > 0 ? `/${format.deckSize - 1}` : ""}
-            </span>
-            {Object.keys(formatWarnings).length > 0 && (
-              <span title="Hay cartas no legales en este formato" style={{ background: "#4a0a0a", borderRadius: 20, padding: "2px 9px", fontSize: 11, color: "#ff8888", cursor: "default" }}>
-                🚫 {Object.values(formatWarnings).filter(v => v === "banned").length} ban
-              </span>
-            )}
-            <div style={{ marginLeft: "auto" }}>
-              <button onClick={() => {
-                if (formatHasCommander(format) && !commander) return alert(`Selecciona un Comandante para el formato ${format.label}.`);
-                if (deck.length < 5) return alert("Agrega más cartas.");
-                // Warn about format violations
-                const violations = Object.entries(formatWarnings).filter(([, v]) => v === "banned");
-                if (violations.length > 0 && !window.confirm(`Hay ${violations.length} carta(s) baneada(s) en ${format.label}:\n${violations.map(([n]) => n).join(", ")}\n\n¿Continuar de todas formas?`)) return;
-                // Remove commander from deck by name/id (instanceId may differ if loaded from storage)
-                const deckWithoutCmd = deck.filter(c =>
-                  c.instanceId !== commander.instanceId &&
-                  c.name !== commander.name &&
-                  c.id !== commander.id
-                );
-                onReady({ deck: shuffle(deckWithoutCmd), commander, playerName, format, sideboard });
-              }}
-                style={{ padding: "9px 22px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>▶ JUGAR</button>
-            </div>
+      return (
+      <div style={{ minHeight: "100vh", background: "radial-gradient(ellipse at 30% 10%, #160a28 0%, #0a0a1e 60%, #060616 100%)", color: "#e8e0d0", fontFamily: "'Crimson Text',Georgia,serif", display: "flex", flexDirection: "column" }}
+        onClick={() => setDeckCtx(null)}>
+        <div style={{ padding: "16px 28px", borderBottom: "1px solid #2a2a4a", background: "linear-gradient(90deg,#0a0a1a,#1a0a2e,#0a0a1a)", display: "flex", alignItems: "center", gap: 14 }}>
+          <span style={{ fontSize: 26 }}>⚔️</span>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: 2, background: "linear-gradient(90deg,#ffd700,#ff8c00)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>COMMANDER ES</h1>
+            <div style={{ fontSize: 11, color: "#8888aa" }}>Multijugador Online · Cartas en Español</div>
           </div>
-          {formatHasCommander(format) && (
-            <div style={{ padding: "10px 18px 8px", borderBottom: "1px solid #1a1a2e" }}>
-              <div style={{ fontSize: 10, color: "#ffd700", letterSpacing: 2, marginBottom: 6 }}>⚔ COMANDANTE</div>
-              {commander
-                ? <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <CardTile card={commander} small onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
-                  <div><div style={{ fontWeight: 700, fontSize: 13 }}>{getCardName(commander)}</div><div style={{ fontSize: 10, color: "#8888aa" }}>{commander.type_line}</div><button onClick={() => setCommander(null)} style={{ marginTop: 4, padding: "2px 8px", borderRadius: 4, border: "none", background: "#4a1a1a", color: "#ff8888", cursor: "pointer", fontSize: 11 }}>Quitar</button></div>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12, color: "#888" }}>Tu nombre:</span>
+            <input value={playerName} onChange={e => setPlayerName(e.target.value)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 14, outline: "none", width: 120 }} />
+            <input value={deckName} onChange={e => setDeckName(e.target.value)} placeholder="Nombre del mazo" style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 13, outline: "none", width: 140 }} />
+            <button onClick={async () => {
+              if (!commander) return alert("Selecciona un comandante primero.");
+              const currentUser = getCurrentUser();
+              if (currentUser) {
+                // Logged in: save only to cloud
+                const result = await saveCloudDeck(deckName, deck, commander, playerName, format, sideboard);
+                if (result.ok) {
+                  alert(`✓ Mazo "${deckName}" guardado en la nube ☁`);
+                } else {
+                  alert(`✗ Error al guardar: ${result.error}`);
+                }
+              } else {
+                // Not logged in: save locally
+                saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard);
+                setSavedDecks(getSavedDecks());
+                alert(`✓ Mazo "${deckName}" guardado localmente. Inicia sesión para guardarlo en la nube.`);
+              }
+            }}
+              style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#1a4a1a", color: "#7fff7f", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
+              💾 Guardar
+            </button>
+            {onHome && <button onClick={onHome} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", fontSize: 12 }}>🏠</button>}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+          {/* Search panel */}
+          <div style={{ width: 290, borderRight: "1px solid #2a2a4a", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", borderBottom: "1px solid #2a2a4a" }}>{tabBtn("buscar", "🔍 Buscar")}{tabBtn("importar", "📋 Importar")}</div>
+            {tab === "buscar" && (
+              <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 7 }}>
+
+                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cartas en español..." style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                 </div>
-                : <div style={{ border: "2px dashed #3a3a6a", borderRadius: 8, padding: "10px 16px", color: "#555", fontSize: 12, textAlign: "center" }}>Busca una criatura legendaria y pulsa ⚔ (o click derecho → Elegir como Comandante)</div>}
-            </div>
-          )}
-          <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-            {Object.entries(grouped).sort(([a], [b]) => {
-              const ORDER = ['Criatura Legendaria', 'Planeswalker Legendario', 'Legendario', 'Criatura', 'Planeswalker', 'Instantáneo', 'Conjuro', 'Encantamiento', 'Artefacto Encantamiento', 'Artefacto', 'Tierra', 'Batalla', 'Otro'];
-              const ai = ORDER.indexOf(a); const bi = ORDER.indexOf(b);
-              if (ai === -1 && bi === -1) return a.localeCompare(b);
-              if (ai === -1) return 1; if (bi === -1) return -1;
-              return ai - bi;
-            }).map(([type, cards]) => (
-              <div key={type} style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, color: "#8888aa", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>{type} ({cards.length})</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                  {cards.map(card => (
-                    <div key={card.instanceId}
-                      onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setDeckCtx({ x: e.clientX, y: e.clientY, items: ctxItems(card, "deck"), title: getCardName(card) }); }}
-                      style={{ position: "relative" }}>
-                      <CardTile card={card} small onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
-                      <button onClick={() => setDeck(d => d.filter(c => c.instanceId !== card.instanceId))} style={{ position: "absolute", top: -4, right: -4, width: 15, height: 15, borderRadius: "50%", border: "none", background: "#cc2222", color: "#fff", cursor: "pointer", fontSize: 9, padding: 0 }}>×</button>
-                      {formatWarnings[card.name] && (
-                        <div title={formatWarnings[card.name] === "banned" ? "Baneada en " + format.label : formatWarnings[card.name] === "restricted" ? "Restringida (solo 1 copia)" : "No legal en " + format.label}
-                          style={{ position: "absolute", bottom: -4, left: "50%", transform: "translateX(-50%)", background: formatWarnings[card.name] === "banned" ? "#cc0000" : formatWarnings[card.name] === "restricted" ? "#ff8800" : "#888", borderRadius: 3, padding: "1px 4px", fontSize: 7, color: "#fff", whiteSpace: "nowrap", pointerEvents: "none" }}>
-                          {formatWarnings[card.name] === "banned" ? "🚫BAN" : formatWarnings[card.name] === "restricted" ? "⚠️REST" : "✗"}
-                        </div>
-                      )}
-                      {isLegendary(card) && formatHasCommander(format) && (
-                        <button onClick={() => setCmd(card)} title="Elegir como Comandante"
-                          style={{ position: "absolute", top: -4, left: -4, width: 18, height: 18, borderRadius: "50%", border: "none", background: "#4a3a0a", color: "#ffd700", cursor: "pointer", fontSize: 10, padding: 0, fontWeight: 800 }}>⚔</button>
-                      )}
+                <div style={{ flex: 1, overflowY: "auto", padding: "0 10px 10px" }}>
+                  {loading && <div style={{ color: "#888", textAlign: "center", padding: 16 }}>Buscando...</div>}
+                  {results.map(card => (
+                    <div key={card.id}
+                      onMouseEnter={e => { setPreview(card); setHover({ card: { ...card, image_url: card.image_uris?.normal }, x: e.clientX, y: e.clientY }); }}
+                      onMouseMove={e => setHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
+                      onMouseLeave={() => { setPreview(null); setHover(null); }}
+                      onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setDeckCtx({ x: e.clientX, y: e.clientY, items: ctxItems(card, "results"), title: getCardName(card) }); }}
+                      style={{ display: "flex", gap: 8, alignItems: "center", padding: "7px 0", borderBottom: "1px solid #1a1a2e", cursor: "context-menu" }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600 }}>{getCardName(card)}</div>
+                        <div style={{ fontSize: 10, color: "#8888aa" }}>{card.type_line}</div>
+                      </div>
+                      <button onClick={() => addCard(card)} style={{ padding: "3px 8px", borderRadius: 4, border: "none", background: "#1a4a1a", color: "#7fff7f", cursor: "pointer", fontSize: 11 }}>+</button>
+                      {isLegendary(card) && <button onClick={() => setCmd(card)} style={{ padding: "3px 8px", borderRadius: 4, border: "none", background: "#4a3a0a", color: "#ffd700", cursor: "pointer", fontSize: 11 }}>⚔</button>}
                     </div>
                   ))}
                 </div>
               </div>
-            ))}
-            {!deck.length && <div style={{ color: "#333", textAlign: "center", marginTop: 50, fontSize: 15 }}>Busca cartas y agrégalas a tu mazo</div>}
+            )}
+            {tab === "sideboard" && (
+              <div style={{ flex: 1, padding: 14, display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: 12, color: "#8888aa" }}>Sideboard ({sideboard.length}/15)</div>
+                  {sideboard.length > 0 && <button onClick={() => setSideboard([])} style={{ background: "none", border: "none", color: "#ff8888", cursor: "pointer", fontSize: 11 }}>Vaciar</button>}
+                </div>
+                {sideboard.length >= 15 && <div style={{ fontSize: 11, color: "#ff8888", background: "#2a0a0a", borderRadius: 6, padding: "6px 10px" }}>⚠ Sideboard completo (máx. 15 cartas)</div>}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {sideboard.map((card, i) => (
+                    <div key={card.instanceId} style={{ position: "relative", width: 52 }}>
+                      <CardTile card={card} small onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
+                      <button onClick={() => setSideboard(s => s.filter(c => c.instanceId !== card.instanceId))}
+                        style={{ position: "absolute", top: -4, right: -4, width: 15, height: 15, borderRadius: "50%", border: "none", background: "#cc2222", color: "#fff", cursor: "pointer", fontSize: 9, padding: 0 }}>×</button>
+                    </div>
+                  ))}
+                  {sideboard.length === 0 && (
+                    <div style={{ border: "2px dashed #2a2a4a", borderRadius: 8, padding: "16px", color: "#444", fontSize: 12, textAlign: "center", width: "100%" }}>
+                      Busca cartas y usa click derecho → Agregar al Sideboard
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            {tab === "importar" && (
+              <div style={{ flex: 1, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ fontSize: 11, color: "#8888aa" }}>Una carta por línea. Ej: "4x Sol Ring"</div>
+                <textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder={"1x Sol Ring\n1x Command Tower\n..."} style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 12, resize: "none", outline: "none", fontFamily: "monospace" }} />
+                {importLoading ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#7fc4ff" }}>
+                      <span>Importando cartas...</span>
+                      <span>{importProgress.done}/{importProgress.total}</span>
+                    </div>
+                    <div style={{ height: 8, borderRadius: 4, background: "#1a1a2e", overflow: "hidden" }}>
+                      <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#1a4a8a,#7fc4ff)", width: importProgress.total > 0 ? `${Math.round(importProgress.done / importProgress.total * 100)}%` : "0%", transition: "width 0.3s ease" }} />
+                    </div>
+                    <div style={{ fontSize: 10, color: "#555", textAlign: "center" }}>
+                      {importProgress.total > 0 ? `${Math.round(importProgress.done / importProgress.total * 100)}%` : "Preparando..."}
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={handleImport} style={{ padding: "10px 0", borderRadius: 8, border: "none", background: "#1a4a8a", color: "#7fc4ff", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>Importar lista</button>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* Deck */}
+          <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "10px 18px", borderBottom: "1px solid #2a2a4a", display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "#ffd700" }}>Mi Mazo</span>
+              <span style={{ background: "#1a1a3e", borderRadius: 20, padding: "2px 9px", fontSize: 12, color: "#8888aa" }}>
+                {deck.length}{format.deckSize > 0 ? `/${format.deckSize - 1}` : ""}
+              </span>
+              {Object.keys(formatWarnings).length > 0 && (
+                <span title="Hay cartas no legales en este formato" style={{ background: "#4a0a0a", borderRadius: 20, padding: "2px 9px", fontSize: 11, color: "#ff8888", cursor: "default" }}>
+                  🚫 {Object.values(formatWarnings).filter(v => v === "banned").length} ban
+                </span>
+              )}
+              <div style={{ marginLeft: "auto" }}>
+                <button onClick={() => {
+                  if (formatHasCommander(format) && !commander) return alert(`Selecciona un Comandante para el formato ${format.label}.`);
+                  if (deck.length < 5) return alert("Agrega más cartas.");
+                  // Warn about format violations
+                  const violations = Object.entries(formatWarnings).filter(([, v]) => v === "banned");
+                  if (violations.length > 0 && !window.confirm(`Hay ${violations.length} carta(s) baneada(s) en ${format.label}:\n${violations.map(([n]) => n).join(", ")}\n\n¿Continuar de todas formas?`)) return;
+                  // Remove commander from deck by name/id (instanceId may differ if loaded from storage)
+                  const deckWithoutCmd = deck.filter(c =>
+                    c.instanceId !== commander.instanceId &&
+                    c.name !== commander.name &&
+                    c.id !== commander.id
+                  );
+                  onReady({ deck: shuffle(deckWithoutCmd), commander, playerName, format, sideboard });
+                }}
+                  style={{ padding: "9px 22px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>▶ JUGAR</button>
+              </div>
+            </div>
+            {formatHasCommander(format) && (
+              <div style={{ padding: "10px 18px 8px", borderBottom: "1px solid #1a1a2e" }}>
+                <div style={{ fontSize: 10, color: "#ffd700", letterSpacing: 2, marginBottom: 6 }}>⚔ COMANDANTE</div>
+                {commander
+                  ? <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <CardTile card={commander} small onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
+                    <div><div style={{ fontWeight: 700, fontSize: 13 }}>{getCardName(commander)}</div><div style={{ fontSize: 10, color: "#8888aa" }}>{commander.type_line}</div><button onClick={() => setCommander(null)} style={{ marginTop: 4, padding: "2px 8px", borderRadius: 4, border: "none", background: "#4a1a1a", color: "#ff8888", cursor: "pointer", fontSize: 11 }}>Quitar</button></div>
+                  </div>
+                  : <div style={{ border: "2px dashed #3a3a6a", borderRadius: 8, padding: "10px 16px", color: "#555", fontSize: 12, textAlign: "center" }}>Busca una criatura legendaria y pulsa ⚔ (o click derecho → Elegir como Comandante)</div>}
+              </div>
+            )}
+            <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+              {Object.entries(grouped).sort(([a], [b]) => {
+                const ORDER = ['Criatura Legendaria', 'Planeswalker Legendario', 'Legendario', 'Criatura', 'Planeswalker', 'Instantáneo', 'Conjuro', 'Encantamiento', 'Artefacto Encantamiento', 'Artefacto', 'Tierra', 'Batalla', 'Otro'];
+                const ai = ORDER.indexOf(a); const bi = ORDER.indexOf(b);
+                if (ai === -1 && bi === -1) return a.localeCompare(b);
+                if (ai === -1) return 1; if (bi === -1) return -1;
+                return ai - bi;
+              }).map(([type, cards]) => (
+                <div key={type} style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 10, color: "#8888aa", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>{type} ({cards.length})</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                    {cards.map(card => (
+                      <div key={card.instanceId}
+                        onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setDeckCtx({ x: e.clientX, y: e.clientY, items: ctxItems(card, "deck"), title: getCardName(card) }); }}
+                        style={{ position: "relative" }}>
+                        <CardTile card={card} small onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
+                        <button onClick={() => setDeck(d => d.filter(c => c.instanceId !== card.instanceId))} style={{ position: "absolute", top: -4, right: -4, width: 15, height: 15, borderRadius: "50%", border: "none", background: "#cc2222", color: "#fff", cursor: "pointer", fontSize: 9, padding: 0 }}>×</button>
+                        {formatWarnings[card.name] && (
+                          <div title={formatWarnings[card.name] === "banned" ? "Baneada en " + format.label : formatWarnings[card.name] === "restricted" ? "Restringida (solo 1 copia)" : "No legal en " + format.label}
+                            style={{ position: "absolute", bottom: -4, left: "50%", transform: "translateX(-50%)", background: formatWarnings[card.name] === "banned" ? "#cc0000" : formatWarnings[card.name] === "restricted" ? "#ff8800" : "#888", borderRadius: 3, padding: "1px 4px", fontSize: 7, color: "#fff", whiteSpace: "nowrap", pointerEvents: "none" }}>
+                            {formatWarnings[card.name] === "banned" ? "🚫BAN" : formatWarnings[card.name] === "restricted" ? "⚠️REST" : "✗"}
+                          </div>
+                        )}
+                        {isLegendary(card) && formatHasCommander(format) && (
+                          <button onClick={() => setCmd(card)} title="Elegir como Comandante"
+                            style={{ position: "absolute", top: -4, left: -4, width: 18, height: 18, borderRadius: "50%", border: "none", background: "#4a3a0a", color: "#ffd700", cursor: "pointer", fontSize: 10, padding: 0, fontWeight: 800 }}>⚔</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {!deck.length && <div style={{ color: "#333", textAlign: "center", marginTop: 50, fontSize: 15 }}>Busca cartas y agrégalas a tu mazo</div>}
+            </div>
+          </div>
+
+          {/* Preview panel */}
+          {preview && (
+            <div style={{ width: 200, borderLeft: "1px solid #2a2a4a", padding: 14, display: "flex", flexDirection: "column", gap: 10, background: "#080814", flexShrink: 0 }}>
+              {preview.image_uris?.normal ? <img src={preview.image_uris.normal} style={{ width: "100%", borderRadius: 7 }} /> : <div style={{ width: "100%", aspectRatio: "2.5/3.5", borderRadius: 7, background: "#1a1a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>🃏</div>}
+              <div><div style={{ fontWeight: 700, fontSize: 13 }}>{getCardName(preview)}</div><div style={{ fontSize: 10, color: "#8888aa", marginTop: 3 }}>{preview.type_line}</div>{preview.oracle_text && <div style={{ fontSize: 10, color: "#b0a888", marginTop: 6, lineHeight: 1.5 }}>{preview.printed_text || preview.oracle_text}</div>}{preview.power && <div style={{ fontSize: 12, color: "#ffd700", marginTop: 6 }}>⚔ {preview.power}/{preview.toughness}</div>}</div>
+            </div>
+          )}
         </div>
 
-        {/* Preview panel */}
-        {preview && (
-          <div style={{ width: 200, borderLeft: "1px solid #2a2a4a", padding: 14, display: "flex", flexDirection: "column", gap: 10, background: "#080814", flexShrink: 0 }}>
-            {preview.image_uris?.normal ? <img src={preview.image_uris.normal} style={{ width: "100%", borderRadius: 7 }} /> : <div style={{ width: "100%", aspectRatio: "2.5/3.5", borderRadius: 7, background: "#1a1a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>🃏</div>}
-            <div><div style={{ fontWeight: 700, fontSize: 13 }}>{getCardName(preview)}</div><div style={{ fontSize: 10, color: "#8888aa", marginTop: 3 }}>{preview.type_line}</div>{preview.oracle_text && <div style={{ fontSize: 10, color: "#b0a888", marginTop: 6, lineHeight: 1.5 }}>{preview.printed_text || preview.oracle_text}</div>}{preview.power && <div style={{ fontSize: 12, color: "#ffd700", marginTop: 6 }}>⚔ {preview.power}/{preview.toughness}</div>}</div>
-          </div>
-        )}
+        {/* Context Menu */}
+        <CtxMenu menu={deckCtx} onClose={() => setDeckCtx(null)} />
+        {/* Hover zoom */}
+        {hover && <HoverZoom card={hover.card} x={hover.x} y={hover.y} />}
       </div>
-
-      {/* Context Menu */}
-      <CtxMenu menu={deckCtx} onClose={() => setDeckCtx(null)} />
-      {/* Hover zoom */}
-      {hover && <HoverZoom card={hover.card} x={hover.x} y={hover.y} />}
-    </div>
-  );
+      );
 }
 
-// ─── LOBBY ────────────────────────────────────────────────────────────────────
-function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeCode }) {
+      // ─── LOBBY ────────────────────────────────────────────────────────────────────
+      function Lobby({playerName: initialName, deckData, onGameStart, onHome, resumeCode }) {
   const googleName = getUserDisplayName(getCurrentUser());
-  const defaultName = initialName || googleName || "";
-  const [name, setName] = useState(defaultName);
-  const [avatar, setAvatar] = useState("🧙");
-  const [nameConfirmed, setNameConfirmed] = useState(!!(defaultName && defaultName !== "Jugador"));
-  const [mode, setMode] = useState(null);
-  const [roomCode, setRoomCode] = useState("");
-  const [joinCode, setJoinCode] = useState(resumeCode || "");
-  const [isHost, setIsHost] = useState(false);
-  const [players, setPlayers] = useState([]);
-  const [lobbyHover, setLobbyHover] = useState(null); // {card, x, y}
+      const defaultName = initialName || googleName || "";
+      const [name, setName] = useState(defaultName);
+      const [avatar, setAvatar] = useState("🧙");
+      const [nameConfirmed, setNameConfirmed] = useState(!!(defaultName && defaultName !== "Jugador"));
+      const [mode, setMode] = useState(null);
+      const [roomCode, setRoomCode] = useState("");
+      const [joinCode, setJoinCode] = useState(resumeCode || "");
+      const [isHost, setIsHost] = useState(false);
+      const [players, setPlayers] = useState([]);
+      const [lobbyHover, setLobbyHover] = useState(null); // {card, x, y}
   const [lobbyDeckName, setLobbyDeckName] = useState(() => {
     const user = getCurrentUser();
-    const name = user ? (user.user_metadata?.full_name || user.email?.split("@")[0]) : "";
-    return name ? `Mazo de ${name}` : "Mi Mazo";
+      const name = user ? (user.user_metadata?.full_name || user.email?.split("@")[0]) : "";
+      return name ? `Mazo de ${name}` : "Mi Mazo";
   });
-  const [myId] = useState(uid);
-  const rtRef = useRef(null);
+      const [myId] = useState(uid);
+      const rtRef = useRef(null);
 
-  // Build my own playerState from my deck — done once here
-  const myPlayerState = useRef(null);
+      // Build my own playerState from my deck — done once here
+      const myPlayerState = useRef(null);
   const getMyState = () => {
     const deck = deckData?.deck || [];
-    const commander = deckData?.commander || null;
-    const playerName = name || "Jugador";
-    myPlayerState.current = mkState(myId, name || "Jugador", deck, commander, deckData?.format?.life || 40, deckData?.sideboard || []);
-    return myPlayerState.current;
+      const commander = deckData?.commander || null;
+      const playerName = name || "Jugador";
+      myPlayerState.current = mkState(myId, name || "Jugador", deck, commander, deckData?.format?.life || 40, deckData?.sideboard || []);
+      return myPlayerState.current;
   };
 
   const myPayload = (amHost) => {
     const state = getMyState();
-    return {
-      id: myId,
+      return {
+        id: myId,
       name: name || "Jugador",
       avatar: avatar || "🧙",
       isHost: amHost,
@@ -1500,7 +1501,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
 
   const connect = (code, amHost) => {
     const rt = new SupabaseRealtime();
-    rtRef.current = rt;
+      rtRef.current = rt;
 
     rt.connect(code, (event, payload) => {
       if (event === "player_join") {
@@ -1528,17 +1529,17 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
 
   const createRoom = () => {
     const code = genCode();
-    setRoomCode(code); setMode("create"); setIsHost(true);
-    setPlayers([myPayload(true)]);
-    connect(code, true);
+      setRoomCode(code); setMode("create"); setIsHost(true);
+      setPlayers([myPayload(true)]);
+      connect(code, true);
   };
 
   const joinRoom = () => {
     if (!joinCode.trim()) return;
-    const code = joinCode.trim().toUpperCase();
-    setRoomCode(code); setMode("join"); setIsHost(false);
-    setPlayers([myPayload(false)]);
-    connect(code, false);
+      const code = joinCode.trim().toUpperCase();
+      setRoomCode(code); setMode("join"); setIsHost(false);
+      setPlayers([myPayload(false)]);
+      connect(code, false);
   };
 
   const startGame = () => {
@@ -1546,192 +1547,193 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
       // Each player's state was sent with their player_join broadcast
       // Use it directly — don't overwrite with another player's deck
       const state = p.id === myId
-        ? getMyState()
-        : (p.playerState && p.playerState.library !== undefined
-          ? p.playerState
-          : mkState(p.id, p.name || "Jugador", [], null));
-      return { id: p.id, name: p.name || "Jugador", avatar: p.avatar || "🧙", isHost: p.isHost, playerState: state, format: p.format || FORMATS[0], commander: p.commander || null };
+      ? getMyState()
+      : (p.playerState && p.playerState.library !== undefined
+      ? p.playerState
+      : mkState(p.id, p.name || "Jugador", [], null));
+      return {id: p.id, name: p.name || "Jugador", avatar: p.avatar || "🧙", isHost: p.isHost, playerState: state, format: p.format || FORMATS[0], commander: p.commander || null };
     });
-    // Broadcast — JSON serialization strips functions but playerState is plain data
-    rtRef.current?.broadcast("game_start", { players: all });
-    onGameStart(all, roomCode, myId, rtRef.current);
+      // Broadcast — JSON serialization strips functions but playerState is plain data
+      rtRef.current?.broadcast("game_start", {players: all });
+      onGameStart(all, roomCode, myId, rtRef.current);
   };
 
-  const [copied, setCopied] = useState(false);
+      const [copied, setCopied] = useState(false);
   const copyCode = () => {
-    navigator.clipboard?.writeText(roomCode).catch(() => { });
-    setCopied(true);
+        navigator.clipboard?.writeText(roomCode).catch(() => { });
+      setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#0a0a1a,#0d1b2a)", color: "#e8e0d0", fontFamily: "'Crimson Text',Georgia,serif", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: 480, display: "flex", flexDirection: "column", gap: 22 }}>
-        <div style={{ textAlign: "center" }}>
-          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, background: "linear-gradient(90deg,#ffd700,#ff8c00)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>⚔ COMMANDER ES</h1>
-          <div style={{ color: "#8888aa", marginTop: 4 }}>Hola, <strong style={{ color: "#e8e0d0" }}>{name || "..."}</strong></div>
-          {onHome && <button onClick={onHome} style={{ marginTop: 8, padding: "4px 14px", borderRadius: 6, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", fontSize: 11 }}>← Volver al inicio</button>}
-        </div>
-
-        {/* Step 1: Confirm player name */}
-        {!nameConfirmed && !mode && (
-          <div style={{ background: "#0d0d1e", borderRadius: 14, border: "1px solid #2a2a4a", padding: "22px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#ffd700" }}>¿Cómo te llamas?</div>
-            <div style={{ fontSize: 12, color: "#8888aa" }}>Este nombre y avatar verán los demás jugadores</div>
-
-            {/* Avatar picker */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "8px 0" }}>
-              {AVATARS.map(av => (
-                <button key={av} onClick={() => setAvatar(av)}
-                  style={{ width: 40, height: 40, borderRadius: 8, border: avatar === av ? "2px solid #ffd700" : "2px solid #2a2a4a", background: avatar === av ? "#ffd70022" : "transparent", fontSize: 22, cursor: "pointer", transition: "all 0.15s" }}>
-                  {av}
-                </button>
-              ))}
-            </div>
-
-            {/* Name + preview */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ fontSize: 36, flexShrink: 0 }}>{avatar}</div>
-              <input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && name.trim() && setNameConfirmed(true)}
-                placeholder="Tu nombre (ej. Enzo)"
-                autoFocus maxLength={20}
-                style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 18, outline: "none", fontWeight: 700 }}
-              />
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => { setName(`Jugador ${Math.floor(Math.random() * 900) + 100}`); setAvatar(AVATARS[Math.floor(Math.random() * AVATARS.length)]); setNameConfirmed(true); }}
-                style={{ flex: 1, padding: "10px 0", borderRadius: 9, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", fontSize: 13 }}>
-                Aleatorio
-              </button>
-              <button onClick={() => name.trim() && setNameConfirmed(true)} disabled={!name.trim()}
-                style={{ flex: 2, padding: "10px 0", borderRadius: 9, border: "none", background: name.trim() ? "linear-gradient(90deg,#ffd700,#ff8c00)" : "#222", color: name.trim() ? "#000" : "#555", fontWeight: 800, fontSize: 14, cursor: name.trim() ? "pointer" : "default" }}>
-                ¡Jugar como {avatar} {name || "..."}!
-              </button>
-            </div>
+      return (
+      <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#0a0a1a,#0d1b2a)", color: "#e8e0d0", fontFamily: "'Crimson Text',Georgia,serif", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 480, display: "flex", flexDirection: "column", gap: 22 }}>
+          <div style={{ textAlign: "center" }}>
+            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, background: "linear-gradient(90deg,#ffd700,#ff8c00)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>⚔ COMMANDER ES</h1>
+            <div style={{ color: "#8888aa", marginTop: 4 }}>Hola, <strong style={{ color: "#e8e0d0" }}>{name || "..."}</strong></div>
+            {onHome && <button onClick={onHome} style={{ marginTop: 8, padding: "4px 14px", borderRadius: 6, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", fontSize: 11 }}>← Volver al inicio</button>}
           </div>
-        )}
 
-        {/* Step 2: Create or join — only after name confirmed */}
-        {nameConfirmed && !mode && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4 }}>
-              <span style={{ fontSize: 13, color: "#8888aa" }}>Jugando como</span>
-              <span style={{ fontSize: 15, fontWeight: 700, color: "#e8e0d0" }}>{name}</span>
-              <button onClick={() => setNameConfirmed(false)} style={{ padding: "2px 8px", borderRadius: 5, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", fontSize: 11 }}>✏</button>
+          {/* Step 1: Confirm player name */}
+          {!nameConfirmed && !mode && (
+            <div style={{ background: "#0d0d1e", borderRadius: 14, border: "1px solid #2a2a4a", padding: "22px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#ffd700" }}>¿Cómo te llamas?</div>
+              <div style={{ fontSize: 12, color: "#8888aa" }}>Este nombre y avatar verán los demás jugadores</div>
+
+              {/* Avatar picker */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "8px 0" }}>
+                {AVATARS.map(av => (
+                  <button key={av} onClick={() => setAvatar(av)}
+                    style={{ width: 40, height: 40, borderRadius: 8, border: avatar === av ? "2px solid #ffd700" : "2px solid #2a2a4a", background: avatar === av ? "#ffd70022" : "transparent", fontSize: 22, cursor: "pointer", transition: "all 0.15s" }}>
+                    {av}
+                  </button>
+                ))}
+              </div>
+
+              {/* Name + preview */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ fontSize: 36, flexShrink: 0 }}>{avatar}</div>
+                <input
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && name.trim() && setNameConfirmed(true)}
+                  placeholder="Tu nombre (ej. Enzo)"
+                  autoFocus maxLength={20}
+                  style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 18, outline: "none", fontWeight: 700 }}
+                />
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => { setName(`Jugador ${Math.floor(Math.random() * 900) + 100}`); setAvatar(AVATARS[Math.floor(Math.random() * AVATARS.length)]); setNameConfirmed(true); }}
+                  style={{ flex: 1, padding: "10px 0", borderRadius: 9, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", fontSize: 13 }}>
+                  Aleatorio
+                </button>
+                <button onClick={() => name.trim() && setNameConfirmed(true)} disabled={!name.trim()}
+                  style={{ flex: 2, padding: "10px 0", borderRadius: 9, border: "none", background: name.trim() ? "linear-gradient(90deg,#ffd700,#ff8c00)" : "#222", color: name.trim() ? "#000" : "#555", fontWeight: 800, fontSize: 14, cursor: name.trim() ? "pointer" : "default" }}>
+                  ¡Jugar como {avatar} {name || "..."}!
+                </button>
+              </div>
             </div>
-            <button onClick={createRoom} style={{ padding: 18, borderRadius: 12, border: "1px solid #ffd70044", background: "linear-gradient(135deg,#1a140a,#2a1f0a)", color: "#ffd700", fontSize: 17, cursor: "pointer", fontWeight: 700 }}>
-              ✦ Crear Sala Nueva
-            </button>
-            <div style={{ textAlign: "center", color: "#555" }}>— o únete con un código —</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())} placeholder="Código (ej. XK9F)" maxLength={4}
-                onKeyDown={e => e.key === "Enter" && joinRoom()}
-                style={{ flex: 1, padding: "13px 16px", borderRadius: 10, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 20, outline: "none", textAlign: "center", letterSpacing: 6, fontWeight: 700 }} />
-              <button onClick={joinRoom} style={{ padding: "13px 20px", borderRadius: 10, border: "none", background: "#1a3a6a", color: "#7fc4ff", fontSize: 14, cursor: "pointer", fontWeight: 700 }}>
-                Unirse
+          )}
+
+          {/* Step 2: Create or join — only after name confirmed */}
+          {nameConfirmed && !mode && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 13, color: "#8888aa" }}>Jugando como</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: "#e8e0d0" }}>{name}</span>
+                <button onClick={() => setNameConfirmed(false)} style={{ padding: "2px 8px", borderRadius: 5, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", fontSize: 11 }}>✏</button>
+              </div>
+              <button onClick={createRoom} style={{ padding: 18, borderRadius: 12, border: "1px solid #ffd70044", background: "linear-gradient(135deg,#1a140a,#2a1f0a)", color: "#ffd700", fontSize: 17, cursor: "pointer", fontWeight: 700 }}>
+                ✦ Crear Sala Nueva
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* In-room panel */}
-        {mode && (
-          <div style={{ background: "#0d0d1e", borderRadius: 16, border: "1px solid #2a2a4a", padding: 22, display: "flex", flexDirection: "column", gap: 14 }}>
-
-            {/* Room code + copy */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, color: "#8888aa" }}>Código de sala</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 36, fontWeight: 800, letterSpacing: 10, color: "#ffd700" }}>{roomCode}</span>
-                <button onClick={copyCode} title="Copiar código"
-                  style={{ padding: "5px 10px", borderRadius: 6, border: copied ? "1px solid #44ff88" : "1px solid #3a3a6a", background: copied ? "#1a3a1a" : "#1a1a3e", color: copied ? "#44ff88" : "#aaa", cursor: "pointer", fontSize: 11, fontWeight: copied ? 700 : 400, transition: "all 0.2s", minWidth: 60 }}>
-                  {copied ? "✓ COPIADO" : "📋"}
+              <div style={{ textAlign: "center", color: "#555" }}>— o únete con un código —</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())} placeholder="Código (ej. XK9F)" maxLength={4}
+                  onKeyDown={e => e.key === "Enter" && joinRoom()}
+                  style={{ flex: 1, padding: "13px 16px", borderRadius: 10, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 20, outline: "none", textAlign: "center", letterSpacing: 6, fontWeight: 700 }} />
+                <button onClick={joinRoom} style={{ padding: "13px 20px", borderRadius: 10, border: "none", background: "#1a3a6a", color: "#7fc4ff", fontSize: 14, cursor: "pointer", fontWeight: 700 }}>
+                  Unirse
                 </button>
               </div>
             </div>
+          )}
 
-            {isHost && (
-              <div style={{ fontSize: 11, color: "#555", textAlign: "center", background: "#0a0a18", borderRadius: 8, padding: "8px 12px" }}>
-                {deckData?.format && (
-                  <span style={{ color: "#ffd70088", marginRight: 8 }}>{deckData.format.icon} {deckData.format.label} · ♥ {deckData.format.life} vidas</span>
-                )}
-                Comparte este código con tus amigos
-              </div>
-            )}
-            {/* Save deck button — only for new unsaved decks */}
-            {deckData?.isNewDeck && <div style={{ background: "#0a0a18", border: "1px solid #2a2a4a", borderRadius: 10, padding: "10px 12px" }}>
-              <div style={{ fontSize: 10, color: "#8888aa", marginBottom: 7, letterSpacing: 1 }}>💾 GUARDAR MAZO ANTES DE JUGAR</div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input value={lobbyDeckName} onChange={e => setLobbyDeckName(e.target.value)} placeholder="Nombre del mazo..."
-                  style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 13, outline: "none" }} />
-                <button onClick={async () => {
-                  const user = getCurrentUser();
-                  if (user) {
-                    const res = await saveCloudDeck(lobbyDeckName, deckData.deck, deckData.commander, name, deckData.format);
-                    alert(res.ok ? `✓ Mazo "${lobbyDeckName}" guardado en la nube ☁` : `✗ Error: ${res.error}`);
-                  } else {
-                    saveDeckToStorage(lobbyDeckName, deckData.deck, deckData.commander, name, deckData.format);
-                    alert(`✓ Mazo "${lobbyDeckName}" guardado`);
-                  }
-                }}
-                  style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "linear-gradient(90deg,#1a6a1a,#2a8a2a)", color: "#7fff7f", cursor: "pointer", fontSize: 12, fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap" }}>
-                  💾 Guardar
-                </button>
-              </div>
-              <div style={{ fontSize: 10, color: "#555", marginTop: 5 }}>Guarda este mazo en tu colección para usarlo en futuras partidas</div>
-            </div>}
+          {/* In-room panel */}
+          {mode && (
+            <div style={{ background: "#0d0d1e", borderRadius: 16, border: "1px solid #2a2a4a", padding: 22, display: "flex", flexDirection: "column", gap: 14 }}>
 
-            {/* Players list */}
-            <div style={{ borderTop: "1px solid #2a2a4a", paddingTop: 14 }}>
-              <div style={{ fontSize: 10, color: "#8888aa", letterSpacing: 2, marginBottom: 10 }}>
-                JUGADORES ({players.length}/4)
+              {/* Room code + copy */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 12, color: "#8888aa" }}>Código de sala</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 36, fontWeight: 800, letterSpacing: 10, color: "#ffd700" }}>{roomCode}</span>
+                  <button onClick={copyCode} title="Copiar código"
+                    style={{ padding: "5px 10px", borderRadius: 6, border: copied ? "1px solid #44ff88" : "1px solid #3a3a6a", background: copied ? "#1a3a1a" : "#1a1a3e", color: copied ? "#44ff88" : "#aaa", cursor: "pointer", fontSize: 11, fontWeight: copied ? 700 : 400, transition: "all 0.2s", minWidth: 60 }}>
+                    {copied ? "✓ COPIADO" : "📋"}
+                  </button>
+                </div>
               </div>
-              {players.map(p => (
-                <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid #1a1a2e" }}>
-                  <span style={{ fontSize: 22, flexShrink: 0 }}>{p.avatar || "🧙"}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{p.name}{p.id === myId ? " (tú)" : ""}</div>
-                    {p.commander && (
-                      <div
-                        onMouseEnter={e => setLobbyHover({ card: p.commander, x: e.clientX, y: e.clientY })}
-                        onMouseMove={e => setLobbyHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
-                        onMouseLeave={() => setLobbyHover(null)}
-                        style={{ fontSize: 10, color: "#ffd70099", display: "flex", alignItems: "center", gap: 5, marginTop: 2, cursor: "pointer" }}>
-                        {p.commander.image_url && <img src={p.commander.image_url} style={{ width: 16, height: 22, borderRadius: 2, objectFit: "cover" }} />}
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>⚔ {p.commander.printed_name || p.commander.name}</span>
-                      </div>
-                    )}
+
+              {isHost && (
+                <div style={{ fontSize: 11, color: "#555", textAlign: "center", background: "#0a0a18", borderRadius: 8, padding: "8px 12px" }}>
+                  {deckData?.format && (
+                    <span style={{ color: "#ffd70088", marginRight: 8 }}>{deckData.format.icon} {deckData.format.label} · ♥ {deckData.format.life} vidas</span>
+                  )}
+                  Comparte este código con tus amigos
+                </div>
+              )}
+              {/* Save deck button — only for new unsaved decks */}
+              {deckData?.isNewDeck && <div style={{ background: "#0a0a18", border: "1px solid #2a2a4a", borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ fontSize: 10, color: "#8888aa", marginBottom: 7, letterSpacing: 1 }}>💾 GUARDAR MAZO ANTES DE JUGAR</div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input value={lobbyDeckName} onChange={e => setLobbyDeckName(e.target.value)} placeholder="Nombre del mazo..."
+                    style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 13, outline: "none" }} />
+                  <button onClick={async () => {
+                    const user = getCurrentUser();
+                    if (user) {
+                      const res = await saveCloudDeck(lobbyDeckName, deckData.deck, deckData.commander, name, deckData.format);
+                      alert(res.ok ? `✓ Mazo "${lobbyDeckName}" guardado en la nube ☁` : `✗ Error: ${res.error}`);
+                    } else {
+                      saveDeckToStorage(lobbyDeckName, deckData.deck, deckData.commander, name, deckData.format);
+                      alert(`✓ Mazo "${lobbyDeckName}" guardado`);
+                    }
+                  }}
+                    style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "linear-gradient(90deg,#1a6a1a,#2a8a2a)", color: "#7fff7f", cursor: "pointer", fontSize: 12, fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap" }}>
+                    💾 Guardar
+                  </button>
+                </div>
+                <div style={{ fontSize: 10, color: "#555", marginTop: 5 }}>Guarda este mazo en tu colección para usarlo en futuras partidas</div>
+              </div>}
+
+              {/* Players list */}
+              <div style={{ borderTop: "1px solid #2a2a4a", paddingTop: 14 }}>
+                <div style={{ fontSize: 10, color: "#8888aa", letterSpacing: 2, marginBottom: 10 }}>
+                  JUGADORES ({players.length}/4)
+                </div>
+                {players.map(p => (
+                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid #1a1a2e" }}>
+                    <span style={{ fontSize: 22, flexShrink: 0 }}>{p.avatar || "🧙"}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{p.name}{p.id === myId ? " (tú)" : ""}</div>
+                      {p.commander && (
+                        <div
+                          onMouseEnter={e => setLobbyHover({ card: p.commander, x: e.clientX, y: e.clientY })}
+                          onMouseMove={e => setLobbyHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
+                          onMouseLeave={() => setLobbyHover(null)}
+                          style={{ fontSize: 10, color: "#ffd70099", display: "flex", alignItems: "center", gap: 5, marginTop: 2, cursor: "pointer" }}>
+                          {p.commander.image_url && <img src={p.commander.image_url} style={{ width: 16, height: 22, borderRadius: 2, objectFit: "cover" }} />}
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>⚔ {p.commander.printed_name || p.commander.name}</span>
+                        </div>
+                      )}
+                    </div>
+                    {p.isHost && <span style={{ fontSize: 10, color: "#ffd700" }}>👑 Host</span>}
                   </div>
-                  {p.isHost && <span style={{ fontSize: 10, color: "#ffd700" }}>👑 Host</span>}
-                </div>
-              ))}
-              {[...Array(Math.max(0, 4 - players.length))].map((_, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid #1a1a2e", color: "#2a2a4a" }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#2a2a4a" }} />
-                  <span style={{ fontSize: 13 }}>Esperando jugador...</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Start button — visible to HOST only */}
-            {isHost ? (
-              <button onClick={startGame} style={{ padding: 13, borderRadius: 10, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 15, cursor: "pointer" }}>
-                {players.length === 1 ? "▶ Jugar Solo" : `▶ Comenzar con ${players.length} jugador${players.length > 1 ? "es" : ""}`}
-              </button>
-            ) : (
-              <div style={{ textAlign: "center", padding: "10px 0" }}>
-                <div style={{ color: "#8888aa", fontSize: 13 }}>Esperando que el host inicie la partida...</div>
-                <div style={{ color: "#555", fontSize: 11, marginTop: 4 }}>Sala: <strong style={{ color: "#ffd700" }}>{roomCode}</strong></div>
+                ))}
+                {[...Array(Math.max(0, 4 - players.length))].map((_, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid #1a1a2e", color: "#2a2a4a" }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#2a2a4a" }} />
+                    <span style={{ fontSize: 13 }}>Esperando jugador...</span>
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
-        )}
+
+              {/* Start button — visible to HOST only */}
+              {isHost ? (
+                <button onClick={startGame} style={{ padding: 13, borderRadius: 10, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 15, cursor: "pointer" }}>
+                  {players.length === 1 ? "▶ Jugar Solo" : `▶ Comenzar con ${players.length} jugador${players.length > 1 ? "es" : ""}`}
+                </button>
+              ) : (
+                <div style={{ textAlign: "center", padding: "10px 0" }}>
+                  <div style={{ color: "#8888aa", fontSize: 13 }}>Esperando que el host inicie la partida...</div>
+                  <div style={{ color: "#555", fontSize: 11, marginTop: 4 }}>Sala: <strong style={{ color: "#ffd700" }}>{roomCode}</strong></div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-    { lobbyHover && <HoverZoom card={lobbyHover.card} x={lobbyHover.x} y={lobbyHover.y} /> }
+      {lobbyHover && <HoverZoom card={lobbyHover.card} x={lobbyHover.x} y={lobbyHover.y} />}
+    </>
   );
 }
 
