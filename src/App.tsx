@@ -450,8 +450,8 @@ function isLand(c) { const t = c?.type_line?.toLowerCase() || ""; return t.inclu
 
 function mkState(id, name, deck, commander, startLife = 40, sideboard = []) {
   // Ensure commander is not in the library (filter by name and id)
-  const deckFiltered = commander
-    ? deck.filter(c => c.name !== commander.name && c.id !== commander.id)
+  const deckFiltered = (commander && commander.name)
+    ? deck.filter(c => c && c.name !== commander.name && c.id !== commander.id)
     : deck;
   const lib = shuffle([...deckFiltered]);
   return {
@@ -1269,25 +1269,20 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
           <input value={playerName} onChange={e => setPlayerName(e.target.value)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 14, outline: "none", width: 120 }} />
           <input value={deckName} onChange={e => setDeckName(e.target.value)} placeholder="Nombre del mazo" style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 13, outline: "none", width: 140 }} />
           <button onClick={async () => {
-            if (formatHasCommander(format) && !commander) return alert("Selecciona un comandante primero para este formato.");
+            if (formatHasCommander(format) && !commander) return alert(`Selecciona un comandante para el formato ${format.label}.`);
             const currentUser = getCurrentUser();
             if (currentUser) {
-              // Logged in: save only to cloud
               const result = await saveCloudDeck(deckName, deck, commander, playerName, format, sideboard);
-              if (result.ok) {
-                alert(`✓ Mazo "${deckName}" guardado en la nube ☁`);
-              } else {
-                alert(`✗ Error al guardar: ${result.error}`);
-              }
+              if (result.ok) alert(`✓ Mazo "${deckName}" guardado como ${format.label} ☁`);
+              else alert(`✗ Error: ${result.error}`);
             } else {
-              // Not logged in: save locally
               saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard);
               setSavedDecks(getSavedDecks());
-              alert(`✓ Mazo "${deckName}" guardado localmente. Inicia sesión para guardarlo en la nube.`);
+              alert(`✓ Mazo "${deckName}" guardado como ${format.label}`);
             }
           }}
-            style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#1a4a1a", color: "#7fff7f", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
-            💾 Guardar
+            style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#1a4a1a,#2a6a2a)", color: "#7fff7f", cursor: "pointer", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
+            💾 Guardar mazo
           </button>
           {onHome && <button onClick={onHome} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", fontSize: 12 }}>🏠</button>}
         </div>
@@ -1296,7 +1291,11 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         {/* Search panel */}
         <div style={{ width: 290, borderRight: "1px solid #2a2a4a", display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", borderBottom: "1px solid #2a2a4a" }}>{tabBtn("buscar", "🔍 Buscar")}{tabBtn("importar", "📋 Importar")}</div>
+          <div style={{ display: "flex", borderBottom: "1px solid #2a2a4a" }}>
+            {tabBtn("buscar", "🔍 Buscar")}
+            {tabBtn("importar", "📋 Importar")}
+            {!formatHasCommander(format) && tabBtn("sideboard", `↔ SB (${sideboard.length}/15)`)}
+          </div>
           {tab === "buscar" && (
             <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 7 }}>
@@ -1390,7 +1389,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                 const violations = Object.entries(formatWarnings).filter(([, v]) => v === "banned");
                 if (violations.length > 0 && !window.confirm(`Hay ${violations.length} carta(s) baneada(s) en ${format.label}:\n${violations.map(([n]) => n).join(", ")}\n\n¿Continuar de todas formas?`)) return;
                 // Remove commander from deck by name/id (instanceId may differ if loaded from storage)
-                const deckWithoutCmd = deck.filter(c =>
+                const deckWithoutCmd = !commander ? deck : deck.filter(c =>
                   c.instanceId !== commander.instanceId &&
                   c.name !== commander.name &&
                   c.id !== commander.id
@@ -1400,6 +1399,25 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                 style={{ padding: "9px 22px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>▶ JUGAR</button>
             </div>
           </div>
+          {/* Format selector — always visible dropdown in sidebar */}
+          <div style={{ padding: "8px 18px", borderBottom: "1px solid #1a1a2e", display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 10, color: "#8888aa", flexShrink: 0 }}>Formato:</span>
+            <select
+              value={format.key}
+              onChange={e => {
+                const f = FORMATS.find(f => f.key === e.target.value) || FORMATS[0];
+                setFormat(f);
+                setFormatWarnings({});
+                if (!['commander', 'duel', 'brawl', 'oathbreaker'].includes(f.key)) setCommander(null);
+              }}
+              style={{ flex: 1, padding: "4px 8px", borderRadius: 7, border: "1px solid #3a3a6a", background: "#0a0a18", color: "#e8e0d0", fontSize: 12, cursor: "pointer", outline: "none" }}>
+              {FORMATS.map(f => (
+                <option key={f.key} value={f.key}>{f.icon} {f.label}</option>
+              ))}
+            </select>
+            <span style={{ fontSize: 10, color: "#666" }}>♥{format.life}</span>
+          </div>
+
           {formatHasCommander(format) && (
             <div style={{ padding: "10px 18px 8px", borderBottom: "1px solid #1a1a2e" }}>
               <div style={{ fontSize: 10, color: "#ffd700", letterSpacing: 2, marginBottom: 6 }}>⚔ COMANDANTE</div>
@@ -1460,6 +1478,8 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
       <CtxMenu menu={deckCtx} onClose={() => setDeckCtx(null)} />
       {/* Hover zoom */}
       {hover && <HoverZoom card={hover.card} x={hover.x} y={hover.y} />}
+      {/* Save format picker */}
+
     </div>
   );
 }
