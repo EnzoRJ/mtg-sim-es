@@ -373,10 +373,8 @@ async function saveCloudDeck(name, deck, commander, playerName, format, sideboar
       body: JSON.stringify({
         user_id: user.id,
         name,
-        deck,
+        deck: { cards: deck, format: format || FORMATS[0], sideboard: sideboard || [] },
         commander,
-        format: format || FORMATS[0],
-        sideboard: sideboard || [],
         updated_at: new Date().toISOString()
       })
     });
@@ -396,7 +394,17 @@ async function loadCloudDecks() {
   if (!user) return [];
   const r = await authFetch(`/rest/v1/user_decks?user_id=eq.${user.id}&order=updated_at.desc`);
   if (!r.ok) return [];
-  return await r.json();
+  const rows = await r.json();
+  // Normalize: support both old format (deck=[]) and new format (deck={cards,format,sideboard})
+  return rows.map(row => {
+    const d = row.deck;
+    if (Array.isArray(d)) {
+      // Old format — deck is plain array
+      return { ...row, deck: d, format: FORMATS[0], sideboard: [] };
+    }
+    // New format — deck is object with cards/format/sideboard
+    return { ...row, deck: d?.cards || [], format: d?.format || FORMATS[0], sideboard: d?.sideboard || [] };
+  });
 }
 
 async function deleteCloudDeck(id) {
