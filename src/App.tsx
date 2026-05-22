@@ -4634,7 +4634,7 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
                       <div style={{ fontSize:13, fontWeight:700, color:"#e8e0d0", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d.name}</div>
                       <div style={{ fontSize:10, color:"#8888aa", display:"flex", gap:6, alignItems:"center" }}>
                         {d.format && <span style={{ color:"#ffd70088" }}>{d.format.icon} {d.format.label}</span>}
-                        <span>{(d.deck||[]).length + 1} cartas</span>
+                        <span>{(d.deck||[]).length + (d.commander ? 1 : 0)} cartas</span>
                       </div>
                     </div>
                     <button onClick={() => onNewGame({ deck: d.deck, commander: d.commander, playerName: d.player_name })}
@@ -4723,7 +4723,7 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
                           </div>
                         : <div style={{ fontSize:13, fontWeight:700, color:"#e8e0d0", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{d.name}</div>}
                       <div style={{ fontSize:10, color:"#8888aa", marginTop:1 }}>
-                        {d.deck.length + 1} cartas · {d.commander ? getCardName(d.commander) : "Sin comandante"}
+                        {d.deck.length + (d.commander ? 1 : 0)} cartas · {d.commander ? getCardName(d.commander) : "Sin comandante"}
                       </div>
                     </div>
 
