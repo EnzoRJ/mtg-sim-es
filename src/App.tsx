@@ -1493,6 +1493,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
       isHost: amHost,
       playerState: state,
       format: deckData?.format || FORMATS[0],
+      commander: deckData?.commander || null,
     };
   };
 
@@ -1548,7 +1549,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
         : (p.playerState && p.playerState.library !== undefined
             ? p.playerState
             : mkState(p.id, p.name || "Jugador", [], null));
-      return { id: p.id, name: p.name || "Jugador", avatar: p.avatar || "🧙", isHost: p.isHost, playerState: state, format: p.format || FORMATS[0] };
+      return { id: p.id, name: p.name || "Jugador", avatar: p.avatar || "🧙", isHost: p.isHost, playerState: state, format: p.format || FORMATS[0], commander: p.commander || null };
     });
     // Broadcast — JSON serialization strips functions but playerState is plain data
     rtRef.current?.broadcast("game_start", { players: all });
@@ -1659,8 +1660,8 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
                 Comparte este código con tus amigos
               </div>
             )}
-            {/* Save deck button in lobby */}
-            <div style={{ background:"#0a0a18", border:"1px solid #2a2a4a", borderRadius:10, padding:"10px 12px" }}>
+            {/* Save deck button — only for new unsaved decks */}
+            {deckData?.isNewDeck && <div style={{ background:"#0a0a18", border:"1px solid #2a2a4a", borderRadius:10, padding:"10px 12px" }}>
               <div style={{ fontSize:10, color:"#8888aa", marginBottom:7, letterSpacing:1 }}>💾 GUARDAR MAZO ANTES DE JUGAR</div>
               <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                 <input value={lobbyDeckName} onChange={e=>setLobbyDeckName(e.target.value)} placeholder="Nombre del mazo..."
@@ -1680,7 +1681,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
                 </button>
               </div>
               <div style={{ fontSize:10, color:"#555", marginTop:5 }}>Guarda este mazo en tu colección para usarlo en futuras partidas</div>
-            </div>
+            </div>}
 
             {/* Players list */}
             <div style={{ borderTop:"1px solid #2a2a4a", paddingTop:14 }}>
@@ -1690,7 +1691,15 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
               {players.map(p => (
                 <div key={p.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 0", borderBottom:"1px solid #1a1a2e" }}>
                   <span style={{ fontSize:22, flexShrink:0 }}>{p.avatar || "🧙"}</span>
-                  <span style={{ fontSize:13, flex:1, fontWeight:600 }}>{p.name}{p.id === myId ? " (tú)" : ""}</span>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:600 }}>{p.name}{p.id === myId ? " (tú)" : ""}</div>
+                    {p.commander && (
+                      <div style={{ fontSize:10, color:"#ffd70099", display:"flex", alignItems:"center", gap:5, marginTop:2 }}>
+                        {p.commander.image_url && <img src={p.commander.image_url} style={{ width:16, height:22, borderRadius:2, objectFit:"cover" }} />}
+                        <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>⚔ {p.commander.printed_name || p.commander.name}</span>
+                      </div>
+                    )}
+                  </div>
                   {p.isHost && <span style={{ fontSize:10, color:"#ffd700" }}>👑 Host</span>}
                 </div>
               ))}
@@ -4791,7 +4800,7 @@ export default function App() {
         cloudDecks={cloudDecksForSelector}
         onSelect={(d) => {
           setShowDeckSelector(false);
-          setDeckData({ deck: d.deck, commander: d.commander, playerName: d.player_name || d.playerName || getUserDisplayName(user) || "Jugador", format: d.format || selectedFormat });
+          setDeckData({ deck: d.deck, commander: d.commander, playerName: d.player_name || d.playerName || getUserDisplayName(user) || "Jugador", format: d.format || selectedFormat, isNewDeck: false });
           setStage("lobby");
         }}
         onNew={() => { setShowDeckSelector(false); setStage("deck"); }}
@@ -4864,7 +4873,7 @@ export default function App() {
       initialSideboard={stage === "deck-edit" ? deckData?.sideboard : []}
       onReady={d => {
         const joinCode = deckData?.joinCode;
-        setDeckData({ ...d, joinCode });
+        setDeckData({ ...d, joinCode, isNewDeck: true });
         setStage(joinCode ? "lobby-join" : "lobby");
       }}
       onHome={goHome}
