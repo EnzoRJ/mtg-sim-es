@@ -1567,6 +1567,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
   };
 
   return (
+    <>
     <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#0a0a1a,#0d1b2a)", color:"#e8e0d0", fontFamily:"'Crimson Text',Georgia,serif", display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ width:480, display:"flex", flexDirection:"column", gap:22 }}>
         <div style={{ textAlign:"center" }}>
