@@ -1466,6 +1466,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
   const [joinCode, setJoinCode] = useState(resumeCode || "");
   const [isHost, setIsHost] = useState(false);
   const [players, setPlayers] = useState([]);
+  const [lobbyHover, setLobbyHover] = useState(null); // {card, x, y}
   const [lobbyDeckName, setLobbyDeckName] = useState(() => {
     const user = getCurrentUser();
     const name = user ? (user.user_metadata?.full_name || user.email?.split("@")[0]) : "";
@@ -1694,7 +1695,11 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontSize:13, fontWeight:600 }}>{p.name}{p.id === myId ? " (tú)" : ""}</div>
                     {p.commander && (
-                      <div style={{ fontSize:10, color:"#ffd70099", display:"flex", alignItems:"center", gap:5, marginTop:2 }}>
+                      <div
+                        onMouseEnter={e => setLobbyHover({ card: p.commander, x: e.clientX, y: e.clientY })}
+                        onMouseMove={e => setLobbyHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
+                        onMouseLeave={() => setLobbyHover(null)}
+                        style={{ fontSize:10, color:"#ffd70099", display:"flex", alignItems:"center", gap:5, marginTop:2, cursor:"pointer" }}>
                         {p.commander.image_url && <img src={p.commander.image_url} style={{ width:16, height:22, borderRadius:2, objectFit:"cover" }} />}
                         <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>⚔ {p.commander.printed_name || p.commander.name}</span>
                       </div>
@@ -1726,6 +1731,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
         )}
       </div>
     </div>
+    {lobbyHover && <HoverZoom card={lobbyHover.card} x={lobbyHover.x} y={lobbyHover.y} />}
   );
 }
 
