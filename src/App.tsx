@@ -4662,62 +4662,91 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
         )}
 
         {/* Cloud decks panel — only shown when logged in */}
-        {user && (
-          <div style={{ background: "#0d0d1e", border: "1px solid #2a4a2a", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 8, borderBottom: cloudDecks.length ? "1px solid #2a2a4a" : "none" }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#ffd700" }}>📚 Mis Mazos</span>
-              <span style={{ fontSize: 11, color: "#8888aa" }}>({cloudDecks.length})</span>
-              {loadingCloud && <span style={{ fontSize: 10, color: "#555" }}>Cargando...</span>}
-            </div>
-            {cloudDecks.length > 0 && (
-              <div style={{ maxHeight: 180, overflowY: "auto" }}>
-                {(filterFormat === 'all' ? cloudDecks : cloudDecks.filter(d => (d.format?.key || 'commander') === filterFormat)).map(d => (
-                  <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", borderBottom: "1px solid #1a1a2e" }}>
-                    {d.commander?.image_url && <img src={d.commander.image_url} style={{ width: 32, height: 44, borderRadius: 3, objectFit: "cover", flexShrink: 0 }} />}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#e8e0d0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</div>
-                      <div style={{ fontSize: 10, color: "#8888aa", display: "flex", gap: 6, alignItems: "center" }}>
-                        {d.format && <span style={{ color: "#ffd70088" }}>{d.format.icon} {d.format.label}</span>}
-                        <span>{(d.deck || []).length + (d.commander ? 1 : 0)} cartas</span>
-                      </div>
+        {user && (() => {
+          // Group decks by format
+          const filtered = filterFormat === "all" ? cloudDecks : cloudDecks.filter(d => (d.format?.key || "commander") === filterFormat);
+          const byFormat = filtered.reduce((acc, d) => {
+            const key = d.format?.key || "commander";
+            if (!acc[key]) acc[key] = { fmt: d.format || FORMATS[0], decks: [] };
+            acc[key].decks.push(d);
+            return acc;
+          }, {});
+
+          return (
+            <div style={{ background: "#0d0d1e", border: "1px solid #2a4a2a", borderRadius: 12, overflow: "hidden" }}>
+              {/* Header with filter */}
+              <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid #2a2a4a" }}>
+                <button onClick={() => setExpandDecks(v => !v)}
+                  style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, flex: 1, color: "#e8e0d0", padding: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#ffd700" }}>📚 Mis Mazos</span>
+                  <span style={{ fontSize: 11, color: "#8888aa" }}>({filtered.length})</span>
+                  {loadingCloud
+                    ? <span style={{ fontSize: 10, color: "#555" }}>Cargando...</span>
+                    : <button onClick={e => { e.stopPropagation(); refreshCloudDecks(); }} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 12, padding: "0 4px" }}>↻</button>}
+                  <span style={{ marginLeft: "auto", fontSize: 11, color: "#555" }}>{expandDecks ? "▲" : "▼"}</span>
+                </button>
+                {/* Format filter */}
+                <select value={filterFormat} onChange={e => setFilterFormat(e.target.value)}
+                  style={{ padding: "3px 7px", borderRadius: 6, border: "1px solid #2a2a4a", background: "#0a0a18", color: "#aaa", fontSize: 11, cursor: "pointer" }}>
+                  <option value="all">Todos los formatos</option>
+                  {FORMATS.map(f => <option key={f.key} value={f.key}>{f.icon} {f.label}</option>)}
+                </select>
+              </div>
+
+              {/* Deck list grouped by format */}
+              {expandDecks && (
+                <div style={{ maxHeight: 340, overflowY: "auto" }}>
+                  {filtered.length === 0 && !loadingCloud && (
+                    <div style={{ padding: "16px", textAlign: "center", color: "#444", fontSize: 12 }}>
+                      {filterFormat === "all" ? <>Sin mazos guardados.<br /><span style={{ fontSize: 11, color: "#333" }}>Usa 💾 en el constructor para guardarlos.</span></>
+                        : `Sin mazos de ${FORMATS.find(f => f.key === filterFormat)?.label || filterFormat}.`}
                     </div>
-                    <button onClick={() => onNewGame({ deck: d.deck, commander: d.commander, playerName: d.player_name })}
-                      title="Jugar con este mazo"
-                      style={{ padding: "5px 10px", borderRadius: 6, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 11, cursor: "pointer" }}>
-                      ▶
-                    </button>
-                    <button onClick={() => onEditDeck({ deck: d.deck, commander: d.commander, playerName: d.player_name, name: d.name })}
-                      title="Editar mazo"
-                      style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #3a3a6a", background: "#1a1a3e", color: "#aaaaff", cursor: "pointer", fontSize: 11 }}>
-                      ✏
-                    </button>
-                    <button onClick={async () => {
-                      const newName = d.name + " (copia)";
-                      await saveCloudDeck(newName, d.deck, d.commander, d.player_name);
-                      const updated = await loadCloudDecks();
-                      setCloudDecks(updated);
-                    }}
-                      title="Duplicar mazo"
-                      style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #3a3a6a", background: "#1a1a3e", color: "#88ffcc", cursor: "pointer", fontSize: 11 }}>
-                      ⧉
-                    </button>
-                    <button onClick={() => deleteCloudDeck(d.id).then(() => setCloudDecks(c => c.filter(x => x.id !== d.id)))}
-                      title="Eliminar mazo"
-                      style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #4a2a2a", background: "#1a0a0a", color: "#ff8888", cursor: "pointer", fontSize: 11 }}>
-                      🗑
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {cloudDecks.length === 0 && !loadingCloud && (
-              <div style={{ padding: "16px", textAlign: "center", color: "#444", fontSize: 12 }}>
-                Aún no tienes mazos guardados en la nube.<br />
-                <span style={{ fontSize: 11, color: "#333" }}>Usa 💾 en el constructor para guardarlos.</span>
-              </div>
-            )}
-          </div>
-        )}
+                  )}
+                  {Object.entries(byFormat).map(([fkey, group]) => (
+                    <div key={fkey}>
+                      {/* Format group header */}
+                      <div style={{ padding: "5px 14px", background: "#0a0a14", fontSize: 10, color: "#ffd70099", fontWeight: 700, letterSpacing: 1, display: "flex", alignItems: "center", gap: 5, borderBottom: "1px solid #1a1a2e" }}>
+                        <span>{group.fmt.icon}</span>
+                        <span>{group.fmt.label}</span>
+                        <span style={{ color: "#555" }}>({group.decks.length})</span>
+                      </div>
+                      {group.decks.map(d => (
+                        <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", borderBottom: "1px solid #1a1a2e" }}>
+                          {d.commander?.image_url
+                            ? <img src={d.commander.image_url} style={{ width: 32, height: 44, borderRadius: 3, objectFit: "cover", flexShrink: 0 }} />
+                            : <div style={{ width: 32, height: 44, borderRadius: 3, background: "#1a1a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{group.fmt.icon}</div>}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: "#e8e0d0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</div>
+                            <div style={{ fontSize: 10, color: "#8888aa" }}>{(d.deck || []).length + (d.commander ? 1 : 0)} cartas{d.commander ? ` · ${d.commander.printed_name || d.commander.name}` : ""}</div>
+                          </div>
+                          <button onClick={() => onNewGame({ deck: d.deck, commander: d.commander, playerName: d.player_name, format: d.format })}
+                            title="Jugar" style={{ padding: "5px 10px", borderRadius: 6, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 11, cursor: "pointer" }}>▶</button>
+                          <button onClick={() => onEditDeck({ deck: d.deck, commander: d.commander, playerName: d.player_name, name: d.name, format: d.format, sideboard: d.sideboard })}
+                            title="Editar" style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #3a3a6a", background: "#1a1a3e", color: "#aaaaff", cursor: "pointer", fontSize: 11 }}>✏</button>
+                          <button onClick={async () => { await saveCloudDeck(d.name + " (copia)", d.deck, d.commander, d.player_name, d.format, d.sideboard); refreshCloudDecks(); }}
+                            title="Duplicar" style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #3a3a6a", background: "#1a1a3e", color: "#88ffcc", cursor: "pointer", fontSize: 11 }}>⧉</button>
+                          <button onClick={() => deleteCloudDeck(d.id).then(() => setCloudDecks(c => c.filter(x => x.id !== d.id)))}
+                            title="Eliminar" style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #4a2a2a", background: "#1a0a0a", color: "#ff8888", cursor: "pointer", fontSize: 11 }}>🗑</button>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Collapsed summary */}
+              {!expandDecks && filtered.length > 0 && (
+                <div style={{ padding: "8px 14px", display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {Object.entries(byFormat).map(([fkey, group]) => (
+                    <span key={fkey} style={{ fontSize: 11, color: "#8888aa", background: "#0a0a14", borderRadius: 20, padding: "2px 10px" }}>
+                      {group.fmt.icon} {group.fmt.label} ({group.decks.length})
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Saved decks panel — only when NOT logged in (logged-in users use cloud) */}
         {!user && <div style={{ background: "#0d0d1e", border: "1px solid #2a2a4a", borderRadius: 12, overflow: "hidden" }}>
