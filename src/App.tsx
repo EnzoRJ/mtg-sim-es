@@ -830,6 +830,7 @@ function CounterModal({ card, onUpdate, onClose }) {
   const btnS = (bg, col) => ({ width:28, height:28, borderRadius:"50%", border:"none", background:bg, color:col, cursor:"pointer", fontSize:16, fontWeight:800, padding:0, flexShrink:0 });
 
   return (
+    <>
     <div style={{ position:"fixed", inset:0, background:"#000c", display:"flex", alignItems:"center", justifyContent:"center", zIndex:700 }} onClick={onClose}>
       <div style={{ background:"#0d0d1e", border:"1px solid #3a3a6a", borderRadius:16, padding:22, width:440, maxHeight:"90vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
@@ -938,6 +939,7 @@ function CounterModal({ card, onUpdate, onClose }) {
         <button onClick={onClose} style={{ marginTop:14, width:"100%", padding:"9px 0", borderRadius:8, border:"none", background:"linear-gradient(90deg,#ffd700,#ff8c00)", color:"#000", fontWeight:800, cursor:"pointer" }}>Listo</button>
       </div>
     </div>
+    </>
   );
 }
 
@@ -1732,6 +1734,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
       </div>
     </div>
     {lobbyHover && <HoverZoom card={lobbyHover.card} x={lobbyHover.x} y={lobbyHover.y} />}
+    </>
   );
 }
 
