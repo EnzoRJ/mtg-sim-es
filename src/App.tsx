@@ -3849,7 +3849,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         </div>
 
         {/* RIGHT: Actions + Log panel */}
-        <div style={{ width: 68, flexShrink: 0, background: "#06060e", borderLeft: "1px solid #1a1a2e", display: "flex", flexDirection: "column", alignItems: "center", padding: "4px 4px", gap: 2, overflowY: "auto" }}>
+        <div style={{ width: 68, flexShrink: 0, background: "#06060e", borderLeft: "1px solid #1a1a2e", display: "flex", flexDirection: "column", alignItems: "center", padding: "4px 4px", gap: 2, overflowY: "auto", flexShrink: 0 }}>
           {/* PRIMARY buttons — always visible */}
           {[
             { icon: "📚", label: "Robar", action: () => libActions.draw(myId, 1), color: "#7fc4ff" },
@@ -3976,23 +3976,28 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
               </div>
             </div>
           )}
-          {/* Log — grouped by turn */}
-          <div style={{ width: "100%", borderTop: "1px solid #1a1a2e", marginTop: 4, paddingTop: 4, flex: 2, overflowY: "auto", minHeight: 120 }}>
-            <div style={{ fontSize: 7, color: "#ffd700", letterSpacing: 1, marginBottom: 4, textAlign: "center" }}>LOG</div>
+        </div>
+
+        {/* LOG PANEL — fixed width, static, no scroll */}
+        <div style={{ width: 170, flexShrink: 0, background: "#06060e", borderLeft: "1px solid #1a1a2e", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ fontSize: 9, color: "#ffd700", letterSpacing: 2, padding: "6px 8px", borderBottom: "1px solid #1a1a2e", textAlign: "center", flexShrink: 0 }}>LOG</div>
+          <div style={{ flex: 1, padding: "4px 6px", display: "flex", flexDirection: "column", gap: 3, overflow: "hidden" }}>
             {[...turnLog].reverse().map((group, gi) => {
               const isCollapsed = logCollapsed[group.turn] ?? (gi > 0);
               return (
-                <div key={group.turn} style={{ marginBottom: 4 }}>
-                  {/* Turn header — clickable to collapse */}
+                <div key={group.turn} style={{ flexShrink: gi === 0 ? 0 : 1, minHeight: 0, overflow: "hidden" }}>
                   <div onClick={() => setLogCollapsed(c => ({ ...c, [group.turn]: !isCollapsed }))}
-                    style={{ fontSize: 9, fontWeight: 800, color: "#ffd700aa", padding: "3px 2px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1a1a2e" }}>
+                    style={{ fontSize: 9, fontWeight: 800, color: "#ffd700cc", padding: "3px 4px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1a1a2e", background: "#0a0a16" }}>
                     <span>Turno {group.turn}</span>
                     <span style={{ fontSize: 8 }}>{isCollapsed ? "▶" : "▼"}</span>
                   </div>
-                  {/* Entries */}
-                  {!isCollapsed && group.entries.slice().reverse().map((e, i) => (
-                    <div key={i} style={{ fontSize: 9, color: gi === 0 && i === 0 ? "#ccccdd" : "#555566", padding: "2px 2px", lineHeight: 1.4, wordBreak: "break-word", borderBottom: "1px solid #0a0a14" }}>{e}</div>
-                  ))}
+                  {!isCollapsed && (
+                    <div style={{ overflow: "hidden" }}>
+                      {group.entries.slice().reverse().map((e, i) => (
+                        <div key={i} style={{ fontSize: 9, color: gi === 0 && i === 0 ? "#ddddee" : "#55556a", padding: "2px 4px", lineHeight: 1.4, wordBreak: "break-word", borderBottom: "1px solid #0a0a14" }}>{e}</div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
