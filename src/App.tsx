@@ -373,10 +373,8 @@ async function saveCloudDeck(name, deck, commander, playerName, format, sideboar
       body: JSON.stringify({
         user_id: user.id,
         name,
-        deck,
+        deck: { cards: deck, format: format || FORMATS[0], sideboard: sideboard || [] },
         commander,
-        format: format || FORMATS[0],
-        sideboard: sideboard || [],
         updated_at: new Date().toISOString()
       })
     });
@@ -396,7 +394,17 @@ async function loadCloudDecks() {
   if (!user) return [];
   const r = await authFetch(`/rest/v1/user_decks?user_id=eq.${user.id}&order=updated_at.desc`);
   if (!r.ok) return [];
-  return await r.json();
+  const rows = await r.json();
+  // Normalize: support both old format (deck=[]) and new format (deck={cards,format,sideboard})
+  return rows.map(row => {
+    const d = row.deck;
+    if (Array.isArray(d)) {
+      // Old format — deck is plain array
+      return { ...row, deck: d, format: FORMATS[0], sideboard: [] };
+    }
+    // New format — deck is object with cards/format/sideboard
+    return { ...row, deck: d?.cards || [], format: d?.format || FORMATS[0], sideboard: d?.sideboard || [] };
+  });
 }
 
 async function deleteCloudDeck(id) {
@@ -442,8 +450,8 @@ function isLand(c) { const t = c?.type_line?.toLowerCase() || ""; return t.inclu
 
 function mkState(id, name, deck, commander, startLife = 40, sideboard = []) {
   // Ensure commander is not in the library (filter by name and id)
-  const deckFiltered = commander
-    ? deck.filter(c => c.name !== commander.name && c.id !== commander.id)
+  const deckFiltered = (commander && commander.name)
+    ? deck.filter(c => c && c.name !== commander.name && c.id !== commander.id)
     : deck;
   const lib = shuffle([...deckFiltered]);
   return {
@@ -830,6 +838,7 @@ function CounterModal({ card, onUpdate, onClose }) {
   const btnS = (bg, col) => ({ width:28, height:28, borderRadius:"50%", border:"none", background:bg, color:col, cursor:"pointer", fontSize:16, fontWeight:800, padding:0, flexShrink:0 });
 
   return (
+    <>
     <div style={{ position:"fixed", inset:0, background:"#000c", display:"flex", alignItems:"center", justifyContent:"center", zIndex:700 }} onClick={onClose}>
       <div style={{ background:"#0d0d1e", border:"1px solid #3a3a6a", borderRadius:16, padding:22, width:440, maxHeight:"90vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
@@ -938,6 +947,7 @@ function CounterModal({ card, onUpdate, onClose }) {
         <button onClick={onClose} style={{ marginTop:14, width:"100%", padding:"9px 0", borderRadius:8, border:"none", background:"linear-gradient(90deg,#ffd700,#ff8c00)", color:"#000", fontWeight:800, cursor:"pointer" }}>Listo</button>
       </div>
     </div>
+    </>
   );
 }
 
@@ -1259,25 +1269,20 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
           <input value={playerName} onChange={e => setPlayerName(e.target.value)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 14, outline: "none", width: 120 }} />
           <input value={deckName} onChange={e => setDeckName(e.target.value)} placeholder="Nombre del mazo" style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 13, outline: "none", width: 140 }} />
           <button onClick={async () => {
-              if (!commander) return alert("Selecciona un comandante primero.");
+              if (formatHasCommander(format) && !commander) return alert(`Selecciona un comandante para el formato ${format.label}.`);
               const currentUser = getCurrentUser();
               if (currentUser) {
-                // Logged in: save only to cloud
                 const result = await saveCloudDeck(deckName, deck, commander, playerName, format, sideboard);
-                if (result.ok) {
-                  alert(`✓ Mazo "${deckName}" guardado en la nube ☁`);
-                } else {
-                  alert(`✗ Error al guardar: ${result.error}`);
-                }
+                if (result.ok) alert(`✓ Mazo "${deckName}" guardado como ${format.label} ☁`);
+                else alert(`✗ Error: ${result.error}`);
               } else {
-                // Not logged in: save locally
                 saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard);
                 setSavedDecks(getSavedDecks());
-                alert(`✓ Mazo "${deckName}" guardado localmente. Inicia sesión para guardarlo en la nube.`);
+                alert(`✓ Mazo "${deckName}" guardado como ${format.label}`);
               }
             }}
-            style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#1a4a1a", color: "#7fff7f", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
-            💾 Guardar
+            style={{ padding:"6px 14px", borderRadius:8, border:"none", background:"linear-gradient(90deg,#1a4a1a,#2a6a2a)", color:"#7fff7f", cursor:"pointer", fontSize:12, fontWeight:700, display:"flex", alignItems:"center", gap:5 }}>
+            💾 Guardar mazo
           </button>
           {onHome && <button onClick={onHome} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", fontSize: 12 }}>🏠</button>}
         </div>
@@ -1286,7 +1291,11 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         {/* Search panel */}
         <div style={{ width: 290, borderRight: "1px solid #2a2a4a", display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", borderBottom: "1px solid #2a2a4a" }}>{tabBtn("buscar", "🔍 Buscar")}{tabBtn("importar", "📋 Importar")}</div>
+          <div style={{ display:"flex", borderBottom:"1px solid #2a2a4a" }}>
+            {tabBtn("buscar","🔍 Buscar")}
+            {tabBtn("importar","📋 Importar")}
+            {!formatHasCommander(format) && tabBtn("sideboard",`↔ SB (${sideboard.length}/15)`)}
+          </div>
           {tab === "buscar" && (
             <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 7 }}>
@@ -1365,7 +1374,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
           <div style={{ padding: "10px 18px", borderBottom: "1px solid #2a2a4a", display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: "#ffd700" }}>Mi Mazo</span>
             <span style={{ background: "#1a1a3e", borderRadius: 20, padding: "2px 9px", fontSize: 12, color: "#8888aa" }}>
-              {deck.length}{format.deckSize > 0 ? `/${format.deckSize-1}` : ""}
+              {deck.length}{format.deckSize > 0 ? `/${formatHasCommander(format) ? format.deckSize - 1 : format.deckSize}` : ""}
             </span>
             {Object.keys(formatWarnings).length > 0 && (
               <span title="Hay cartas no legales en este formato" style={{ background:"#4a0a0a", borderRadius:20, padding:"2px 9px", fontSize:11, color:"#ff8888", cursor:"default" }}>
@@ -1380,7 +1389,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                 const violations = Object.entries(formatWarnings).filter(([,v]) => v === "banned");
                 if (violations.length > 0 && !window.confirm(`Hay ${violations.length} carta(s) baneada(s) en ${format.label}:\n${violations.map(([n])=>n).join(", ")}\n\n¿Continuar de todas formas?`)) return;
                 // Remove commander from deck by name/id (instanceId may differ if loaded from storage)
-                const deckWithoutCmd = deck.filter(c =>
+                const deckWithoutCmd = !commander ? deck : deck.filter(c =>
                   c.instanceId !== commander.instanceId &&
                   c.name !== commander.name &&
                   c.id !== commander.id
@@ -1390,6 +1399,25 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                 style={{ padding: "9px 22px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>▶ JUGAR</button>
             </div>
           </div>
+          {/* Format selector — always visible dropdown in sidebar */}
+          <div style={{ padding: "8px 18px", borderBottom: "1px solid #1a1a2e", display:"flex", alignItems:"center", gap:8 }}>
+            <span style={{ fontSize:10, color:"#8888aa", flexShrink:0 }}>Formato:</span>
+            <select
+              value={format.key}
+              onChange={e => {
+                const f = FORMATS.find(f => f.key === e.target.value) || FORMATS[0];
+                setFormat(f);
+                setFormatWarnings({});
+                if (!['commander','duel','brawl','oathbreaker'].includes(f.key)) setCommander(null);
+              }}
+              style={{ flex:1, padding:"4px 8px", borderRadius:7, border:"1px solid #3a3a6a", background:"#0a0a18", color:"#e8e0d0", fontSize:12, cursor:"pointer", outline:"none" }}>
+              {FORMATS.map(f => (
+                <option key={f.key} value={f.key}>{f.icon} {f.label}</option>
+              ))}
+            </select>
+            <span style={{ fontSize:10, color:"#666" }}>♥{format.life}</span>
+          </div>
+
           {formatHasCommander(format) && (
           <div style={{ padding: "10px 18px 8px", borderBottom: "1px solid #1a1a2e" }}>
             <div style={{ fontSize: 10, color: "#ffd700", letterSpacing: 2, marginBottom: 6 }}>⚔ COMANDANTE</div>
@@ -1450,6 +1478,8 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
       <CtxMenu menu={deckCtx} onClose={() => setDeckCtx(null)} />
       {/* Hover zoom */}
       {hover && <HoverZoom card={hover.card} x={hover.x} y={hover.y} />}
+      {/* Save format picker */}
+
     </div>
   );
 }
@@ -1565,6 +1595,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
   };
 
   return (
+    <>
     <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#0a0a1a,#0d1b2a)", color:"#e8e0d0", fontFamily:"'Crimson Text',Georgia,serif", display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ width:480, display:"flex", flexDirection:"column", gap:22 }}>
         <div style={{ textAlign:"center" }}>
@@ -1732,6 +1763,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
       </div>
     </div>
     {lobbyHover && <HoverZoom card={lobbyHover.card} x={lobbyHover.x} y={lobbyHover.y} />}
+    </>
   );
 }
 
@@ -2040,7 +2072,7 @@ function ZoomCardModal({ card, onClose }) {
 }
 
 // ─── Turn Order Panel ─────────────────────────────────────────────────────────
-function PhasePanel({ playerOrder, players, activePlayer, turn, phase, isMyTurn, onNextPhase, onMulligan, onHome, avatars }) {
+function PhasePanel({ playerOrder, players, activePlayer, turn, phase, isMyTurn, onNextPhase, onEndTurn, onMulligan, onHome, avatars }) {
   const PHASE_ICONS = ["🌙","📖","⚡","⚔️","⚡","🏁"];
   const PHASE_SHORT = ["Mant.","Robo","Prin 1","Ataque","Prin 2","Fin"];
   return (
@@ -2056,15 +2088,20 @@ function PhasePanel({ playerOrder, players, activePlayer, turn, phase, isMyTurn,
           <div style={{ fontSize:7,color:i===phase?"#ffd700":"#555",fontWeight:i===phase?800:400,lineHeight:1.2 }}>{ph}</div>
         </div>
       ))}
-      {/* Next phase button */}
+      {/* Next phase + End turn buttons */}
       {isMyTurn && (
-        <div style={{ position:"relative", marginTop:4 }}>
+        <div style={{ position:"relative", marginTop:4, display:"flex", flexDirection:"column", gap:3 }}>
           <button onClick={onNextPhase} style={{ width:"100%",padding:"6px 2px",borderRadius:6,border:"none",background:"linear-gradient(180deg,#ffd700,#ff8c00)",color:"#000",fontWeight:800,fontSize:9,cursor:"pointer",lineHeight:1.3 }}>
             {phase>=5?"Pasar turno":"Sig. fase"} ▶
           </button>
-          {/* Combat hint — shown directly on the button */}
+          {phase < 5 && (
+            <button onClick={onEndTurn} style={{ width:"100%",padding:"5px 2px",borderRadius:6,border:"1px solid #3a3a6a",background:"#0d0d1e",color:"#8888aa",fontWeight:700,fontSize:8,cursor:"pointer",lineHeight:1.3 }}>
+              ⏭ Fin Turno
+            </button>
+          )}
+          {/* Combat hint */}
           {phase === 3 && (
-            <div style={{ width:"100%", marginTop:4, padding:"6px 8px", borderRadius:8, background:"#2a0a0a", border:"1px solid #ff4444aa", textAlign:"center" }}>
+            <div style={{ width:"100%", padding:"6px 8px", borderRadius:8, background:"#2a0a0a", border:"1px solid #ff4444aa", textAlign:"center" }}>
               <div style={{ fontSize:10, color:"#ff6666", fontWeight:800 }}>⚔ ATAQUE</div>
               <div style={{ fontSize:8, color:"#ff8888", lineHeight:1.5, marginTop:2 }}>Click derecho<br/>en criatura para<br/>declarar atacante</div>
             </div>
@@ -2695,7 +2732,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   // Combat state
   const [attackers, setAttackers] = useState(new Set());
   const [undoStack, setUndoStack] = useState([]);
-  const [dragCard, setDragCard] = useState(null); // {instanceId, zone: 'battlefield'|'lands'|'hand'}
+  const [dragCard, setDragCard] = useState(null);
+  const [battlefieldWrap, setBattlefieldWrap] = useState(false); // toggle wrap for 2-row layout // {instanceId, zone: 'battlefield'|'lands'|'hand'}
   const [dragOverId, setDragOverId] = useState(null);
   const [combatModal, setCombatModal] = useState(false);
   // Active ability markers on the board: [{id, ability, color, icon}]
@@ -3474,51 +3512,53 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         {/* Header bar */}
         <div style={{ padding: "2px 6px", display: "flex", alignItems: "center", gap: 4, background: isActive ? "#1a140a" : "#0d0d18", borderBottom: "1px solid #2a2a4a", flexShrink: 0, flexWrap: "nowrap", minHeight: 24 }}>
           <div style={{ width: 5, height: 5, borderRadius: "50%", background: isActive ? "#ffd700" : "#333", flexShrink:0 }} />
-          <span style={{ fontSize: 13, flexShrink:0 }}>{avatarMap[pid] || "🧙"}</span>
-          <span style={{ fontWeight: 700, fontSize: 10, color: isActive ? "#ffd700" : "#e8e0d0", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:70 }}>{p.name}{isMe ? " (tú)" : ""}</span>
+          <span title={p.name} style={{ fontSize: 13, flexShrink:0 }}>{avatarMap[pid] || "🧙"}</span>
+          <span title={p.name} style={{ fontWeight: 700, fontSize: 10, color: isActive ? "#ffd700" : "#e8e0d0", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:70 }}>{p.name}{isMe ? " (tú)" : ""}</span>
 
           {/* Life */}
-          <div style={{ display: "flex", alignItems: "center", gap: 1, flexShrink:0 }}>
-            {isMe && <button onClick={() => adjLife(pid, -1)} style={mbtn("#4a1a1a","#ff8888")}>−</button>}
-            <span style={{ fontSize: 13, fontWeight: 800, color: p.life <= 10 ? "#ff4444" : p.life >= 50 ? "#44ff88" : "#e8e0d0", minWidth: 22, textAlign: "center" }}>{p.life}</span>
-            {isMe && <button onClick={() => adjLife(pid, 1)} style={mbtn("#1a4a1a","#88ff88")}>+</button>}
-            <span style={{ fontSize: 8, color: "#888" }}>❤</span>
+          <div title="Vida" style={{ display:"flex", alignItems:"center", gap:1, flexShrink:0, background:"#0d0a0a", borderRadius:4, padding:"0 3px" }}>
+            {isMe && <button title="Reducir vida" onClick={() => adjLife(pid, -1)} style={mbtn("#4a1a1a","#ff8888")}>−</button>}
+            <span style={{ fontSize:7, color:"#ff6666", lineHeight:1 }}>❤</span>
+            <span title={`Vida: ${p.life}`} style={{ fontSize:12, fontWeight:800, color:p.life<=10?"#ff4444":p.life>=50?"#44ff88":"#e8e0d0", minWidth:20, textAlign:"center" }}>{p.life}</span>
+            {isMe && <button title="Aumentar vida" onClick={() => adjLife(pid, 1)} style={mbtn("#1a4a1a","#88ff88")}>+</button>}
           </div>
 
-          {/* Poison — only show if > 0 or is me */}
+          {/* Poison */}
           {(isMe || p.poison > 0) && (
-            <div style={{ display:"flex", alignItems:"center", gap:1, flexShrink:0 }}>
-              {isMe && <button onClick={() => adjPoison(pid, -1)} style={mbtn("#3a1a3a","#ff88ff")}>−</button>}
-              <span style={{ fontSize:9, color:p.poison>=10?"#ff44ff":p.poison>0?"#cc88ff":"#555" }}>☠{p.poison}</span>
-              {isMe && <button onClick={() => adjPoison(pid, 1)} style={mbtn("#1a1a4a","#88aaff")}>+</button>}
+            <div title="Veneno (10 = eliminado)" style={{ display:"flex", alignItems:"center", gap:1, flexShrink:0, background:"#0d0a14", borderRadius:4, padding:"0 3px" }}>
+              {isMe && <button title="Reducir veneno" onClick={() => adjPoison(pid,-1)} style={mbtn("#3a1a3a","#ff88ff")}>−</button>}
+              <span style={{ fontSize:7, color:"#cc88ff", lineHeight:1 }}>☠</span>
+              <span title={`Veneno: ${p.poison}`} style={{ fontSize:9, fontWeight:700, color:p.poison>=10?"#ff44ff":p.poison>0?"#cc88ff":"#888", minWidth:12, textAlign:"center" }}>{p.poison}</span>
+              {isMe && <button title="Agregar veneno" onClick={() => adjPoison(pid,1)} style={mbtn("#1a1a4a","#88aaff")}>+</button>}
             </div>
           )}
-          {/* Energy ⚡ */}
+          {/* Energy */}
           {(isMe || (p.energy||0) > 0) && (
-            <div style={{ display:"flex", alignItems:"center", gap:1, flexShrink:0 }}>
-              {isMe && <button onClick={() => adjEnergy(pid,-1)} style={mbtn("#0a2030","#44ccff")}>−</button>}
-              <span style={{ fontSize:9, color:(p.energy||0)>0?"#44ccff":"#555" }}>⚡{p.energy||0}</span>
-              {isMe && <button onClick={() => adjEnergy(pid,1)} style={mbtn("#0a2030","#44ccff")}>+</button>}
+            <div title="Energía" style={{ display:"flex", alignItems:"center", gap:1, flexShrink:0, background:"#0a1a20", borderRadius:4, padding:"0 3px" }}>
+              {isMe && <button title="Reducir energía" onClick={() => adjEnergy(pid,-1)} style={mbtn("#0a2030","#44ccff")}>−</button>}
+              <span style={{ fontSize:7, color:"#44ccff", lineHeight:1 }}>⚡</span>
+              <span title={`Energía: ${p.energy||0}`} style={{ fontSize:9, fontWeight:700, color:(p.energy||0)>0?"#44ccff":"#888", minWidth:12, textAlign:"center" }}>{p.energy||0}</span>
+              {isMe && <button title="Agregar energía" onClick={() => adjEnergy(pid,1)} style={mbtn("#0a2030","#44ccff")}>+</button>}
             </div>
           )}
-          {/* Experience ✨ */}
+          {/* Experience */}
           {(isMe || (p.experience||0) > 0) && (
-            <div style={{ display:"flex", alignItems:"center", gap:1, flexShrink:0 }}>
-              {isMe && <button onClick={() => adjExperience(pid,-1)} style={mbtn("#1a0a30","#cc88ff")}>−</button>}
-              <span style={{ fontSize:9, color:(p.experience||0)>0?"#cc88ff":"#555" }}>✨{p.experience||0}</span>
-              {isMe && <button onClick={() => adjExperience(pid,1)} style={mbtn("#1a0a30","#cc88ff")}>+</button>}
+            <div title="Experiencia" style={{ display:"flex", alignItems:"center", gap:1, flexShrink:0, background:"#140a20", borderRadius:4, padding:"0 3px" }}>
+              {isMe && <button title="Reducir experiencia" onClick={() => adjExperience(pid,-1)} style={mbtn("#1a0a30","#cc88ff")}>−</button>}
+              <span style={{ fontSize:7, color:"#cc88ff", lineHeight:1 }}>✨</span>
+              <span title={`Experiencia: ${p.experience||0}`} style={{ fontSize:9, fontWeight:700, color:(p.experience||0)>0?"#cc88ff":"#888", minWidth:12, textAlign:"center" }}>{p.experience||0}</span>
+              {isMe && <button title="Agregar experiencia" onClick={() => adjExperience(pid,1)} style={mbtn("#1a0a30","#cc88ff")}>+</button>}
             </div>
           )}
 
           {/* Commander damage */}
           {Object.entries(p.commanderDamage).filter(([, v]) => v > 0).map(([fromPid, dmg]) => (
-            <span key={fromPid} style={{ fontSize: 8, color: "#ff8844", background: "#2a1a0a", borderRadius: 3, padding: "0 3px", flexShrink:0 }}>
+            <span key={fromPid} title={`Daño de comandante de ${players[fromPid]?.name || "oponente"}: ${dmg}`} style={{ fontSize: 8, color: "#ff8844", background: "#2a1a0a", borderRadius: 3, padding: "0 3px", flexShrink:0 }}>
               ⚔{dmg}
             </span>
           ))}
 
-          {speaking[pid] && <span style={{ fontSize:10, color:"#44ff88", animation:"pulse 0.5s infinite", flexShrink:0 }}>🎙</span>}
-          {p.energy > 0 && <span style={{ fontSize:9, color:"#88eeff", background:"#0a2a3a", borderRadius:4, padding:"0 4px", flexShrink:0 }}>⚡{p.energy}</span>}
+          {speaking[pid] && <span title="Hablando por voz" style={{ fontSize:10, color:"#44ff88", animation:"pulse 0.5s infinite", flexShrink:0 }}>🎙</span>}
           {p.experience > 0 && <span style={{ fontSize:9, color:"#ddaaff", background:"#1a0a3a", borderRadius:4, padding:"0 4px", flexShrink:0 }}>✨{p.experience}</span>}
           <span style={{ fontSize: 9, color: "#8888aa", marginLeft: "auto", flexShrink:0 }}>🤚{p.hand.length}</span>
         </div>
@@ -3607,9 +3647,17 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             );
           };
           return (
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
-              {/* Permanents zone — horizontal scroll when cards overflow */}
-              <div style={{ flex: 1, overflowX: "auto", overflowY: "hidden", padding: "6px 8px", display: "flex", flexDirection: "row", gap: 5, alignItems: "flex-start", borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", flexWrap: "nowrap" }}>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", position:"relative" }}>
+              {/* Permanents zone — toggle between single row and wrap mode */}
+              {isMe && (
+                <div style={{ position:"absolute", top:4, left:6, zIndex:20, display:"flex", gap:3 }}>
+                  <button onClick={() => setBattlefieldWrap(false)} title="Una fila"
+                    style={{ padding:"2px 6px", borderRadius:4, border:"none", background: !battlefieldWrap?"#3a3a6a":"#1a1a2e", color: !battlefieldWrap?"#ffd700":"#555", cursor:"pointer", fontSize:9 }}>≡</button>
+                  <button onClick={() => setBattlefieldWrap(true)} title="Dos filas"
+                    style={{ padding:"2px 6px", borderRadius:4, border:"none", background: battlefieldWrap?"#3a3a6a":"#1a1a2e", color: battlefieldWrap?"#ffd700":"#555", cursor:"pointer", fontSize:9 }}>⊟</button>
+                </div>
+              )}
+              <div style={{ flex: 1, overflowX: battlefieldWrap ? "hidden" : "auto", overflowY: battlefieldWrap ? "auto" : "hidden", padding: "6px 8px", paddingTop: isMe ? "22px" : "6px", display: "flex", flexDirection: "row", gap: 5, alignItems: "flex-start", borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", flexWrap: battlefieldWrap ? "wrap" : "nowrap", position:"relative", alignContent:"flex-start" }}>
                 {/* Ability markers — only shown on my board */}
                 {isMe && abilityMarkers.map(m => (
                   <AbilityMarker key={m.id} marker={m}
@@ -3617,6 +3665,27 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                 ))}
                 {permanents.map(renderCard)}
                 {!permanents.length && !abilityMarkers.length && <div style={{ color: "#1a1a2e", fontSize: 10, flexShrink: 0, paddingTop: 10, paddingLeft: 8 }}>No hay permanentes</div>}
+                {/* LOG overlay — top right of battlefield, isMe only */}
+                {isMe && (
+                  <div style={{ position:"sticky", right:0, top:0, minWidth:160, maxWidth:200, alignSelf:"flex-start", background:"#07070fdd", border:"1px solid #1a1a2e", borderRadius:8, padding:"6px 8px", flexShrink:0, zIndex:10, pointerEvents:"auto" }}>
+                    <div style={{ fontSize:8, color:"#ffd700", letterSpacing:2, marginBottom:4, textAlign:"center", borderBottom:"1px solid #1a1a2e", paddingBottom:3 }}>LOG</div>
+                    {[...turnLog].reverse().map((group, gi) => {
+                      const isCollapsed = logCollapsed[group.turn] ?? (gi > 0);
+                      return (
+                        <div key={group.turn} style={{ marginBottom: gi===0?0:2 }}>
+                          <div onClick={() => setLogCollapsed(c=>({...c,[group.turn]:!isCollapsed}))}
+                            style={{ fontSize:8, fontWeight:800, color:"#ffd700aa", padding:"2px 0", cursor:"pointer", display:"flex", justifyContent:"space-between" }}>
+                            <span>T{group.turn}</span>
+                            <span>{isCollapsed?"▶":"▼"}</span>
+                          </div>
+                          {!isCollapsed && group.entries.slice().reverse().map((e, i) => (
+                            <div key={i} style={{ fontSize:8, color:gi===0&&i===0?"#ddddee":"#44445a", lineHeight:1.4, padding:"1px 0", borderBottom:"1px solid #0a0a14", wordBreak:"break-word" }}>{e}</div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               {/* Lands zone — horizontal scroll */}
               <div style={{ flex: "0 0 auto", overflowX: "auto", overflowY: "hidden", padding: "4px 8px", display: "flex", flexDirection: "row", gap: 5, alignItems: "center", background: "#060609", minHeight: lands.length > 0 ? 85 : 28, flexWrap: "nowrap" }}>
@@ -3776,7 +3845,15 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         <PhasePanel
           playerOrder={playerOrder} players={players} activePlayer={activePlayer}
           turn={turn} phase={phase} isMyTurn={isMyTurn}
-          onNextPhase={nextPhase} onMulligan={startMulligan} onHome={onHome}
+          onNextPhase={nextPhase} onEndTurn={() => {
+            const msg = `Fase: ${PHASES[5]}`;
+            addLog(msg);
+            setPhase(5);
+            setAttackers(new Set());
+            rt.current?.broadcast("turn_change", { ap: activePlayer, ph: 5, t: turn, log: msg });
+            setTimeout(nextPhase, 150);
+          }}
+          onMulligan={startMulligan} onHome={onHome}
           avatars={avatarMap}
         />
 
@@ -3799,51 +3876,74 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         </div>
 
         {/* RIGHT: Actions + Log panel */}
-        <div style={{ width: 68, flexShrink: 0, background: "#06060e", borderLeft: "1px solid #1a1a2e", display: "flex", flexDirection: "column", alignItems: "center", padding: "6px 4px", gap: 3, overflowY: "auto" }}>
-          {/* Action buttons */}
+        <div style={{ width: 68, flexShrink: 0, background: "#06060e", borderLeft: "1px solid #1a1a2e", display: "flex", flexDirection: "column", alignItems: "center", padding: "4px 4px", gap: 2, overflowY: "auto", flexShrink:0 }}>
+          {/* PRIMARY buttons — always visible */}
           {[
-            { icon: "📚", label: "Robar", action: () => libActions.draw(myId,1), color: "#7fc4ff" },
-            { icon: "⟲", label: "Destapar", action: untapAll, color: "#88ff88" },
-            { icon: "↩", label: "Deshacer", action: undo, color: history.length?"#ffcc88":"#333", disabled: !history.length },
-            { icon: "🪄", label: "Token", action: () => setTokenModal(true), color: "#cc88ff" },
-            { icon: "🎲", label: "Dado", action: () => setDiceModal(true), color: "#ffaa44" },
-            { icon: "✨", label: "Habil.", action: () => setAbilitiesModal(true), color: "#88eeff" },
-            { icon: "❤", label: "Vida", action: () => setLifeHistoryOpen(o=>!o), color: "#ff8888" },
-            { icon: "💎", label: "Maná", action: () => setManaOpen(o=>!o), color: manaOpen?"#ffd700":"#888" },
-            { icon: "⚔", label: "Cmd Dmg", action: () => setCmdDmgOpen(o=>!o), color: cmdDmgOpen?"#ff8844":"#888" },
-            { icon: "💬", label: "Chat", action: () => setChatOpen(o=>!o), color: chatOpen?"#7fc4ff":"#888" },
-            { icon: "📝", label: "Notas", action: () => setNotesOpen(o=>!o), color: notesOpen?"#88ff88":"#888" },
-            { icon: "🎙", label: voiceEnabled ? (muted ? "Silenc." : "Voz ON") : "Voz", action: toggleVoice, color: voiceEnabled ? (muted ? "#ff8888" : "#44ff88") : "#555" },
-            ...(voiceEnabled ? [{ icon: muted ? "🔇" : "🔊", label: muted ? "Unmute" : "Mute", action: toggleMute, color: muted ? "#ff4444" : "#88ff88" }] : []),
-            { icon: "🔍", label: "Buscar", action: () => setCardSearch(s=>({...s,open:!s.open,query:"",results:[]})), color: cardSearch.open?"#ffd700":"#888" },
+            { icon: "📚", label: "Robar",   action: () => libActions.draw(myId,1), color: "#7fc4ff" },
+            { icon: "⟲",  label: "Destapar", action: untapAll, color: "#88ff88" },
+            { icon: "🪄", label: "Token",   action: () => setTokenModal(true), color: "#cc88ff" },
+            { icon: "🎲", label: "Dado",    action: () => setDiceModal(true), color: "#ffaa44" },
+            { icon: "💬", label: "Chat",    action: () => setChatOpen(o=>!o), color: chatOpen?"#7fc4ff":"#888" },
+            { icon: "🎙", label: voiceEnabled?(muted?"Silenc.":"Voz ON"):"Voz", action: toggleVoice, color: voiceEnabled?(muted?"#ff8888":"#44ff88"):"#555" },
+          ].map(btn => (
+            <button key={btn.label} onClick={btn.action} title={btn.label}
+              style={{ width:"100%", padding:"4px 2px", borderRadius:6, border:"1px solid #1a1a2e", background:"#0a0a14", color:btn.color, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:1 }}>
+              <span style={{ fontSize:14 }}>{btn.icon}</span>
+              <span style={{ fontSize:7, lineHeight:1 }}>{btn.label}</span>
+            </button>
+          ))}
+
+          {/* Separator */}
+          <div style={{ width:"80%", height:1, background:"#1a1a2e", margin:"2px 0", flexShrink:0 }} />
+
+          {/* SECONDARY buttons — smaller */}
+          {[
+            { icon: "↩",  label: "Deshacer", action: undo, color: history.length?"#ffcc88":"#333", disabled: !history.length },
+            { icon: "✨", label: "Habil.",   action: () => setAbilitiesModal(true), color: "#88eeff" },
+            { icon: "❤",  label: "Vida",     action: () => setLifeHistoryOpen(o=>!o), color: "#ff8888" },
+            { icon: "💎", label: "Maná",     action: () => setManaOpen(o=>!o), color: manaOpen?"#ffd700":"#888" },
+            { icon: "⚔",  label: "CmdDmg",  action: () => setCmdDmgOpen(o=>!o), color: cmdDmgOpen?"#ff8844":"#888" },
+            { icon: "📝", label: "Notas",    action: () => setNotesOpen(o=>!o), color: notesOpen?"#88ff88":"#888" },
+            { icon: "🔍", label: "Buscar",   action: () => setCardSearch(s=>({...s,open:!s.open,query:"",results:[]})), color: cardSearch.open?"#ffd700":"#888" },
+            ...(voiceEnabled ? [{ icon: muted?"🔇":"🔊", label: muted?"Unmute":"Mute", action: toggleMute, color: muted?"#ff4444":"#88ff88" }] : []),
+          ].map(btn => (
+            <button key={btn.label} onClick={btn.action} disabled={btn.disabled} title={btn.label}
+              style={{ width:"100%", padding:"3px 2px", borderRadius:5, border:"1px solid #141420", background:"#080810", color:btn.color, cursor:btn.disabled?"default":"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:0, opacity:btn.disabled?0.3:1 }}>
+              <span style={{ fontSize:12 }}>{btn.icon}</span>
+              <span style={{ fontSize:6, lineHeight:1 }}>{btn.label}</span>
+            </button>
+          ))}
+
+          {/* Separator */}
+          <div style={{ width:"80%", height:1, background:"#1a1a2e", margin:"2px 0", flexShrink:0 }} />
+
+          {/* UTILITY buttons — icon only, smallest */}
+          {[
             { icon: "📤", label: "Exportar", action: () => {
                 const txt = exportGameState(players, playerOrder, turn, phase, turnLog, roomCode);
                 const blob = new Blob([txt], { type: "text/plain" });
                 const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
                 a.download = `partida-${roomCode}-T${turn}.txt`; a.click();
-              }, color: "#88aaff" },
+              }, color: "#555" },
             { icon: "🔄", label: "Reiniciar", action: () => {
-                if (window.confirm("¿Reiniciar la partida con los mismos jugadores y mazos?")) {
-                  // Reset all players to initial state
+                if (window.confirm("¿Reiniciar la partida?")) {
                   const newPlayers = {};
                   initialPlayers.forEach(p => {
                     newPlayers[p.id] = mkState(p.id, p.name, p.playerState?.fullDeck || p.playerState?.library || [], p.playerState?.commandZone?.[0] || null, p.format?.life || 40);
                   });
-                  setPlayers(newPlayers);
-                  setTurn(1); setPhase(0);
+                  setPlayers(newPlayers); setTurn(1); setPhase(0);
                   setActivePlayer(initialPlayers[0]?.id);
                   setTurnLog([{ turn:1, entries:["¡Partida reiniciada!"] }]);
-                  setAttackers(new Set());
-                  addLog("🔄 Partida reiniciada.");
+                  setAttackers(new Set()); addLog("🔄 Partida reiniciada.");
                   rt.current?.broadcast("notification", { msg: "🔄 La partida fue reiniciada", from: myId });
                 }
-              }, color: "#8888aa" },
-            { icon: "✕", label: "Salir", action: onExit, color: "#666" },
+              }, color: "#555" },
+            { icon: "✕", label: "Salir", action: onExit, color: "#444" },
           ].map(btn => (
-            <button key={btn.label} onClick={btn.action} disabled={btn.disabled} title={btn.label}
-              style={{ width: "100%", padding: "5px 2px", borderRadius: 6, border: "1px solid #1a1a2e", background: "#0a0a14", color: btn.color, cursor: btn.disabled?"default":"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:1, opacity: btn.disabled?0.3:1 }}>
-              <span style={{ fontSize: 14 }}>{btn.icon}</span>
-              <span style={{ fontSize: 7, lineHeight: 1 }}>{btn.label}</span>
+            <button key={btn.label} onClick={btn.action} title={btn.label}
+              style={{ width:"100%", padding:"3px 2px", borderRadius:5, border:"none", background:"transparent", color:btn.color, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center" }}>
+              <span style={{ fontSize:12 }}>{btn.icon}</span>
+              <span style={{ fontSize:6, lineHeight:1 }}>{btn.label}</span>
             </button>
           ))}
           {/* Card Search Panel */}
@@ -3898,28 +3998,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
               </div>
             </div>
           )}
-          {/* Log — grouped by turn */}
-          <div style={{ width:"100%", borderTop:"1px solid #1a1a2e", marginTop:4, paddingTop:4, flex:1, overflowY:"auto" }}>
-            <div style={{ fontSize:7,color:"#ffd700",letterSpacing:1,marginBottom:4,textAlign:"center" }}>LOG</div>
-            {[...turnLog].reverse().map((group, gi) => {
-              const isCollapsed = logCollapsed[group.turn] ?? (gi > 0);
-              return (
-                <div key={group.turn} style={{ marginBottom:4 }}>
-                  {/* Turn header — clickable to collapse */}
-                  <div onClick={() => setLogCollapsed(c => ({...c, [group.turn]: !isCollapsed}))}
-                    style={{ fontSize:7, fontWeight:800, color:"#ffd70088", padding:"2px 0", cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", borderBottom:"1px solid #1a1a2e" }}>
-                    <span>T{group.turn}</span>
-                    <span>{isCollapsed ? "▶" : "▼"}</span>
-                  </div>
-                  {/* Entries */}
-                  {!isCollapsed && group.entries.slice().reverse().map((e, i) => (
-                    <div key={i} style={{ fontSize:7, color: gi===0&&i===0 ? "#e8e0d0" : "#2a2a4a", padding:"2px 0", lineHeight:1.3, wordBreak:"break-word", borderBottom:"1px solid #0a0a14" }}>{e}</div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
         </div>
+
+
 
       </div>{/* end board flex row */}
 
