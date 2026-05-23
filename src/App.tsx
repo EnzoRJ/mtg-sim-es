@@ -1519,7 +1519,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
 }
 
 // ─── LOBBY ────────────────────────────────────────────────────────────────────
-function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeCode }) {
+function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeCode, wasHost }) {
   const googleName = getUserDisplayName(getCurrentUser());
   const defaultName = initialName || googleName || "";
   const [name, setName] = useState(defaultName);
@@ -1537,6 +1537,25 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
     return name ? `Mazo de ${name}` : "Mi Mazo";
   });
   const [myId] = useState(uid);
+
+  // Auto-reconnect when resuming a session
+  useEffect(() => {
+    if (!resumeCode || mode) return;
+    if (!nameConfirmed) { setNameConfirmed(true); }
+    const wasHostSession = deckData?.wasHost ?? wasHost ?? false;
+    const code = resumeCode.toUpperCase();
+    setRoomCode(code);
+    setJoinCode(code);
+    if (wasHostSession) {
+      setMode("create"); setIsHost(true);
+      setPlayers([myPayload(true)]);
+      connect(code, true);
+    } else {
+      setMode("join"); setIsHost(false);
+      setPlayers([myPayload(false)]);
+      connect(code, false);
+    }
+  }, [resumeCode]);
   const rtRef = useRef(null);
 
   // Build my own playerState from my deck — done once here
@@ -2720,19 +2739,22 @@ function exportGameState(players, playerOrder, turn, phase, turnLog, roomCode) {
 // Layout: top-left, top-right, bottom-left, bottom-right, center = me
 // Positions: p1=bottom-center(me), p2=top-center, p3=left, p4=right  (adjusted by count)
 
-function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSession, roomCode, isSpectator, resumedTurn, resumedPhase, resumedActivePlayer }) {
+function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSession, roomCode, isSpectator, resumedTurn, resumedPhase, resumedActivePlayer, resumedTurnLog }) {
   const [turn, setTurn] = useState(resumedTurn || 1);
   const [phase, setPhase] = useState(resumedPhase || 0);
   const [activePlayer, setActivePlayer] = useState(resumedActivePlayer || initialPlayers[0]?.id);
   const [players, setPlayers] = useState(() => {
     const entries = initialPlayers.map(p => {
-      const state = p.playerState || mkState(p.id, p.name || "Jugador", [], null, initialPlayers[0]?.format?.life || 40);
+      // Use playerState directly if it has library (restored from save)
+      const state = (p.playerState && p.playerState.library !== undefined)
+        ? p.playerState
+        : mkState(p.id, p.name || "Jugador", p.playerState?.fullDeck || [], p.playerState?.commanderCard || null, p.format?.life || initialPlayers[0]?.format?.life || 40);
       return [p.id, state];
     });
     return Object.fromEntries(entries);
   });
   // Structured log: [{turn, phase, entries:[]}]
-  const [turnLog, setTurnLog] = useState([{ turn: 1, entries: ["¡Partida comenzada!"] }]);
+  const [turnLog, setTurnLog] = useState(resumedTurnLog || [{ turn: 1, entries: ["¡Partida comenzada!"] }]);
   const [cmdTokenSuggestions, setCmdTokenSuggestions] = useState([]);
   const [logCollapsed, setLogCollapsed] = useState({}); // {turnN: bool}
   // Auto-open mulligan on game start
@@ -2873,16 +2895,18 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
   const syncState = (state, logMsg) => {
     rt.current?.broadcast("state_update", { pid: myId, state, log: logMsg });
-    // Persist state to Supabase every sync
     if (roomCode) saveGameSession(roomCode, myId, { [myId]: state }, turn, phase, activePlayer);
-    // Also update localStorage session with latest player state
+    // Save full game snapshot to localStorage on every action
     try {
       const sess = JSON.parse(localStorage.getItem("commander_es_session") || "{}");
-      if (sess.players) {
-        sess.players = sess.players.map(p => p.id === myId ? { ...p, playerState: state } : p);
-        sess.savedAt = Date.now();
-        localStorage.setItem("commander_es_session", JSON.stringify(sess));
-      }
+      const updatedPlayers = (sess.players || []).map(p => p.id === myId ? { ...p, playerState: state } : p);
+      const snapshot = {
+        ...sess,
+        players: updatedPlayers,
+        turn, phase, activePlayer,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem("commander_es_session", JSON.stringify(snapshot));
     } catch { }
   };
   const saveHistory = (ps) => setHistory(h => [...h.slice(-19), JSON.parse(JSON.stringify(ps))]);
@@ -3413,6 +3437,11 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       setActivePlayer(nextId); setPhase(0); setTurn(newTurn); addLog(msg);
       setTurnLog(tl => [...tl, { turn: newTurn, entries: [msg] }]);
       rt.current?.broadcast("turn_change", { ap: nextId, ph: 0, t: newTurn, log: msg });
+      // Save turn change to localStorage
+      try {
+        const sess = JSON.parse(localStorage.getItem("commander_es_session") || "{}");
+        localStorage.setItem("commander_es_session", JSON.stringify({ ...sess, turn: newTurn, phase: 0, activePlayer: nextId, savedAt: Date.now() }));
+      } catch { }
       if (nextId === myId) { untapAll(); }
     } else {
       const np = phase + 1; setPhase(np); const msg = `Fase: ${PHASES[np]}`; addLog(msg);
@@ -4948,16 +4977,33 @@ export default function App() {
   const goHome = () => setStage("home");
 
   const handleGameStart = (players, code, myId, rt) => {
-    const sessionData = { roomCode: code, myId, turn: 1, playerName: players.find(p => p.id === myId)?.name, savedAt: Date.now(), players };
+    const isHostPlayer = players.find(p => p.id === myId)?.isHost || false;
+    const sessionData = { roomCode: code, myId, turn: 1, playerName: players.find(p => p.id === myId)?.name, savedAt: Date.now(), players, isHost: isHostPlayer };
     localStorage.setItem("commander_es_session", JSON.stringify(sessionData));
     setGameData({ players, myId, rt, roomCode: code });
     setSavedSession(sessionData);
     setStage("game");
   };
 
-  const handleExit = () => {
+  const handleExit = async () => {
+    // Save full game state before exiting
+    try {
+      const sess = JSON.parse(localStorage.getItem("commander_es_session") || "{}");
+      if (sess.roomCode && sess.players) {
+        const allStates = {};
+        Object.entries(players).forEach(([pid, pstate]) => { allStates[pid] = pstate; });
+        const snapshot = {
+          ...sess,
+          players: (sess.players || []).map(p => ({ ...p, playerState: allStates[p.id] || p.playerState })),
+          turn, phase, activePlayer,
+          turnLog,
+          savedAt: Date.now(),
+        };
+        localStorage.setItem("commander_es_session", JSON.stringify(snapshot));
+        localStorage.setItem("commander_es_full_save", JSON.stringify(snapshot));
+      }
+    } catch { }
     gameData?.rt?.disconnect();
-    // Keep session in localStorage so user can resume
     goHome();
   };
 
@@ -5055,7 +5101,7 @@ export default function App() {
           setStage("deck-edit");
         }}
         onResumeSession={(session) => {
-          setDeckData({ deck: [], commander: null, playerName: session.playerName || "Jugador" });
+          setDeckData({ deck: [], commander: null, playerName: session.playerName || "Jugador", wasHost: session.isHost });
           setStage("lobby-resume");
         }}
         onClearSession={() => {
@@ -5089,6 +5135,7 @@ export default function App() {
       playerName={deckData.playerName || playerName || getUserDisplayName(user) || "Jugador"}
       deckData={deckData}
       resumeCode={stage === "lobby-resume" ? savedSession?.roomCode : stage === "lobby-join" ? deckData?.joinCode : null}
+      wasHost={stage === "lobby-resume" ? savedSession?.isHost : false}
       onGameStart={handleGameStart}
       onHome={goHome}
     />
@@ -5105,6 +5152,7 @@ export default function App() {
         resumedTurn={gameData.resumedTurn}
         resumedPhase={gameData.resumedPhase}
         resumedActivePlayer={gameData.resumedActivePlayer}
+        resumedTurnLog={gameData.resumedTurnLog}
         onExit={handleExit}
         onClearSession={handleClearSession}
         onHome={goHome}
