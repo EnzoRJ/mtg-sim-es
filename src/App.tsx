@@ -2770,6 +2770,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [undoStack, setUndoStack] = useState([]);
   const [dragCard, setDragCard] = useState(null);
   const [battlefieldWrap, setBattlefieldWrap] = useState(false); // toggle wrap for 2-row layout // {instanceId, zone: 'battlefield'|'lands'|'hand'}
+  const [row2Cards, setRow2Cards] = useState(new Set()); // instanceIds of cards in row 2
   const [dragOverId, setDragOverId] = useState(null);
   const [combatModal, setCombatModal] = useState(false);
   // Active ability markers on the board: [{id, ability, color, icon}]
@@ -3329,7 +3330,11 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     }), `${players[myId]?.name} juega ${getCardName(card)}.`);
     setSelCard(null); setCtxMenu(null);
   };
-  const moveCard = (card, from, to) => { updMe(p => ({ ...p, [from]: p[from].filter(c => c.instanceId !== card.instanceId), [to]: to === "library_top" ? [card, ...p.library] : to === "library_bottom" ? [...p.library, card] : to === "hand" ? [...p.hand, card] : [card, ...p[to]] }), `${players[myId]?.name}: ${getCardName(card)} → ${to === "graveyard" ? "cementerio" : to === "exile" ? "exilio" : to === "hand" ? "mano" : "biblioteca"}.`); setCtxMenu(null); };
+  const moveCard = (card, from, to) => {
+    if (from === "battlefield") setRow2Cards(s => { const n = new Set(s); n.delete(card.instanceId); return n; });
+    updMe(p => ({ ...p, [from]: p[from].filter(c => c.instanceId !== card.instanceId), [to]: to === "library_top" ? [card, ...p.library] : to === "library_bottom" ? [...p.library, card] : to === "hand" ? [...p.hand, card] : [card, ...p[to]] }), `${players[myId]?.name}: ${getCardName(card)} → ${to === "graveyard" ? "cementerio" : to === "exile" ? "exilio" : to === "hand" ? "mano" : "biblioteca"}.`);
+    setCtxMenu(null);
+  };
   const playCommander = () => {
     updMe(p => {
       if (!p.commandZone.length) return p;
@@ -3685,23 +3690,46 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             };
             return (
               <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", position: "relative" }}>
-                {/* Permanents zone — toggle between single row and wrap mode */}
-                {isMe && (
-                  <div style={{ position: "absolute", top: 4, left: 6, zIndex: 20, display: "flex", gap: 3 }}>
-                    <button onClick={() => setBattlefieldWrap(false)} title="Una fila"
-                      style={{ padding: "2px 6px", borderRadius: 4, border: "none", background: !battlefieldWrap ? "#3a3a6a" : "#1a1a2e", color: !battlefieldWrap ? "#ffd700" : "#555", cursor: "pointer", fontSize: 9 }}>≡</button>
-                    <button onClick={() => setBattlefieldWrap(true)} title="Dos filas"
-                      style={{ padding: "2px 6px", borderRadius: 4, border: "none", background: battlefieldWrap ? "#3a3a6a" : "#1a1a2e", color: battlefieldWrap ? "#ffd700" : "#555", cursor: "pointer", fontSize: 9 }}>⊟</button>
+                {/* Two-row battlefield — row 1 (default) + row 2 (manual) */}
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", position: "relative" }}>
+                  {/* Row 1 */}
+                  <div
+                    onDragOver={e => { e.preventDefault(); }}
+                    onDrop={e => {
+                      e.preventDefault();
+                      if (dragCard && isMe) {
+                        setRow2Cards(s => { const n = new Set(s); n.delete(dragCard.instanceId); return n; });
+                      }
+                      setDragCard(null); setDragOverId(null);
+                    }}
+                    style={{ flex: 1, overflowX: "auto", overflowY: "hidden", padding: "4px 8px", paddingTop: isMe ? "20px" : "4px", display: "flex", flexDirection: "row", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", minHeight: 90 }}>
+                    {isMe && abilityMarkers.map(m => (
+                      <AbilityMarker key={m.id} marker={m}
+                        onRemove={(id) => setAbilityMarkers(prev => prev.filter(x => x.id !== id))} />
+                    ))}
+                    {permanents.filter(c => !row2Cards.has(c.instanceId)).map(c => renderCard(c))}
+                    {!permanents.filter(c => !row2Cards.has(c.instanceId)).length && !abilityMarkers.length && (
+                      <div style={{ color: "#1a1a2e", fontSize: 10, flexShrink: 0, paddingTop: 10, paddingLeft: 8 }}>Fila 1</div>
+                    )}
                   </div>
-                )}
-                <div style={{ flex: 1, overflowX: battlefieldWrap ? "hidden" : "auto", overflowY: battlefieldWrap ? "auto" : "hidden", padding: "6px 8px", paddingTop: isMe ? "22px" : "6px", display: "flex", flexDirection: "row", gap: 5, alignItems: "flex-start", borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", flexWrap: battlefieldWrap ? "wrap" : "nowrap", position: "relative", alignContent: "flex-start" }}>
-                  {/* Ability markers — only shown on my board */}
-                  {isMe && abilityMarkers.map(m => (
-                    <AbilityMarker key={m.id} marker={m}
-                      onRemove={(id) => setAbilityMarkers(prev => prev.filter(x => x.id !== id))} />
-                  ))}
-                  {permanents.map(renderCard)}
-                  {!permanents.length && !abilityMarkers.length && <div style={{ color: "#1a1a2e", fontSize: 10, flexShrink: 0, paddingTop: 10, paddingLeft: 8 }}>No hay permanentes</div>}
+                  {/* Row 2 — always visible for isMe, drop target */}
+                  {(isMe || permanents.some(c => row2Cards.has(c.instanceId))) && (
+                    <div
+                      onDragOver={e => { e.preventDefault(); }}
+                      onDrop={e => {
+                        e.preventDefault();
+                        if (dragCard && isMe) {
+                          setRow2Cards(s => new Set([...s, dragCard.instanceId]));
+                        }
+                        setDragCard(null); setDragOverId(null);
+                      }}
+                      style={{ overflowX: "auto", overflowY: "hidden", padding: "4px 8px", display: "flex", flexDirection: "row", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", minHeight: isMe ? 85 : 0, borderTop: "1px dashed #1a1a2e", background: isMe ? "#04040a" : "transparent" }}>
+                      {permanents.filter(c => row2Cards.has(c.instanceId)).map(c => renderCard(c))}
+                      {isMe && permanents.filter(c => row2Cards.has(c.instanceId)).length === 0 && (
+                        <div style={{ color: "#1a1a2e", fontSize: 9, flexShrink: 0, paddingTop: 12, paddingLeft: 8, fontStyle: "italic" }}>↓ arrastra cartas aquí</div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {/* LOG overlay — fixed top-right of battlefield, outside scroll */}
                 {isMe && (
