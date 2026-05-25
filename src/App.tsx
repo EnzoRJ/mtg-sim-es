@@ -416,26 +416,27 @@ async function deleteCloudDeck(id) {
 var SB_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" };
 
 async function saveGameSession(roomCode, myId, playersState, turn, phase, activePlayer) {
-  try {
-    const payload = { room_code: roomCode, player_id: myId, state: JSON.stringify({ playersState, turn, phase, activePlayer }), updated_at: new Date().toISOString() };
-    await fetch(`${SB_REST}/game_sessions?on_conflict=room_code,player_id`, { method: "POST", headers: SB_HEADERS, body: JSON.stringify(payload) });
-  } catch { }
+  return; // state saved to localStorage via syncState
 }
 
+
+
+
 async function loadGameSession(roomCode, myId) {
+  // Load from localStorage instead of Supabase
   try {
-    const r = await fetch(`${SB_REST}/game_sessions?room_code=eq.${roomCode}&player_id=eq.${myId}&select=state,updated_at`, { headers: SB_HEADERS });
-    if (!r.ok) return null;
-    const data = await r.json();
-    if (!data[0]) return null;
-    const age = Date.now() - new Date(data[0].updated_at).getTime();
-    if (age > SESSION_TTL_MS) return null; // expired
-    return JSON.parse(data[0].state);
+    const raw = localStorage.getItem("commander_es_full_save");
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (data.roomCode !== roomCode) return null;
+    const age = Date.now() - (data.savedAt || 0);
+    if (age > SESSION_TTL_MS) return null;
+    return { playersState: Object.fromEntries((data.players || []).map(p => [p.id, p.playerState])), turn: data.turn, phase: data.phase, activePlayer: data.activePlayer };
   } catch { return null; }
 }
 
 async function clearGameSession(roomCode, myId) {
-  try { await fetch(`${SB_REST}/game_sessions?room_code=eq.${roomCode}&player_id=eq.${myId}`, { method: "DELETE", headers: SB_HEADERS }); } catch { }
+  try { localStorage.removeItem("commander_es_full_save"); } catch { }
 }
 
 
@@ -3649,7 +3650,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           {(() => {
             const permanents = p.battlefield.filter(c => !isLand(c));
             const lands = p.battlefield.filter(c => isLand(c));
-            const renderCard = (card, zone = "battlefield") => {
+            const renderCard = (card, zone = "battlefield", forceSmall = false) => {
               const isAttacking = isMe && attackers.has(card.instanceId);
               const isDragging = dragCard?.instanceId === card.instanceId;
               const isOver = dragOverId === card.instanceId;
