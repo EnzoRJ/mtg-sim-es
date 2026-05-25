@@ -3737,12 +3737,12 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
               );
             };
             return (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 {/* Row 1 — permanents with horizontal scroll */}
                 <div
                   onDragOver={e => e.preventDefault()}
                   onDrop={e => { e.preventDefault(); if (isMe && dragCard) setRow2Cards(s => { const n = new Set(s); n.delete(dragCard.instanceId); return n; }); setDragCard(null); setDragOverId(null); }}
-                  style={{ overflowX: "auto", overflowY: "hidden", padding: "4px 8px", paddingTop: isMe ? "20px" : "4px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", minHeight: 90, borderBottom: "1px solid #1a1a2e" }}>
+                  style={{ flex: 1, overflowX: "auto", overflowY: "hidden", padding: "4px 8px", paddingTop: isMe ? "20px" : "4px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", minHeight: 90, borderBottom: "1px solid #1a1a2e" }}>
                   {isMe && abilityMarkers.map(m => (
                     <AbilityMarker key={m.id} marker={m} onRemove={id => setAbilityMarkers(p => p.filter(x => x.id !== id))} />
                   ))}
@@ -3758,7 +3758,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = "#0d0d20"; e.currentTarget.style.outline = "1px dashed #ffd70055"; }}
                     onDragLeave={e => { e.currentTarget.style.background = isMe ? "#050508" : "transparent"; e.currentTarget.style.outline = "none"; }}
                     onDrop={e => { e.preventDefault(); e.currentTarget.style.background = isMe ? "#050508" : "transparent"; e.currentTarget.style.outline = "none"; if (isMe && dragCard) setRow2Cards(s => new Set([...s, dragCard.instanceId])); setDragCard(null); setDragOverId(null); }}
-                    style={{ overflowX: "auto", overflowY: "hidden", padding: "4px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", minHeight: isMe ? 90 : 0, borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", background: isMe ? "#050508" : "transparent" }}>
+                    style={{ flexShrink: 0, height: isMe ? 90 : 0, overflowX: "auto", overflowY: "hidden", padding: "4px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", background: isMe ? "#050508" : "transparent" }}>
                     {permanents.filter(c => row2Cards.has(c.instanceId)).map(c => renderCard(c))}
                     {isMe && !permanents.some(c => row2Cards.has(c.instanceId)) && (
                       <div style={{ color: "#1a1a2e", fontSize: 9, flexShrink: 0, paddingTop: 14, paddingLeft: 10, fontStyle: "italic", userSelect: "none" }}>↓ arrastra cartas a esta fila</div>
@@ -3766,7 +3766,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   </div>
                 )}
                 {/* Lands zone — horizontal scroll */}
-                <div style={{ flex: "0 0 auto", overflowX: "auto", overflowY: "hidden", padding: "4px 8px", display: "flex", flexDirection: "row", gap: 5, alignItems: "center", background: "#060609", minHeight: lands.length > 0 ? 85 : 28, flexWrap: "nowrap" }}>
+                <div style={{ flexShrink: 0, height: lands.length > 0 ? 90 : 22, overflowX: "auto", overflowY: "hidden", padding: "4px 8px", display: "flex", flexDirection: "row", gap: 5, alignItems: "center", background: "#060609", flexWrap: "nowrap" }}>
                   {lands.length > 0
                     ? <>
                       <span style={{ fontSize: 8, color: "#4a6a3a", letterSpacing: 1, flexShrink: 0, writingMode: "vertical-rl", marginRight: 2 }}>TIERRAS</span>
