@@ -3671,7 +3671,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     setDragCard(null); setDragOverId(null);
                   }}
                   onDragEnd={() => { setDragCard(null); setDragOverId(null); }}
-                  style={{ position: "relative", opacity: isDragging ? 0.4 : 1, outline: isOver ? "2px dashed #ffd700" : "none", borderRadius: 6, cursor: isMe ? "grab" : "default", transition: "opacity 0.15s", overflow: "visible" }}
+                  style={{ position: "relative", opacity: isDragging ? 0.4 : 1, outline: isOver ? "2px dashed #ffd700" : "none", borderRadius: 6, cursor: isMe ? "grab" : "default", transition: "opacity 0.15s", overflow: zone === "lands" ? "hidden" : "visible" }}
                   onContextMenu={e => openCardCtx(e, pid, card, "battlefield", isMe)}>
                   {isAttacking && <div style={{ position: "absolute", inset: -2, borderRadius: 6, border: "2px solid #ff4444", zIndex: 3, pointerEvents: "none", boxShadow: "0 0 8px #ff4444aa" }} />}
                   {isAttacking && <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#cc0000", color: "#fff", borderRadius: 3, fontSize: 7, padding: "1px 4px", zIndex: 4, whiteSpace: "nowrap", fontWeight: 800 }}>⚔ ATQ</div>}
@@ -3783,7 +3783,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = "#0d0d20"; e.currentTarget.style.outline = "1px dashed #ffd70055"; }}
                     onDragLeave={e => { e.currentTarget.style.background = isMe ? "#050508" : "transparent"; e.currentTarget.style.outline = "none"; }}
                     onDrop={e => { e.preventDefault(); e.currentTarget.style.background = isMe ? "#050508" : "transparent"; e.currentTarget.style.outline = "none"; if (isMe && dragCard) setRow2Cards(s => new Set([...s, dragCard.instanceId])); setDragCard(null); setDragOverId(null); }}
-                    style={{ flexShrink: 0, height: isMe ? 120 : 0, overflowX: "auto", overflowY: "hidden", padding: "4px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", background: isMe ? "#050508" : "transparent" }}>
+                    style={{ flexShrink: 0, height: isMe ? 120 : 0, overflow: "hidden", overflowX: "auto", padding: "4px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", background: isMe ? "#050508" : "transparent" }}>
                     {permanents.filter(c => row2Cards.has(c.instanceId)).map(c => renderCard(c))}
                     {isMe && !permanents.some(c => row2Cards.has(c.instanceId)) && (
                       <div style={{ color: "#1a1a2e", fontSize: 9, flexShrink: 0, paddingTop: 14, paddingLeft: 10, fontStyle: "italic", userSelect: "none" }}>↓ arrastra cartas a esta fila</div>
@@ -3791,7 +3791,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   </div>
                 )}
                 {/* Lands zone — horizontal scroll */}
-                <div style={{ flexShrink: 0, height: lands.length > 0 ? 82 : 22, overflowX: "auto", overflowY: "hidden", padding: "4px 6px", display: "flex", flexDirection: "row", gap: 5, alignItems: "center", background: "#060609", flexWrap: "nowrap" }}>
+                <div style={{ flexShrink: 0, height: lands.length > 0 ? 80 : 20, overflowX: "auto", overflowY: "hidden", overflow: "hidden", padding: "3px 6px", display: "flex", flexDirection: "row", gap: 4, alignItems: "center", background: "#060609", flexWrap: "nowrap" }}>
                   {lands.length > 0
                     ? <>
                       <span style={{ fontSize: 8, color: "#4a6a3a", letterSpacing: 1, flexShrink: 0, writingMode: "vertical-rl", marginRight: 2 }}>TIERRAS</span>
