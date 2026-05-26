@@ -512,10 +512,10 @@ function HoverZoom({ card, x, y }) {
 }
 
 // ─── Card Tile ────────────────────────────────────────────────────────────────
-function CardTile({ card, onClick, onDoubleClick, onRightClick, onHover, onHoverEnd, small, mini, tapped, selected, faceDown }) {
+function CardTile({ card, onClick, onDoubleClick, onRightClick, onHover, onHoverEnd, small, tapped, selected, faceDown }) {
   const [loaded, setLoaded] = useState(false);
   const imgUrl = faceDown ? null : card?.image_url;
-  const w = mini ? 40 : small ? 52 : 72; const h = mini ? 56 : small ? 73 : 100;
+  const w = small ? 52 : 72; const h = small ? 73 : 100;
   return (
     <div onClick={onClick}
       onDoubleClick={onDoubleClick}
@@ -3704,7 +3704,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   {isAttacking && <div style={{ position: "absolute", inset: -2, borderRadius: 6, border: "2px solid #ff4444", zIndex: 3, pointerEvents: "none", boxShadow: "0 0 8px #ff4444aa" }} />}
                   {isAttacking && <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#cc0000", color: "#fff", borderRadius: 3, fontSize: 7, padding: "1px 4px", zIndex: 4, whiteSpace: "nowrap", fontWeight: 800 }}>⚔ ATQ</div>}
 
-                  <CardTile card={card} tapped={card.tapped} small={!isMe || forceSmall} mini={zone === "lands" && isMe}
+                  <CardTile card={card} tapped={card.tapped} small={!isMe || forceSmall}
                     selected={selCard?.instanceId === card.instanceId}
                     onClick={() => { if (isMe) setSelCard(s => s?.instanceId === card.instanceId ? null : card); }}
                     onDoubleClick={() => { if (isMe) { tapCard(card.instanceId); setSelCard(null); } else setZoomCard(card); }}
