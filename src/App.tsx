@@ -3765,11 +3765,11 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
               );
             };
             return (
-              <div style={{ display: "flex", flexDirection: "row", overflow: "hidden", height: isMe ? 321 : 190 }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "row", overflow: "hidden", minHeight: 0 }}>
                 {/* Rows + Lands wrapper */}
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
                   {/* Row 1 — permanents with horizontal scroll */}
-                  <div style={{ position: "relative", height: 116, flexShrink: 0, overflow: "hidden", borderBottom: "1px solid #1a1a2e" }}>
+                  <div style={{ position: "relative", flex: 1, minHeight: 100, overflow: "hidden", borderBottom: "1px solid #1a1a2e" }}>
                     {/* Scrollable cards area — stops before log */}
                     <div ref={isMe ? scrollRef1 : null}
                       onDragOver={e => e.preventDefault()}
@@ -3793,7 +3793,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = "#0d0d20"; e.currentTarget.style.outline = "1px dashed #ffd70055"; }}
                       onDragLeave={e => { e.currentTarget.style.background = isMe ? "#050508" : "transparent"; e.currentTarget.style.outline = "none"; }}
                       onDrop={e => { e.preventDefault(); e.currentTarget.style.background = isMe ? "#050508" : "transparent"; e.currentTarget.style.outline = "none"; if (isMe && dragCard) setRow2Cards(s => new Set([...s, dragCard.instanceId])); setDragCard(null); setDragOverId(null); }}
-                      ref={isMe ? scrollRef2 : null} style={{ height: isMe ? 116 : 0, flexShrink: 0, overflowX: "auto", overflow: "hidden", padding: "4px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", borderTop: "1px solid #1a1a2e", borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", background: isMe ? "#050508" : "transparent" }}>
+                      ref={isMe ? scrollRef2 : null} style={{ flex: isMe ? 1 : "0 0 0px", minHeight: isMe ? 80 : 0, overflowX: "auto", overflow: "hidden", padding: "4px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", borderTop: "1px solid #1a1a2e", borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", background: isMe ? "#050508" : "transparent" }}>
                       {permanents.filter(c => row2Cards.has(c.instanceId)).map(c => renderCard(c))}
                       {isMe && !permanents.some(c => row2Cards.has(c.instanceId)) && (
                         <div style={{ color: "#1a1a2e", fontSize: 9, flexShrink: 0, paddingTop: 14, paddingLeft: 10, fontStyle: "italic", userSelect: "none" }}>↓ arrastra cartas a esta fila</div>
