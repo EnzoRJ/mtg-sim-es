@@ -3802,11 +3802,11 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   )}
 
                   {/* Lands zone — horizontal scroll */}
-                  <div style={{ height: lands.length > 0 ? 89 : 22, flexShrink: 0, overflow: "hidden", overflowX: "auto", padding: "3px 6px", display: "flex", flexDirection: "row", gap: 4, alignItems: "center", background: "#060609", flexWrap: "nowrap", }}>
+                  <div style={{ height: lands.length > 0 ? 116 : 22, flexShrink: 0, overflow: "hidden", overflowX: "auto", padding: "3px 6px", display: "flex", flexDirection: "row", gap: 4, alignItems: "center", background: "#060609", flexWrap: "nowrap", }}>
                     {lands.length > 0
                       ? <>
                         <span style={{ fontSize: 8, color: "#4a6a3a", letterSpacing: 1, flexShrink: 0, writingMode: "vertical-rl", marginRight: 2 }}>TIERRAS</span>
-                        {lands.map(c => renderCard(c, "lands", true))}
+                        {lands.map(c => renderCard(c, "lands"))}
                       </>
                       : <div style={{ fontSize: 9, color: "#2a2a3a", paddingLeft: 8 }}>Zona de tierras</div>}
                   </div>
