@@ -469,6 +469,31 @@ function mkState(id, name, deck, commander, startLife = 40, sideboard = []) {
   };
 }
 
+// ─── Scroll Overflow Indicator ──────────────────────────────────────────────────
+function ScrollIndicator({ containerRef }) {
+  const [hasOverflow, setHasOverflow] = useState(false);
+  const [atEnd, setAtEnd] = useState(false);
+  useEffect(() => {
+    const el = containerRef?.current;
+    if (!el) return;
+    const check = () => {
+      setHasOverflow(el.scrollWidth > el.clientWidth + 4);
+      setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
+    };
+    check();
+    el.addEventListener("scroll", check);
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => { el.removeEventListener("scroll", check); ro.disconnect(); };
+  }, [containerRef]);
+  if (!hasOverflow || atEnd) return null;
+  return (
+    <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 32, background: "linear-gradient(to right, transparent, #06060eee)", display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 5, pointerEvents: "none", zIndex: 5 }}>
+      <span style={{ fontSize: 16, color: "#ffd700cc" }}>›</span>
+    </div>
+  );
+}
+
 // ─── Hover Zoom ───────────────────────────────────────────────────────────────
 function HoverZoom({ card, x, y }) {
   if (!card) return null;
@@ -3584,6 +3609,10 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     </div>
   );
 
+  const scrollRef1 = useRef(null);
+  const scrollRef2 = useRef(null);
+  const scrollRef3 = useRef(null);
+  const scrollRefLands = useRef(null);
   const renderPlayerPanel = (pid, isMe) => {
     const p = players[pid]; if (!p) return null;
     const isActive = pid === activePlayer;
@@ -3748,7 +3777,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   {/* Row 1 — permanents with horizontal scroll */}
                   <div style={{ position: "relative", height: 116, flexShrink: 0, overflow: "hidden", borderBottom: "1px solid #1a1a2e" }}>
                     {/* Scrollable cards area — stops before log */}
-                    <div
+                    <div ref={isMe ? scrollRef1 : null}
                       onDragOver={e => e.preventDefault()}
                       onDrop={e => {
                         e.preventDefault(); if (isMe && dragCard) {
@@ -3766,6 +3795,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       )}
                     </div>
 
+                    {isMe && <ScrollIndicator containerRef={scrollRef1} />}
                   </div>
 
                   {/* Row 2 — always visible for isMe, drop target */}
@@ -3779,7 +3809,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                           setRow3Cards(s => { const n = new Set(s); n.delete(dragCard.instanceId); return n; });
                         } setDragCard(null); setDragOverId(null);
                       }}
-                      style={{ height: isMe ? 116 : 0, flexShrink: 0, overflowX: "auto", overflow: "hidden", padding: "4px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", borderTop: "1px solid #1a1a2e", borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", background: isMe ? "#050508" : "transparent" }}>
+                      ref={isMe ? scrollRef2 : null} style={{ height: isMe ? 116 : 0, flexShrink: 0, overflowX: "auto", overflow: "hidden", padding: "4px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", borderTop: "1px solid #1a1a2e", borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", background: isMe ? "#050508" : "transparent" }}>
                       {permanents.filter(c => row2Cards.has(c.instanceId)).map(c => renderCard(c))}
                       {isMe && !permanents.some(c => row2Cards.has(c.instanceId)) && (
                         <div style={{ color: "#1a1a2e", fontSize: 9, flexShrink: 0, paddingTop: 14, paddingLeft: 10, fontStyle: "italic", userSelect: "none" }}>↓ arrastra cartas a esta fila</div>
@@ -3792,7 +3822,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = "#0d0d20"; }}
                       onDragLeave={e => { e.currentTarget.style.background = isMe ? "#060609" : "transparent"; }}
                       onDrop={e => { e.preventDefault(); e.currentTarget.style.background = isMe ? "#060609" : "transparent"; if (isMe && dragCard) { setRow3Cards(s => new Set([...s, dragCard.instanceId])); setRow2Cards(s => { const n = new Set(s); n.delete(dragCard.instanceId); return n; }); } setDragCard(null); setDragOverId(null); }}
-                      style={{ height: isMe ? 116 : 0, flexShrink: 0, overflowX: "auto", overflow: "hidden", padding: "4px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", borderBottom: "1px solid #1a1a2e", background: isMe ? "#060609" : "transparent" }}>
+                      ref={isMe ? scrollRef2 : null} style={{ height: isMe ? 116 : 0, flexShrink: 0, overflowX: "auto", overflow: "hidden", padding: "4px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", borderBottom: "1px solid #1a1a2e", background: isMe ? "#060609" : "transparent" }}>
                       {permanents.filter(c => row3Cards.has(c.instanceId)).map(c => renderCard(c))}
                       {isMe && !permanents.some(c => row3Cards.has(c.instanceId)) && (
                         <div style={{ color: "#3a3a5a", fontSize: 9, flexShrink: 0, paddingTop: 14, paddingLeft: 10, fontStyle: "italic", userSelect: "none" }}>↓ arrastra cartas a esta fila</div>
@@ -3801,11 +3831,11 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   )}
 
                   {/* Lands zone — horizontal scroll */}
-                  <div style={{ height: lands.length > 0 ? 89 : 22, flexShrink: 0, overflow: "hidden", overflowX: "auto", padding: "3px 6px", display: "flex", flexDirection: "row", gap: 4, alignItems: "center", background: "#060609", flexWrap: "nowrap", minHeight: lands.length > 0 ? 56 : 20, maxHeight: lands.length > 0 ? 90 : 20 }}>
+                  <div style={{ height: lands.length > 0 ? 178 : 22, flexShrink: 0, overflow: "hidden", overflowX: "auto", padding: "3px 6px", display: "flex", flexDirection: "row", gap: 4, alignItems: "center", background: "#060609", flexWrap: "nowrap", minHeight: lands.length > 0 ? 56 : 20, maxHeight: lands.length > 0 ? 90 : 20 }}>
                     {lands.length > 0
                       ? <>
                         <span style={{ fontSize: 8, color: "#4a6a3a", letterSpacing: 1, flexShrink: 0, writingMode: "vertical-rl", marginRight: 2 }}>TIERRAS</span>
-                        {lands.map(c => renderCard(c, "lands", true))}
+                        {lands.map(c => renderCard(c, "lands"))}
                       </>
                       : <div style={{ fontSize: 9, color: "#2a2a3a", paddingLeft: 8 }}>Zona de tierras</div>}
                   </div>
