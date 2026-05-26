@@ -3738,68 +3738,74 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
               );
             };
             return (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
-                {/* Row 1 — permanents with horizontal scroll */}
-                <div style={{ position: "relative", flex: isMe ? 5 : "0 0 82px", borderBottom: "1px solid #1a1a2e", overflow: "hidden", minHeight: isMe ? 100 : 82 }}>
-                  {/* Scrollable cards area — stops before log */}
-                  <div
-                    onDragOver={e => e.preventDefault()}
-                    onDrop={e => { e.preventDefault(); if (isMe && dragCard) setRow2Cards(s => { const n = new Set(s); n.delete(dragCard.instanceId); return n; }); setDragCard(null); setDragOverId(null); }}
-                    style={{ height: "100%", overflowX: "auto", overflowY: "hidden", padding: "6px 8px", paddingRight: isMe ? 170 : 8, display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap" }}>
-                    {isMe && abilityMarkers.map(m => (
-                      <AbilityMarker key={m.id} marker={m} onRemove={id => setAbilityMarkers(p => p.filter(x => x.id !== id))} />
-                    ))}
-                    {permanents.filter(c => !row2Cards.has(c.instanceId)).map(c => renderCard(c))}
-                    {!permanents.filter(c => !row2Cards.has(c.instanceId)).length && !abilityMarkers.length && (
-                      <div style={{ color: "#1a1a2e", fontSize: 10, flexShrink: 0, paddingTop: 10 }}>Campo vacío</div>
-                    )}
+              <div style={{ flex: 1, display: "flex", flexDirection: "row", overflow: "hidden", minHeight: 0 }}>
+                {/* Rows + Lands wrapper */}
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
+                  {/* Row 1 — permanents with horizontal scroll */}
+                  <div style={{ position: "relative", flex: isMe ? 9 : "0 0 82px", borderBottom: "1px solid #1a1a2e", overflow: "hidden", minHeight: isMe ? 100 : 82 }}>
+                    {/* Scrollable cards area — stops before log */}
+                    <div
+                      onDragOver={e => e.preventDefault()}
+                      onDrop={e => { e.preventDefault(); if (isMe && dragCard) setRow2Cards(s => { const n = new Set(s); n.delete(dragCard.instanceId); return n; }); setDragCard(null); setDragOverId(null); }}
+                      style={{ height: "100%", overflowX: "auto", overflowY: "hidden", padding: "6px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap" }}>
+                      {isMe && abilityMarkers.map(m => (
+                        <AbilityMarker key={m.id} marker={m} onRemove={id => setAbilityMarkers(p => p.filter(x => x.id !== id))} />
+                      ))}
+                      {permanents.filter(c => !row2Cards.has(c.instanceId)).map(c => renderCard(c))}
+                      {!permanents.filter(c => !row2Cards.has(c.instanceId)).length && !abilityMarkers.length && (
+                        <div style={{ color: "#1a1a2e", fontSize: 10, flexShrink: 0, paddingTop: 10 }}>Campo vacío</div>
+                      )}
+                    </div>
+
                   </div>
-                  {/* LOG — absolute inside Row 1, top-right */}
-                  {isMe && (
-                    <div style={{ position: "absolute", top: 4, right: 4, width: 160, maxHeight: 112, background: "#07070fee", border: "1px solid #2a2a3a", borderRadius: 8, zIndex: 10, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                      <div style={{ fontSize: 8, color: "#ffd700", letterSpacing: 2, padding: "3px 0", textAlign: "center", borderBottom: "1px solid #1a1a2e", flexShrink: 0 }}>LOG</div>
-                      <div style={{ flex: 1, padding: "3px 6px", overflowY: "auto" }}>
-                        {[...turnLog].reverse().map((group, gi) => {
-                          const isCollapsed = logCollapsed[group.turn] ?? (gi > 0);
-                          return (
-                            <div key={group.turn} style={{ marginBottom: 2 }}>
-                              <div onClick={() => setLogCollapsed(c => ({ ...c, [group.turn]: !isCollapsed }))}
-                                style={{ fontSize: 8, fontWeight: 800, color: "#ffd700aa", padding: "1px 0", cursor: "pointer", display: "flex", justifyContent: "space-between" }}>
-                                <span>T{group.turn}</span><span>{isCollapsed ? "▶" : "▼"}</span>
-                              </div>
-                              {!isCollapsed && group.entries.slice().reverse().map((e, i) => (
-                                <div key={i} style={{ fontSize: 8, color: gi === 0 && i === 0 ? "#ddddee" : "#44445a", lineHeight: 1.4, padding: "1px 0", borderBottom: "1px solid #0a0a14", wordBreak: "break-word" }}>{e}</div>
-                              ))}
-                            </div>
-                          );
-                        })}
-                      </div>
+
+                  {/* Row 2 — always visible for isMe, drop target */}
+                  {(isMe || permanents.some(c => row2Cards.has(c.instanceId))) && (
+                    <div
+                      onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = "#0d0d20"; e.currentTarget.style.outline = "1px dashed #ffd70055"; }}
+                      onDragLeave={e => { e.currentTarget.style.background = isMe ? "#050508" : "transparent"; e.currentTarget.style.outline = "none"; }}
+                      onDrop={e => { e.preventDefault(); e.currentTarget.style.background = isMe ? "#050508" : "transparent"; e.currentTarget.style.outline = "none"; if (isMe && dragCard) setRow2Cards(s => new Set([...s, dragCard.instanceId])); setDragCard(null); setDragOverId(null); }}
+                      style={{ flex: isMe ? 9 : "0 0 0px", overflow: "hidden", overflowX: "auto", padding: "4px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", background: isMe ? "#050508" : "transparent", minHeight: isMe ? 80 : 0 }}>
+                      {permanents.filter(c => row2Cards.has(c.instanceId)).map(c => renderCard(c))}
+                      {isMe && !permanents.some(c => row2Cards.has(c.instanceId)) && (
+                        <div style={{ color: "#1a1a2e", fontSize: 9, flexShrink: 0, paddingTop: 14, paddingLeft: 10, fontStyle: "italic", userSelect: "none" }}>↓ arrastra cartas a esta fila</div>
+                      )}
                     </div>
                   )}
-                </div>
+                  {/* Lands zone — horizontal scroll */}
+                  <div style={{ flex: lands.length > 0 ? 2 : "0 0 20px", overflow: "hidden", overflowX: "auto", padding: "3px 6px", display: "flex", flexDirection: "row", gap: 4, alignItems: "center", background: "#060609", flexWrap: "nowrap", minHeight: lands.length > 0 ? 56 : 20, maxHeight: lands.length > 0 ? 90 : 20 }}>
+                    {lands.length > 0
+                      ? <>
+                        <span style={{ fontSize: 8, color: "#4a6a3a", letterSpacing: 1, flexShrink: 0, writingMode: "vertical-rl", marginRight: 2 }}>TIERRAS</span>
+                        {lands.map(c => renderCard(c, "lands", true))}
+                      </>
+                      : <div style={{ fontSize: 9, color: "#2a2a3a", paddingLeft: 8 }}>Zona de tierras</div>}
+                  </div>
+                </div>{/* end rows+lands col */}
 
-                {/* Row 2 — always visible for isMe, drop target */}
-                {(isMe || permanents.some(c => row2Cards.has(c.instanceId))) && (
-                  <div
-                    onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = "#0d0d20"; e.currentTarget.style.outline = "1px dashed #ffd70055"; }}
-                    onDragLeave={e => { e.currentTarget.style.background = isMe ? "#050508" : "transparent"; e.currentTarget.style.outline = "none"; }}
-                    onDrop={e => { e.preventDefault(); e.currentTarget.style.background = isMe ? "#050508" : "transparent"; e.currentTarget.style.outline = "none"; if (isMe && dragCard) setRow2Cards(s => new Set([...s, dragCard.instanceId])); setDragCard(null); setDragOverId(null); }}
-                    style={{ flex: isMe ? 5 : "0 0 0px", overflow: "hidden", overflowX: "auto", padding: "4px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", background: isMe ? "#050508" : "transparent", minHeight: isMe ? 80 : 0 }}>
-                    {permanents.filter(c => row2Cards.has(c.instanceId)).map(c => renderCard(c))}
-                    {isMe && !permanents.some(c => row2Cards.has(c.instanceId)) && (
-                      <div style={{ color: "#1a1a2e", fontSize: 9, flexShrink: 0, paddingTop: 14, paddingLeft: 10, fontStyle: "italic", userSelect: "none" }}>↓ arrastra cartas a esta fila</div>
-                    )}
+                {/* LOG column — fixed width, full battlefield height, no overlap */}
+                {isMe && (
+                  <div style={{ width: 165, flexShrink: 0, borderLeft: "1px solid #1a1a2e", background: "#06060e", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                    <div style={{ fontSize: 8, color: "#ffd700", letterSpacing: 2, padding: "5px 0 4px", textAlign: "center", borderBottom: "1px solid #1a1a2e", flexShrink: 0 }}>LOG</div>
+                    <div style={{ flex: 1, padding: "4px 6px", overflowY: "auto" }}>
+                      {[...turnLog].reverse().map((group, gi) => {
+                        const isCollapsed = logCollapsed[group.turn] ?? (gi > 0);
+                        return (
+                          <div key={group.turn} style={{ marginBottom: 2 }}>
+                            <div onClick={() => setLogCollapsed(c => ({ ...c, [group.turn]: !isCollapsed }))}
+                              style={{ fontSize: 8, fontWeight: 800, color: "#ffd700aa", padding: "2px 0", cursor: "pointer", display: "flex", justifyContent: "space-between" }}>
+                              <span>T{group.turn}</span><span>{isCollapsed ? "▶" : "▼"}</span>
+                            </div>
+                            {!isCollapsed && group.entries.slice().reverse().map((e, i) => (
+                              <div key={i} style={{ fontSize: 8, color: gi === 0 && i === 0 ? "#ddddee" : "#44445a", lineHeight: 1.4, padding: "1px 0", borderBottom: "1px solid #0a0a14", wordBreak: "break-word" }}>{e}</div>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
-                {/* Lands zone — horizontal scroll */}
-                <div style={{ flex: lands.length > 0 ? 2 : "0 0 20px", overflow: "hidden", overflowX: "auto", padding: "3px 6px", display: "flex", flexDirection: "row", gap: 4, alignItems: "center", background: "#060609", flexWrap: "nowrap", minHeight: lands.length > 0 ? 56 : 20, maxHeight: lands.length > 0 ? 90 : 20 }}>
-                  {lands.length > 0
-                    ? <>
-                      <span style={{ fontSize: 8, color: "#4a6a3a", letterSpacing: 1, flexShrink: 0, writingMode: "vertical-rl", marginRight: 2 }}>TIERRAS</span>
-                      {lands.map(c => renderCard(c, "lands", true))}
-                    </>
-                    : <div style={{ fontSize: 9, color: "#2a2a3a", paddingLeft: 8 }}>Zona de tierras</div>}
-                </div>
+
               </div>
             );
           })()}
