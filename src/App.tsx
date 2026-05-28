@@ -3722,7 +3722,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     setDragCard(null); setDragOverId(null);
                   }}
                   onDragEnd={() => { setDragCard(null); setDragOverId(null); }}
-                  style={{ position: "relative", opacity: isDragging ? 0.4 : 1, outline: isOver ? "2px dashed #ffd700" : "none", borderRadius: 6, cursor: isMe ? "grab" : "default", transition: "opacity 0.15s", overflow: zone === "lands" ? "hidden" : "visible" }}
+                  style={{ position: "relative", opacity: isDragging ? 0.4 : 1, outline: isOver ? "2px dashed #ffd700" : "none", borderRadius: 6, cursor: isMe ? "grab" : "default", transition: "opacity 0.15s", height: isMe ? 125 : 73, overflow: "visible" }}
                   onContextMenu={e => openCardCtx(e, pid, card, "battlefield", isMe)}>
                   {isAttacking && <div style={{ position: "absolute", inset: -2, borderRadius: 6, border: "2px solid #ff4444", zIndex: 3, pointerEvents: "none", boxShadow: "0 0 8px #ff4444aa" }} />}
                   {isAttacking && <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#cc0000", color: "#fff", borderRadius: 3, fontSize: 7, padding: "1px 4px", zIndex: 4, whiteSpace: "nowrap", fontWeight: 800 }}>⚔ ATQ</div>}
@@ -3734,12 +3734,12 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     onHover={(c, x, y) => setHover({ card, x, y })} onHoverEnd={() => setHover(null)} />
                   {/* Ability icons — contained strictly within card width */}
                   {(card.abilities || []).length > 0 && (
-                    <div style={{ position: "absolute", top: -16, left: 0, right: 0, display: "flex", gap: 1, justifyContent: "center", flexWrap: "nowrap", zIndex: 20, pointerEvents: "none", overflow: "hidden", padding: "0 2px" }}>
-                      {(card.abilities || []).slice(0, isMe ? 6 : 4).map(key => {
+                    <div style={{ position: "absolute", bottom: 2, left: 0, right: 0, display: "flex", gap: 2, justifyContent: "center", flexWrap: "nowrap", zIndex: 20, pointerEvents: "none", overflow: "hidden", padding: "0 2px" }}>
+                      {(card.abilities || []).slice(0, isMe ? 8 : 4).map(key => {
                         const ab = ABILITIES.find(a => a.key === key);
                         return ab ? (
                           <span key={key} title={ab.name} style={{
-                            fontSize: isMe ? 10 : 8,
+                            fontSize: isMe ? 12 : 8,
                             lineHeight: 1,
                             background: "#000000ee",
                             borderRadius: 3,
@@ -3752,9 +3752,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                           </span>
                         ) : null;
                       })}
-                      {(card.abilities || []).length > (isMe ? 6 : 4) && (
+                      {(card.abilities || []).length > (isMe ? 8 : 4) && (
                         <span style={{ fontSize: isMe ? 9 : 7, color: "#aaa", background: "#000000ee", borderRadius: 3, padding: "1px 2px", flexShrink: 0 }}>
-                          +{(card.abilities || []).length - (isMe ? 6 : 4)}
+                          +{(card.abilities || []).length - (isMe ? 8 : 4)}
                         </span>
                       )}
                     </div>
