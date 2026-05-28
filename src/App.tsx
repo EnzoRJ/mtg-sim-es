@@ -524,7 +524,8 @@ function CardTile({ card, onClick, onDoubleClick, onRightClick, onHover, onHover
       onMouseMove={e => onHover?.(card, e.clientX, e.clientY)}
       onMouseLeave={() => onHoverEnd?.()}
       title={faceDown ? "?" : getCardName(card)}
-      style={{ width: w, height: h, borderRadius: 5, overflow: "hidden", cursor: "pointer", flexShrink: 0, transform: tapped ? "rotate(90deg)" : "none", transition: "transform 0.2s", boxShadow: selected ? "0 0 0 2px #ffd700,0 4px 16px #0008" : "0 2px 8px #0005", border: selected ? "2px solid #ffd700" : "2px solid #2a2a4a", background: "#1a1a2e", position: "relative" }}>
+      className="card-tile"
+      style={{ width: w, height: h, borderRadius: 5, overflow: "hidden", cursor: "pointer", flexShrink: 0, transform: tapped ? "rotate(90deg)" : "none", boxShadow: selected ? "0 0 0 2px #ffd700,0 4px 16px #0008" : "0 2px 8px #0005", border: selected ? "2px solid #ffd700" : "2px solid #2a2a4a", background: "#1a1a2e", position: "relative" }}>
       {faceDown
         ? <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,#1a2a4a 0%,#0d1a2e 40%,#1a0a2a 100%)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", inset: 4, border: "2px solid #3a4a6a", borderRadius: 4 }} />
@@ -607,6 +608,23 @@ function CtxMenu({ menu, onClose }) {
         .has-sub:hover > button { background: #2a2a5a !important; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
         @keyframes slideDown { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes shimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
+        @keyframes glow { 0%,100%{box-shadow:0 0 8px #ffd70044} 50%{box-shadow:0 0 22px #ffd700aa,0 0 40px #ff8c0055} }
+        @keyframes floatUp { 0%{opacity:0;transform:translateY(8px)} 100%{opacity:1;transform:translateY(0)} }
+        @keyframes cardHover { 0%{transform:translateY(0) scale(1)} 100%{transform:translateY(-4px) scale(1.03)} }
+        @keyframes borderGlow { 0%,100%{border-color:#ffd70033} 50%{border-color:#ffd700aa} }
+        @keyframes scanline { 0%{transform:translateY(-100%)} 100%{transform:translateY(100vh)} }
+        @keyframes tapRipple { 0%{transform:scale(0);opacity:0.6} 100%{transform:scale(3);opacity:0} }
+        .mtg-btn { transition: all 0.18s cubic-bezier(0.34,1.56,0.64,1); }
+        .mtg-btn:hover { transform: translateY(-2px) scale(1.04); filter: brightness(1.15); }
+        .mtg-btn:active { transform: translateY(1px) scale(0.97); }
+        .card-tile { transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s; }
+        .card-tile:hover { transform: translateY(-6px) scale(1.06) rotate(-1deg); box-shadow: 0 12px 32px #000c, 0 0 20px #ffd70033; z-index: 50; }
+        .zone-drop-active { outline: 2px dashed #ffd700 !important; background: #1a1a3e !important; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #0a0a14; }
+        ::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #ffd70066; }
       `}</style>
       <div style={{ position: "fixed", inset: 0, zIndex: 500 }} onClick={onClose}>
         <div style={{ position: "absolute", left, top, background: "#161630", border: "1px solid #3a3a6a", borderRadius: 10, padding: 7, minWidth: W, boxShadow: "0 8px 40px #000c" }}
@@ -2170,7 +2188,7 @@ function PhasePanel({ playerOrder, players, activePlayer, turn, phase, isMyTurn,
       {/* Next phase + End turn buttons */}
       {isMyTurn && (
         <div style={{ position: "relative", marginTop: 4, display: "flex", flexDirection: "column", gap: 3 }}>
-          <button onClick={onNextPhase} style={{ width: "100%", padding: "6px 2px", borderRadius: 6, border: "none", background: "linear-gradient(180deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 9, cursor: "pointer", lineHeight: 1.3 }}>
+          <button onClick={onNextPhase} className="mtg-btn" style={{ width: "100%", padding: "6px 2px", borderRadius: 6, border: "none", background: "linear-gradient(180deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 9, cursor: "pointer", lineHeight: 1.3, boxShadow: "0 2px 12px #ffd70055" }}>
             {phase >= 5 ? "Pasar turno" : "Sig. fase"} ▶
           </button>
           {phase < 5 && (
@@ -3615,6 +3633,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       <div style={{
         display: "flex", flexDirection: "column", height: "100%",
         border: isActive ? "2px solid #ffd700" : "1px solid #2a2a4a",
+        animation: isActive ? "glow 2s ease-in-out infinite" : "none",
         borderRadius: 10, overflow: "hidden", background: "#080810",
       }}>
         {/* Header bar */}
@@ -4295,7 +4314,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   );
 }
 
-function mbtn(bg, col) { return { width: 20, height: 20, borderRadius: "50%", border: "none", background: bg, color: col, cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0, flexShrink: 0 }; }
+function mbtn(bg, col) { return { width: 20, height: 20, borderRadius: "50%", border: "none", background: bg, color: col, cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0, flexShrink: 0, transition: "all 0.15s cubic-bezier(0.34,1.56,0.64,1)" }; }
 
 
 
@@ -4689,7 +4708,7 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
           <span style={{ opacity: 0.9, color: "#e8e0d0" }}>🎴</span>
           <span style={{ opacity: 0.7, color: "#cc4444" }}>♦</span>
         </div>
-        <h1 style={{ margin: 0, fontSize: 38, fontWeight: 900, letterSpacing: 3, background: "linear-gradient(90deg,#c0a060,#ffd700,#ff8c00,#ffd700,#c0a060)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>MTG ARENA ES</h1>
+        <h1 style={{ margin: 0, fontSize: 38, fontWeight: 900, letterSpacing: 3, background: "linear-gradient(90deg,#c0a060,#ffd700,#ff8c00,#ffd700,#c0a060)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundSize: "200% auto", animation: "shimmer 4s linear infinite" }}>MTG ARENA ES</h1>
         <div style={{ fontSize: 12, color: "#8888aa", marginTop: 5, letterSpacing: 3, textTransform: "uppercase" }}>Magic: The Gathering · Multijugador Online</div>
         <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
           {FORMATS.filter(f => ["commander", "standard", "legacy", "modern", "vintage", "pauper"].includes(f.key)).map(f => (
