@@ -3746,573 +3746,570 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                             padding: "1px 2px",
                             border: `1px solid ${ab.text}44`,
                             flexShrink: 0,
-                            flexShrink: 0,
-                        {ab.icon}
-                      </span>
-                  ) : null;
-                  })}
-                </div>
-              )
-            }
-            {
-              (card.counters || []).length > 0 && (() => {
-                const cnts = card.counters || [];
-                const pp = cnts.filter(x => x === "+1/+1").length;
-                const mm = cnts.filter(x => x === "-1/-1").length;
-                const ep = cnts.filter(x => x === "+pow").length - cnts.filter(x => x === "-pow").length;
-                const et = cnts.filter(x => x === "+tgh").length - cnts.filter(x => x === "-tgh").length;
-                const netP = pp - mm + ep;
-                const netT = pp - mm + et;
-                const others = [...new Set(cnts.filter(x => x !== "+1/+1" && x !== "-1/-1" && x !== "+pow" && x !== "-pow" && x !== "+tgh" && x !== "-tgh"))];
-                const hasPR = netP !== 0 || netT !== 0;
-                return (
-                  <div style={{ position: "absolute", bottom: 1, left: 1, right: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
-                    {hasPR && (
-                      <span style={{ fontSize: 9, background: netP > 0 && netT > 0 ? "#1a4a1a" : netP < 0 || netT < 0 ? "#4a1a1a" : "#2a2a2a", color: "#fff", borderRadius: 3, padding: "0 3px", fontWeight: 800 }}>
-                        {netP > 0 ? `+${netP}` : netP}/{netT > 0 ? `+${netT}` : netT}
-                      </span>
-                    )}
-                    {others.map(type => {
-                      const count = cnts.filter(x => x === type).length;
-                      const def = COUNTER_TYPES.find(t => t.key === type);
-                      return <span key={type} style={{ fontSize: 8, background: def?.color || "#2a2a3a", color: def?.text || "#fff", borderRadius: 3, padding: "0 3px" }}>{type.length > 6 ? type.slice(0, 5) + "…" : type}×{count}</span>;
-                    })}
-                  </div>
-                );
-              })()
-            }
-            </div>
-        );
-          };
-        return (
-        <div style={{ flex: 1, display: "flex", flexDirection: "row", overflow: "hidden", minHeight: 0 }}>
-          {/* Rows + Lands wrapper */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
-            {/* Row 1 — permanents with horizontal scroll */}
-            <div style={{ position: "relative", flex: 1, minHeight: 141, overflow: "hidden", borderBottom: "1px solid #1a1a2e" }}>
-              {/* Scrollable cards area — stops before log */}
-              <div ref={isMe ? scrollRef1 : null}
-                onDragOver={e => e.preventDefault()}
-                onDrop={e => { e.preventDefault(); if (isMe && dragCard) setRow2Cards(s => { const n = new Set(s); n.delete(dragCard.instanceId); return n; }); setDragCard(null); setDragOverId(null); }}
-                style={{ height: "100%", overflowX: "auto", overflowY: "hidden", padding: "4px 6px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap" }}>
-                {isMe && abilityMarkers.map(m => (
-                  <AbilityMarker key={m.id} marker={m} onRemove={id => setAbilityMarkers(p => p.filter(x => x.id !== id))} />
-                ))}
-                {permanents.filter(c => !row2Cards.has(c.instanceId)).map(c => renderCard(c))}
-                {!permanents.filter(c => !row2Cards.has(c.instanceId)).length && !abilityMarkers.length && (
-                  <div style={{ color: "#1a1a2e", fontSize: 10, flexShrink: 0, paddingTop: 10 }}>Campo vacío</div>
-                )}
-              </div>
-
-              {isMe && <ScrollIndicator containerRef={scrollRef1} />}
-            </div>
-
-            {/* Row 2 — always visible for isMe, drop target */}
-            {(isMe || permanents.some(c => row2Cards.has(c.instanceId))) && (
-              <div
-                onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = "#0d0d20"; e.currentTarget.style.outline = "1px dashed #ffd70055"; }}
-                onDragLeave={e => { e.currentTarget.style.background = isMe ? "#050508" : "transparent"; e.currentTarget.style.outline = "none"; }}
-                onDrop={e => { e.preventDefault(); e.currentTarget.style.background = isMe ? "#050508" : "transparent"; e.currentTarget.style.outline = "none"; if (isMe && dragCard) setRow2Cards(s => new Set([...s, dragCard.instanceId])); setDragCard(null); setDragOverId(null); }}
-                ref={isMe ? scrollRef2 : null} style={{ flex: isMe ? 1 : "0 0 0px", minHeight: isMe ? 141 : 0, overflowX: "auto", overflow: "hidden", padding: "4px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", borderTop: "1px solid #1a1a2e", borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", background: isMe ? "#050508" : "transparent" }}>
-                {permanents.filter(c => row2Cards.has(c.instanceId)).map(c => renderCard(c))}
-                {isMe && !permanents.some(c => row2Cards.has(c.instanceId)) && (
-                  <div style={{ color: "#1a1a2e", fontSize: 9, flexShrink: 0, paddingTop: 14, paddingLeft: 10, fontStyle: "italic", userSelect: "none" }}>↓ arrastra cartas a esta fila</div>
-                )}
-              </div>
-            )}
-
-            {/* Lands zone — horizontal scroll */}
-            <div style={{ height: lands.length > 0 ? 116 : 22, flexShrink: 0, overflow: "hidden", overflowX: "auto", padding: "3px 6px", display: "flex", flexDirection: "row", gap: 4, alignItems: "center", background: "#060609", flexWrap: "nowrap", }}>
-              {lands.length > 0
-                ? <>
-                  <span style={{ fontSize: 8, color: "#4a6a3a", letterSpacing: 1, flexShrink: 0, writingMode: "vertical-rl", marginRight: 2 }}>TIERRAS</span>
-                  {lands.map(c => renderCard(c, "lands"))}
-                </>
-                : <div style={{ fontSize: 9, color: "#2a2a3a", paddingLeft: 8 }}>Zona de tierras</div>}
-            </div>
-          </div>{/* end rows+lands col */}
-
-          {/* LOG column — fixed width, full battlefield height, no overlap */}
-          {isMe && (
-            <div style={{ width: 165, flexShrink: 0, borderLeft: "1px solid #1a1a2e", background: "#06060e", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-              <div style={{ fontSize: 8, color: "#ffd700", letterSpacing: 2, padding: "5px 0 4px", textAlign: "center", borderBottom: "1px solid #1a1a2e", flexShrink: 0 }}>LOG</div>
-              <div style={{ flex: 1, padding: "4px 6px", overflowY: "auto" }}>
-                {[...turnLog].reverse().map((group, gi) => {
-                  const isCollapsed = logCollapsed[group.turn] ?? (gi > 0);
-                  return (
-                    <div key={group.turn} style={{ marginBottom: 2 }}>
-                      <div onClick={() => setLogCollapsed(c => ({ ...c, [group.turn]: !isCollapsed }))}
-                        style={{ fontSize: 8, fontWeight: 800, color: "#ffd700aa", padding: "2px 0", cursor: "pointer", display: "flex", justifyContent: "space-between" }}>
-                        <span>T{group.turn}</span><span>{isCollapsed ? "▶" : "▼"}</span>
+                          }}>
+                            {ab.icon}
+                          </span>
+                        ) : null;
+                      })}
+                    </div>
+                  )}
+                  {(card.counters || []).length > 0 && (() => {
+                    const cnts = card.counters || [];
+                    const pp = cnts.filter(x => x === "+1/+1").length;
+                    const mm = cnts.filter(x => x === "-1/-1").length;
+                    const ep = cnts.filter(x => x === "+pow").length - cnts.filter(x => x === "-pow").length;
+                    const et = cnts.filter(x => x === "+tgh").length - cnts.filter(x => x === "-tgh").length;
+                    const netP = pp - mm + ep;
+                    const netT = pp - mm + et;
+                    const others = [...new Set(cnts.filter(x => x !== "+1/+1" && x !== "-1/-1" && x !== "+pow" && x !== "-pow" && x !== "+tgh" && x !== "-tgh"))];
+                    const hasPR = netP !== 0 || netT !== 0;
+                    return (
+                      <div style={{ position: "absolute", bottom: 1, left: 1, right: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
+                        {hasPR && (
+                          <span style={{ fontSize: 9, background: netP > 0 && netT > 0 ? "#1a4a1a" : netP < 0 || netT < 0 ? "#4a1a1a" : "#2a2a2a", color: "#fff", borderRadius: 3, padding: "0 3px", fontWeight: 800 }}>
+                            {netP > 0 ? `+${netP}` : netP}/{netT > 0 ? `+${netT}` : netT}
+                          </span>
+                        )}
+                        {others.map(type => {
+                          const count = cnts.filter(x => x === type).length;
+                          const def = COUNTER_TYPES.find(t => t.key === type);
+                          return <span key={type} style={{ fontSize: 8, background: def?.color || "#2a2a3a", color: def?.text || "#fff", borderRadius: 3, padding: "0 3px" }}>{type.length > 6 ? type.slice(0, 5) + "…" : type}×{count}</span>;
+                        })}
                       </div>
-                      {!isCollapsed && group.entries.slice().reverse().map((e, i) => (
-                        <div key={i} style={{ fontSize: 8, color: gi === 0 && i === 0 ? "#ddddee" : "#44445a", lineHeight: 1.4, padding: "1px 0", borderBottom: "1px solid #0a0a14", wordBreak: "break-word" }}>{e}</div>
+                    );
+                  })()}
+                </div>
+              );
+            };
+            return (
+              <div style={{ flex: 1, display: "flex", flexDirection: "row", overflow: "hidden", minHeight: 0 }}>
+                {/* Rows + Lands wrapper */}
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
+                  {/* Row 1 — permanents with horizontal scroll */}
+                  <div style={{ position: "relative", flex: 1, minHeight: 141, overflow: "hidden", borderBottom: "1px solid #1a1a2e" }}>
+                    {/* Scrollable cards area — stops before log */}
+                    <div ref={isMe ? scrollRef1 : null}
+                      onDragOver={e => e.preventDefault()}
+                      onDrop={e => { e.preventDefault(); if (isMe && dragCard) setRow2Cards(s => { const n = new Set(s); n.delete(dragCard.instanceId); return n; }); setDragCard(null); setDragOverId(null); }}
+                      style={{ height: "100%", overflowX: "auto", overflowY: "hidden", padding: "4px 6px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap" }}>
+                      {isMe && abilityMarkers.map(m => (
+                        <AbilityMarker key={m.id} marker={m} onRemove={id => setAbilityMarkers(p => p.filter(x => x.id !== id))} />
                       ))}
+                      {permanents.filter(c => !row2Cards.has(c.instanceId)).map(c => renderCard(c))}
+                      {!permanents.filter(c => !row2Cards.has(c.instanceId)).length && !abilityMarkers.length && (
+                        <div style={{ color: "#1a1a2e", fontSize: 10, flexShrink: 0, paddingTop: 10 }}>Campo vacío</div>
+                      )}
+                    </div>
+
+                    {isMe && <ScrollIndicator containerRef={scrollRef1} />}
+                  </div>
+
+                  {/* Row 2 — always visible for isMe, drop target */}
+                  {(isMe || permanents.some(c => row2Cards.has(c.instanceId))) && (
+                    <div
+                      onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = "#0d0d20"; e.currentTarget.style.outline = "1px dashed #ffd70055"; }}
+                      onDragLeave={e => { e.currentTarget.style.background = isMe ? "#050508" : "transparent"; e.currentTarget.style.outline = "none"; }}
+                      onDrop={e => { e.preventDefault(); e.currentTarget.style.background = isMe ? "#050508" : "transparent"; e.currentTarget.style.outline = "none"; if (isMe && dragCard) setRow2Cards(s => new Set([...s, dragCard.instanceId])); setDragCard(null); setDragOverId(null); }}
+                      ref={isMe ? scrollRef2 : null} style={{ flex: isMe ? 1 : "0 0 0px", minHeight: isMe ? 141 : 0, overflowX: "auto", overflow: "hidden", padding: "4px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", borderTop: "1px solid #1a1a2e", borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", background: isMe ? "#050508" : "transparent" }}>
+                      {permanents.filter(c => row2Cards.has(c.instanceId)).map(c => renderCard(c))}
+                      {isMe && !permanents.some(c => row2Cards.has(c.instanceId)) && (
+                        <div style={{ color: "#1a1a2e", fontSize: 9, flexShrink: 0, paddingTop: 14, paddingLeft: 10, fontStyle: "italic", userSelect: "none" }}>↓ arrastra cartas a esta fila</div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Lands zone — horizontal scroll */}
+                  <div style={{ height: lands.length > 0 ? 116 : 22, flexShrink: 0, overflow: "hidden", overflowX: "auto", padding: "3px 6px", display: "flex", flexDirection: "row", gap: 4, alignItems: "center", background: "#060609", flexWrap: "nowrap", }}>
+                    {lands.length > 0
+                      ? <>
+                        <span style={{ fontSize: 8, color: "#4a6a3a", letterSpacing: 1, flexShrink: 0, writingMode: "vertical-rl", marginRight: 2 }}>TIERRAS</span>
+                        {lands.map(c => renderCard(c, "lands"))}
+                      </>
+                      : <div style={{ fontSize: 9, color: "#2a2a3a", paddingLeft: 8 }}>Zona de tierras</div>}
+                  </div>
+                </div>{/* end rows+lands col */}
+
+                {/* LOG column — fixed width, full battlefield height, no overlap */}
+                {isMe && (
+                  <div style={{ width: 165, flexShrink: 0, borderLeft: "1px solid #1a1a2e", background: "#06060e", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                    <div style={{ fontSize: 8, color: "#ffd700", letterSpacing: 2, padding: "5px 0 4px", textAlign: "center", borderBottom: "1px solid #1a1a2e", flexShrink: 0 }}>LOG</div>
+                    <div style={{ flex: 1, padding: "4px 6px", overflowY: "auto" }}>
+                      {[...turnLog].reverse().map((group, gi) => {
+                        const isCollapsed = logCollapsed[group.turn] ?? (gi > 0);
+                        return (
+                          <div key={group.turn} style={{ marginBottom: 2 }}>
+                            <div onClick={() => setLogCollapsed(c => ({ ...c, [group.turn]: !isCollapsed }))}
+                              style={{ fontSize: 8, fontWeight: 800, color: "#ffd700aa", padding: "2px 0", cursor: "pointer", display: "flex", justifyContent: "space-between" }}>
+                              <span>T{group.turn}</span><span>{isCollapsed ? "▶" : "▼"}</span>
+                            </div>
+                            {!isCollapsed && group.entries.slice().reverse().map((e, i) => (
+                              <div key={i} style={{ fontSize: 8, color: gi === 0 && i === 0 ? "#ddddee" : "#44445a", lineHeight: 1.4, padding: "1px 0", borderBottom: "1px solid #0a0a14", wordBreak: "break-word" }}>{e}</div>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            );
+          })()}
+
+          {/* Bottom bar: CMD | EXILE | GRAVEYARD | LIBRARY ——————————————— HAND */}
+          {(() => {
+            // Responsive card size based on available space
+            // We use CSS container queries via inline calc:
+            // small = 42px wide cards, normal = 52px
+            const cardW = isMe ? 52 : 42;
+            const cardH = isMe ? 73 : 58;
+            const zoneSlotStyle = (label) => ({
+              display: "flex", flexDirection: "column", alignItems: "center",
+              gap: 2, flexShrink: 0
+            });
+            const labelStyle = {
+              fontSize: 7, color: "#8888aa", letterSpacing: 1,
+              textTransform: "uppercase", lineHeight: 1, textAlign: "center"
+            };
+            return (
+              <div style={{ borderTop: "1px solid #2a2a4a", background: "#050508", display: "flex", alignItems: "stretch", flexShrink: 0 }}>
+
+                {/* LEFT ZONES — fixed width, never shrink */}
+                <div style={{ display: "flex", gap: 3, alignItems: "center", padding: "4px 5px", flexShrink: 0, borderRight: "1px solid #1a1a2e" }}>
+
+                  {/* Commander */}
+                  <div style={zoneSlotStyle()}>
+                    <div style={{ fontSize: 7, color: "#ffd700", letterSpacing: 1, textAlign: "center" }}>CMD</div>
+                    {p.commandZone.length > 0
+                      ? p.commandZone.map(c => (
+                        <div key={c.instanceId} onContextMenu={e => openCardCtx(e, p.id, c, "commandZone", isMe)} style={{ position: "relative" }}>
+                          <CardTile card={c} small onClick={isMe ? playCommander : undefined} onHover={(card, x, y) => setHover({ card, x, y })} onHoverEnd={() => setHover(null)} />
+                          {p.commanderTax > 0 && (
+                            <div style={{ position: "absolute", top: -5, right: -5, background: "#8b0000", color: "#ffcccc", borderRadius: "50%", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 800, border: "1px solid #ff4444" }}>
+                              +{p.commanderTax}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                      : p.commanderCard
+                        ? <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed #ffd70044", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1 }}>
+                          <div style={{ fontSize: 12 }}>⚔</div>
+                          <div style={{ fontSize: 7, color: "#ffd70066" }}>En juego</div>
+                          {p.commanderTax > 0 && <div style={{ fontSize: 7, color: "#ff8844", fontWeight: 800 }}>+{p.commanderTax}</div>}
+                        </div>
+                        : <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed #2a2a4a" }} />
+                    }
+                  </div>
+
+                  {/* Library */}
+                  <div style={zoneSlotStyle()}>
+                    <div style={labelStyle}>Bib.</div>
+                    <div onClick={isMe ? () => libActions.draw(p.id, 1) : undefined}
+                      onContextMenu={e => { if (!isMe) return; e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, title: `Biblioteca (${p.library.length})`, items: libraryMenu(p, p.id, isMe, libActions) }); }}
+                      style={{ width: cardW, height: cardH, borderRadius: 5, overflow: "hidden", border: "2px solid #3a5a8a", cursor: isMe ? "pointer" : "default", position: "relative" }}>
+                      <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,#1a2a4a 0%,#0d1a2e 40%,#1a0a2a 100%)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                        <div style={{ position: "absolute", inset: 2, border: "1px solid #3a4a6a", borderRadius: 3 }} />
+                        <span style={{ fontSize: 10, opacity: 0.5 }}>🌟</span>
+                      </div>
+                      <div style={{ position: "absolute", bottom: 2, left: 0, right: 0, textAlign: "center", fontSize: 10, color: "#fff", fontWeight: 800, background: "#000a", borderRadius: "0 0 4px 4px", padding: "1px 0" }}>{p.library.length}</div>
+                    </div>
+                  </div>
+
+                  {/* Graveyard */}
+                  <div style={zoneSlotStyle()}>
+                    <div style={labelStyle}>Cem.</div>
+                    <div onClick={() => setShowZone({ pid: p.id, zone: "graveyard" })} style={{ cursor: "pointer" }}>
+                      {p.graveyard.length > 0
+                        ? <CardTile card={p.graveyard[0]} small onClick={() => setShowZone({ pid: p.id, zone: "graveyard" })} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
+                        : <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed #3a3a5a", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1 }}><div style={{ fontSize: 12 }}>🪦</div><div style={{ fontSize: 8, color: "#555" }}>{p.graveyard.length}</div></div>}
+                    </div>
+                  </div>
+
+                  {/* Exile */}
+                  <div style={zoneSlotStyle()}>
+                    <div style={labelStyle}>Exilio</div>
+                    <div onClick={() => setShowZone({ pid: p.id, zone: "exile" })} style={{ cursor: "pointer" }}>
+                      {p.exile.length > 0
+                        ? <CardTile card={p.exile[0]} small onClick={() => setShowZone({ pid: p.id, zone: "exile" })} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
+                        : <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed #3a3a5a", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1 }}><div style={{ fontSize: 12 }}>✨</div><div style={{ fontSize: 8, color: "#555" }}>{p.exile.length}</div></div>}
+                    </div>
+                  </div>
+
+                  {/* Sideboard — only show for non-commander formats */}
+                  {(p.sideboard || []).length > 0 && (
+                    <div style={zoneSlotStyle()}>
+                      <div style={labelStyle}>SB</div>
+                      <div onClick={() => setShowZone({ pid: p.id, zone: "sideboard" })} style={{ cursor: "pointer" }}>
+                        <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px solid #3a4a6a", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1, background: "#1a1a3e", cursor: "pointer" }}>
+                          <div style={{ fontSize: 10 }}>↔</div>
+                          <div style={{ fontSize: 8, color: "#88aaff", fontWeight: 800 }}>{(p.sideboard || []).length}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* DIVIDER — flexible space */}
+                <div style={{ flex: 1, minWidth: 8 }} />
+
+                {/* RIGHT: HAND */}
+                <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "4px 5px", overflowX: "auto", flexShrink: 0, borderLeft: "1px solid #1a1a2e", maxWidth: "55%" }}>
+                  <span style={{ fontSize: 7, color: "#555", writingMode: "vertical-rl", letterSpacing: 1, flexShrink: 0, textTransform: "uppercase" }}>Mano</span>
+                  {isMe
+                    ? p.hand.map(card => (
+                      <div key={card.instanceId} onContextMenu={e => openCardCtx(e, pid, card, "hand", true)}>
+                        <CardTile card={card} small
+                          selected={selCard?.instanceId === card.instanceId}
+                          onClick={() => setSelCard(s => s?.instanceId === card.instanceId ? null : card)}
+                          onDoubleClick={() => playCard(card, "hand")}
+                          onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
+                      </div>
+                    ))
+                    : p.hand.map(card => (
+                      <div key={card.instanceId} style={{ width: 38, height: 52, borderRadius: 4, overflow: "hidden", flexShrink: 0, border: "2px solid #2a3a5a", background: "linear-gradient(160deg,#1a2a4a,#0d1a2e,#1a0a2a)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ fontSize: 12, opacity: 0.5 }}>🌟</span>
+                      </div>
+                    ))
+                  }
+                  {p.hand.length === 0 && <span style={{ color: "#2a2a3a", fontSize: 9 }}>vacía</span>}
+                </div>
+
+              </div>
+            );
+          })()}
+        </div>{/* end body wrapper */}
+      </div>
+    );
+  };
+
+  const mbtn = (bg, col) => ({ width: 20, height: 20, borderRadius: "50%", border: "none", background: bg, color: col, cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0, flexShrink: 0 });
+
+  // ── Layout: 4-corner / center ──
+  // Opponent positions based on count
+  const opponentSlots = others.slice(0, 3);
+
+  return (
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "#04040c", color: "#e8e0d0", fontFamily: "'Crimson Text',Georgia,serif", overflow: "hidden", userSelect: "none" }}
+      onClick={() => { setCtxMenu(null); setSelCard(null); }}>
+
+
+
+      {/* Board: PhasePanel | Grid | ActionPanel */}
+      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+
+        {/* LEFT: Phase + Turn order panel */}
+        <PhasePanel
+          playerOrder={playerOrder} players={players} activePlayer={activePlayer}
+          turn={turn} phase={phase} isMyTurn={isMyTurn}
+          onNextPhase={nextPhase} onEndTurn={() => {
+            const msg = `Fase: ${PHASES[5]}`;
+            addLog(msg);
+            setPhase(5);
+            setAttackers(new Set());
+            rt.current?.broadcast("turn_change", { ap: activePlayer, ph: 5, t: turn, log: msg });
+            setTimeout(nextPhase, 150);
+          }}
+          onMulligan={startMulligan} onHome={onHome}
+          avatars={avatarMap}
+        />
+
+        {/* CENTER: Player grids */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", gap: 4, padding: 4 }}>
+          {/* Opponents row — in 2-player mode takes 50% height */}
+          {opponentSlots.length > 0 && (
+            <div style={{ flex: isTwoPlayer ? 1 : 1, display: "flex", gap: 4, minHeight: 0 }}>
+              {opponentSlots.map(p => (
+                <div key={p.id} style={{ flex: 1, minWidth: 0 }}>
+                  {renderPlayerPanel(p.id, false, 0)}
+                </div>
+              ))}
+            </div>
+          )}
+          {/* My panel — 50% in 2-player */}
+          <div style={{ flex: 1, minHeight: 0 }}>
+            {renderPlayerPanel(myId, true, 0)}
+          </div>
+        </div>
+
+        {/* RIGHT: Actions + Log panel */}
+        <div style={{ width: 68, flexShrink: 0, background: "#06060e", borderLeft: "1px solid #1a1a2e", display: "flex", flexDirection: "column", alignItems: "center", padding: "4px 4px", gap: 2, overflowY: "auto", flexShrink: 0 }}>
+          {/* PRIMARY buttons — always visible */}
+          {[
+            { icon: "📚", label: "Robar", action: () => libActions.draw(myId, 1), color: "#7fc4ff" },
+            { icon: "⟲", label: "Destapar", action: untapAll, color: "#88ff88" },
+            { icon: "🪄", label: "Token", action: () => setTokenModal(true), color: "#cc88ff" },
+            { icon: "🎲", label: "Dado", action: () => setDiceModal(true), color: "#ffaa44" },
+            { icon: "💬", label: "Chat", action: () => setChatOpen(o => !o), color: chatOpen ? "#7fc4ff" : "#888" },
+            { icon: "🎙", label: voiceEnabled ? (muted ? "Silenc." : "Voz ON") : "Voz", action: toggleVoice, color: voiceEnabled ? (muted ? "#ff8888" : "#44ff88") : "#555" },
+          ].map(btn => (
+            <button key={btn.label} onClick={btn.action} title={btn.label}
+              style={{ width: "100%", padding: "4px 2px", borderRadius: 6, border: "1px solid #1a1a2e", background: "#0a0a14", color: btn.color, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+              <span style={{ fontSize: 14 }}>{btn.icon}</span>
+              <span style={{ fontSize: 7, lineHeight: 1 }}>{btn.label}</span>
+            </button>
+          ))}
+
+          {/* Separator */}
+          <div style={{ width: "80%", height: 1, background: "#1a1a2e", margin: "2px 0", flexShrink: 0 }} />
+
+          {/* SECONDARY buttons — smaller */}
+          {[
+            { icon: "↩", label: "Deshacer", action: undo, color: history.length ? "#ffcc88" : "#333", disabled: !history.length },
+            { icon: "✨", label: "Habil.", action: () => setAbilitiesModal(true), color: "#88eeff" },
+            { icon: "❤", label: "Vida", action: () => setLifeHistoryOpen(o => !o), color: "#ff8888" },
+            { icon: "💎", label: "Maná", action: () => setManaOpen(o => !o), color: manaOpen ? "#ffd700" : "#888" },
+            { icon: "⚔", label: "CmdDmg", action: () => setCmdDmgOpen(o => !o), color: cmdDmgOpen ? "#ff8844" : "#888" },
+            { icon: "📝", label: "Notas", action: () => setNotesOpen(o => !o), color: notesOpen ? "#88ff88" : "#888" },
+            { icon: "🔍", label: "Buscar", action: () => setCardSearch(s => ({ ...s, open: !s.open, query: "", results: [] })), color: cardSearch.open ? "#ffd700" : "#888" },
+            ...(voiceEnabled ? [{ icon: muted ? "🔇" : "🔊", label: muted ? "Unmute" : "Mute", action: toggleMute, color: muted ? "#ff4444" : "#88ff88" }] : []),
+          ].map(btn => (
+            <button key={btn.label} onClick={btn.action} disabled={btn.disabled} title={btn.label}
+              style={{ width: "100%", padding: "3px 2px", borderRadius: 5, border: "1px solid #141420", background: "#080810", color: btn.color, cursor: btn.disabled ? "default" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 0, opacity: btn.disabled ? 0.3 : 1 }}>
+              <span style={{ fontSize: 12 }}>{btn.icon}</span>
+              <span style={{ fontSize: 6, lineHeight: 1 }}>{btn.label}</span>
+            </button>
+          ))}
+
+          {/* Separator */}
+          <div style={{ width: "80%", height: 1, background: "#1a1a2e", margin: "2px 0", flexShrink: 0 }} />
+
+          {/* UTILITY buttons — icon only, smallest */}
+          {[
+            {
+              icon: "📤", label: "Exportar", action: () => {
+                const txt = exportGameState(players, playerOrder, turn, phase, turnLog, roomCode);
+                const blob = new Blob([txt], { type: "text/plain" });
+                const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+                a.download = `partida-${roomCode}-T${turn}.txt`; a.click();
+              }, color: "#555"
+            },
+            {
+              icon: "🔄", label: "Reiniciar", action: () => {
+                if (window.confirm("¿Reiniciar la partida?")) {
+                  const newPlayers = {};
+                  initialPlayers.forEach(p => {
+                    newPlayers[p.id] = mkState(p.id, p.name, p.playerState?.fullDeck || p.playerState?.library || [], p.playerState?.commandZone?.[0] || null, p.format?.life || 40);
+                  });
+                  setPlayers(newPlayers); setTurn(1); setPhase(0);
+                  setActivePlayer(initialPlayers[0]?.id);
+                  setTurnLog([{ turn: 1, entries: ["¡Partida reiniciada!"] }]);
+                  setAttackers(new Set()); addLog("🔄 Partida reiniciada.");
+                  rt.current?.broadcast("notification", { msg: "🔄 La partida fue reiniciada", from: myId });
+                }
+              }, color: "#555"
+            },
+            { icon: "✕", label: "Salir", action: onExit, color: "#444" },
+          ].map(btn => (
+            <button key={btn.label} onClick={btn.action} title={btn.label}
+              style={{ width: "100%", padding: "3px 2px", borderRadius: 5, border: "none", background: "transparent", color: btn.color, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <span style={{ fontSize: 12 }}>{btn.icon}</span>
+              <span style={{ fontSize: 6, lineHeight: 1 }}>{btn.label}</span>
+            </button>
+          ))}
+          {/* Card Search Panel */}
+          {cardSearch.open && (
+            <div style={{ width: "100%", borderTop: "1px solid #1a1a2e", paddingTop: 6, marginBottom: 4 }}>
+              <input value={cardSearch.query}
+                onChange={async e => {
+                  const q = e.target.value;
+                  setCardSearch(s => ({ ...s, query: q, loading: true }));
+                  if (q.length < 2) { setCardSearch(s => ({ ...s, results: [], loading: false })); return; }
+                  try {
+                    const r = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&unique=cards&order=name`);
+                    const d = r.ok ? await r.json() : { data: [] };
+                    setCardSearch(s => ({ ...s, results: (d.data || []).slice(0, 20), loading: false }));
+                  } catch { setCardSearch(s => ({ ...s, results: [], loading: false })); }
+                }}
+                placeholder="Buscar carta..."
+                style={{ width: "100%", padding: "5px 7px", borderRadius: 6, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 10, outline: "none", boxSizing: "border-box" }}
+              />
+              {cardSearch.loading && <div style={{ fontSize: 8, color: "#888", textAlign: "center", padding: 4 }}>...</div>}
+              <div style={{ maxHeight: 200, overflowY: "auto", marginTop: 4 }}>
+                {cardSearch.results.map(card => {
+                  const img = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal;
+                  return (
+                    <div key={card.id}
+                      onContextMenu={e => {
+                        e.preventDefault();
+                        setCtxMenu({
+                          x: e.clientX, y: e.clientY, title: card.printed_name || card.name,
+                          items: [
+                            { label: "🤚 A la mano", action: () => updMe(p => ({ ...p, hand: [...p.hand, { ...card, image_url: img, instanceId: uid() }] }), `${players[myId]?.name} busca ${card.printed_name || card.name} → mano.`) },
+                            { label: "🔝 Tope biblioteca", action: () => updMe(p => ({ ...p, library: [{ ...card, image_url: img, instanceId: uid() }, ...p.library] }), `${players[myId]?.name} busca ${card.printed_name || card.name} → tope.`) },
+                            { label: "🔽 Fondo biblioteca", action: () => updMe(p => ({ ...p, library: [...p.library, { ...card, image_url: img, instanceId: uid() }] }), `${players[myId]?.name} busca ${card.printed_name || card.name} → fondo.`) },
+                            { label: "⚔ Al campo", action: () => updMe(p => ({ ...p, battlefield: [...p.battlefield, { ...card, image_url: img, instanceId: uid(), tapped: false, counters: [], abilities: cardAbilitiesFromKeywords(card) }] }), `${players[myId]?.name} busca ${card.printed_name || card.name} → campo.`) },
+                            { label: "✨ Al exilio", action: () => updMe(p => ({ ...p, exile: [{ ...card, image_url: img, instanceId: uid() }, ...p.exile] }), `${players[myId]?.name} busca ${card.printed_name || card.name} → exilio.`) },
+                          ]
+                        });
+                      }}
+                      onMouseEnter={e => setHover({ card: { ...card, image_url: img }, x: e.clientX, y: e.clientY })}
+                      onMouseMove={e => setHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
+                      onMouseLeave={() => setHover(null)}
+                      style={{ padding: "4px 6px", borderRadius: 5, cursor: "context-menu", borderBottom: "1px solid #0d0d18", display: "flex", gap: 6, alignItems: "center" }}
+                      onMouseOver={e => e.currentTarget.style.background = "#1a1a2e"}
+                      onMouseOut={e => e.currentTarget.style.background = "transparent"}>
+                      {img && <img src={img} style={{ width: 24, height: 33, borderRadius: 2, objectFit: "cover", flexShrink: 0 }} />}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 8, color: "#e8e0d0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{card.printed_name || card.name}</div>
+                        <div style={{ fontSize: 7, color: "#555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{card.type_line?.split("—")[0]}</div>
+                      </div>
                     </div>
                   );
                 })}
               </div>
             </div>
           )}
-
         </div>
-        );
-        })()}
 
-        {/* Bottom bar: CMD | EXILE | GRAVEYARD | LIBRARY ——————————————— HAND */}
-        {(() => {
-          // Responsive card size based on available space
-          // We use CSS container queries via inline calc:
-          // small = 42px wide cards, normal = 52px
-          const cardW = isMe ? 52 : 42;
-          const cardH = isMe ? 73 : 58;
-          const zoneSlotStyle = (label) => ({
-            display: "flex", flexDirection: "column", alignItems: "center",
-            gap: 2, flexShrink: 0
-          });
-          const labelStyle = {
-            fontSize: 7, color: "#8888aa", letterSpacing: 1,
-            textTransform: "uppercase", lineHeight: 1, textAlign: "center"
-          };
-          return (
-            <div style={{ borderTop: "1px solid #2a2a4a", background: "#050508", display: "flex", alignItems: "stretch", flexShrink: 0 }}>
 
-              {/* LEFT ZONES — fixed width, never shrink */}
-              <div style={{ display: "flex", gap: 3, alignItems: "center", padding: "4px 5px", flexShrink: 0, borderRight: "1px solid #1a1a2e" }}>
 
-                {/* Commander */}
-                <div style={zoneSlotStyle()}>
-                  <div style={{ fontSize: 7, color: "#ffd700", letterSpacing: 1, textAlign: "center" }}>CMD</div>
-                  {p.commandZone.length > 0
-                    ? p.commandZone.map(c => (
-                      <div key={c.instanceId} onContextMenu={e => openCardCtx(e, p.id, c, "commandZone", isMe)} style={{ position: "relative" }}>
-                        <CardTile card={c} small onClick={isMe ? playCommander : undefined} onHover={(card, x, y) => setHover({ card, x, y })} onHoverEnd={() => setHover(null)} />
-                        {p.commanderTax > 0 && (
-                          <div style={{ position: "absolute", top: -5, right: -5, background: "#8b0000", color: "#ffcccc", borderRadius: "50%", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 800, border: "1px solid #ff4444" }}>
-                            +{p.commanderTax}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                    : p.commanderCard
-                      ? <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed #ffd70044", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1 }}>
-                        <div style={{ fontSize: 12 }}>⚔</div>
-                        <div style={{ fontSize: 7, color: "#ffd70066" }}>En juego</div>
-                        {p.commanderTax > 0 && <div style={{ fontSize: 7, color: "#ff8844", fontWeight: 800 }}>+{p.commanderTax}</div>}
-                      </div>
-                      : <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed #2a2a4a" }} />
-                  }
-                </div>
+      </div>{/* end board flex row */}
 
-                {/* Library */}
-                <div style={zoneSlotStyle()}>
-                  <div style={labelStyle}>Bib.</div>
-                  <div onClick={isMe ? () => libActions.draw(p.id, 1) : undefined}
-                    onContextMenu={e => { if (!isMe) return; e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, title: `Biblioteca (${p.library.length})`, items: libraryMenu(p, p.id, isMe, libActions) }); }}
-                    style={{ width: cardW, height: cardH, borderRadius: 5, overflow: "hidden", border: "2px solid #3a5a8a", cursor: isMe ? "pointer" : "default", position: "relative" }}>
-                    <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,#1a2a4a 0%,#0d1a2e 40%,#1a0a2a 100%)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-                      <div style={{ position: "absolute", inset: 2, border: "1px solid #3a4a6a", borderRadius: 3 }} />
-                      <span style={{ fontSize: 10, opacity: 0.5 }}>🌟</span>
-                    </div>
-                    <div style={{ position: "absolute", bottom: 2, left: 0, right: 0, textAlign: "center", fontSize: 10, color: "#fff", fontWeight: 800, background: "#000a", borderRadius: "0 0 4px 4px", padding: "1px 0" }}>{p.library.length}</div>
-                  </div>
-                </div>
 
-                {/* Graveyard */}
-                <div style={zoneSlotStyle()}>
-                  <div style={labelStyle}>Cem.</div>
-                  <div onClick={() => setShowZone({ pid: p.id, zone: "graveyard" })} style={{ cursor: "pointer" }}>
-                    {p.graveyard.length > 0
-                      ? <CardTile card={p.graveyard[0]} small onClick={() => setShowZone({ pid: p.id, zone: "graveyard" })} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
-                      : <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed #3a3a5a", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1 }}><div style={{ fontSize: 12 }}>🪦</div><div style={{ fontSize: 8, color: "#555" }}>{p.graveyard.length}</div></div>}
-                  </div>
-                </div>
 
-                {/* Exile */}
-                <div style={zoneSlotStyle()}>
-                  <div style={labelStyle}>Exilio</div>
-                  <div onClick={() => setShowZone({ pid: p.id, zone: "exile" })} style={{ cursor: "pointer" }}>
-                    {p.exile.length > 0
-                      ? <CardTile card={p.exile[0]} small onClick={() => setShowZone({ pid: p.id, zone: "exile" })} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
-                      : <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed #3a3a5a", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1 }}><div style={{ fontSize: 12 }}>✨</div><div style={{ fontSize: 8, color: "#555" }}>{p.exile.length}</div></div>}
-                  </div>
-                </div>
-
-                {/* Sideboard — only show for non-commander formats */}
-                {(p.sideboard || []).length > 0 && (
-                  <div style={zoneSlotStyle()}>
-                    <div style={labelStyle}>SB</div>
-                    <div onClick={() => setShowZone({ pid: p.id, zone: "sideboard" })} style={{ cursor: "pointer" }}>
-                      <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px solid #3a4a6a", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1, background: "#1a1a3e", cursor: "pointer" }}>
-                        <div style={{ fontSize: 10 }}>↔</div>
-                        <div style={{ fontSize: 8, color: "#88aaff", fontWeight: 800 }}>{(p.sideboard || []).length}</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* DIVIDER — flexible space */}
-              <div style={{ flex: 1, minWidth: 8 }} />
-
-              {/* RIGHT: HAND */}
-              <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "4px 5px", overflowX: "auto", flexShrink: 0, borderLeft: "1px solid #1a1a2e", maxWidth: "55%" }}>
-                <span style={{ fontSize: 7, color: "#555", writingMode: "vertical-rl", letterSpacing: 1, flexShrink: 0, textTransform: "uppercase" }}>Mano</span>
-                {isMe
-                  ? p.hand.map(card => (
-                    <div key={card.instanceId} onContextMenu={e => openCardCtx(e, pid, card, "hand", true)}>
-                      <CardTile card={card} small
-                        selected={selCard?.instanceId === card.instanceId}
-                        onClick={() => setSelCard(s => s?.instanceId === card.instanceId ? null : card)}
-                        onDoubleClick={() => playCard(card, "hand")}
-                        onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
-                    </div>
-                  ))
-                  : p.hand.map(card => (
-                    <div key={card.instanceId} style={{ width: 38, height: 52, borderRadius: 4, overflow: "hidden", flexShrink: 0, border: "2px solid #2a3a5a", background: "linear-gradient(160deg,#1a2a4a,#0d1a2e,#1a0a2a)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ fontSize: 12, opacity: 0.5 }}>🌟</span>
-                    </div>
-                  ))
-                }
-                {p.hand.length === 0 && <span style={{ color: "#2a2a3a", fontSize: 9 }}>vacía</span>}
-              </div>
-
+      {/* Zone modal */}
+      {showZone && (
+        <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 400 }} onClick={() => setShowZone(null)}>
+          <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 14, padding: 22, maxWidth: 680, maxHeight: "80vh", overflowY: "auto", minWidth: 360 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#ffd700" }}>
+                {showZone.zone === "graveyard" ? "🪦 Cementerio" : "✨ Exilio"} — {players[showZone.pid]?.name}
+              </span>
+              <button onClick={() => setShowZone(null)} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 17 }}>✕</button>
             </div>
-          );
-        })()}
-      </div>{/* end body wrapper */ }
-      </div >
-    );
-};
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+              {(players[showZone.pid]?.[showZone.zone] || []).map(card => (
+                <div key={card.instanceId} onContextMenu={e => { setShowZone(null); openCardCtx(e, showZone.pid, card, showZone.zone, showZone.pid === myId); }}>
+                  <CardTile card={card} onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
+                </div>
+              ))}
+              {!players[showZone.pid]?.[showZone.zone]?.length && <div style={{ color: "#555", padding: 18 }}>Vacío</div>}
+            </div>
+          </div>
+        </div>
+      )}
 
-const mbtn = (bg, col) => ({ width: 20, height: 20, borderRadius: "50%", border: "none", background: bg, color: col, cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0, flexShrink: 0 });
+      {/* View top modal */}
+      {viewTopModal && (
+        <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }} onClick={() => setViewTopModal(null)}>
+          <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 14, padding: 22, maxWidth: 600 }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#ffd700", marginBottom: 14 }}>🔍 Tope de biblioteca — {players[viewTopModal.pid]?.name}</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {viewTopModal.cards.map((card, i) => <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}><CardTile card={card} onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} /><span style={{ fontSize: 9, color: "#888" }}>#{i + 1}</span></div>)}
+            </div>
+            <button onClick={() => setViewTopModal(null)} style={{ marginTop: 16, padding: "8px 24px", borderRadius: 8, border: "none", background: "#1a1a3e", color: "#e8e0d0", cursor: "pointer" }}>Cerrar</button>
+          </div>
+        </div>
+      )}
 
-// ── Layout: 4-corner / center ──
-// Opponent positions based on count
-const opponentSlots = others.slice(0, 3);
+      {/* Scry/Surveil modal */}
+      {scryModal && <ScryModal cards={scryModal.cards} title={`${scryModal.mode === "scry" ? "🔮 Scry" : "👁 Surveil"} ${scryModal.cards.length}`} onDone={resolveScry} />}
 
-return (
-  <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "#04040c", color: "#e8e0d0", fontFamily: "'Crimson Text',Georgia,serif", overflow: "hidden", userSelect: "none" }}
-    onClick={() => { setCtxMenu(null); setSelCard(null); }}>
+      {/* Search lib modal */}
+      {searchLibModal && (() => {
+        const pid = typeof searchLibModal === "string" ? searchLibModal : searchLibModal.pid;
+        const zone = typeof searchLibModal === "string" ? "library" : (searchLibModal.zone || "library");
+        const dest = typeof searchLibModal === "string" ? "hand" : (searchLibModal.dest || "hand");
+        return <SearchLibModal library={players[pid]?.library || []} graveyard={players[pid]?.graveyard || []} sideboard={players[pid]?.sideboard || []} zone={zone} dest={dest} onPick={resolveSearchLib} onClose={() => setSearchLibModal(null)} />;
+      })()}
+
+      {/* Resolve Modal (Cascade, Discover, Impulse, etc.) */}
+      {resolveModal && (
+        <ResolveModal
+          modal={resolveModal}
+          players={players}
+          onResolve={resolveModalAction}
+          onClose={() => setResolveModal(null)}
+        />
+      )}
+      {/* Token Modal */}
+      {tokenModal && <TokenModal cmdTokenSuggestions={cmdTokenSuggestions} onCreate={createToken} onClose={() => setTokenModal(false)} />}
+
+      {/* Life History */}
+      {lifeHistoryOpen && <LifeHistoryPanel players={players} lifeHistory={lifeHistory} onClose={() => setLifeHistoryOpen(false)} />}
+
+      {/* Chat */}
+      {chatOpen && <ChatPanel messages={chatMessages} input={chatInput} onInput={setChatInput} onSend={sendChatMessage} onClose={() => setChatOpen(false)} playerName={players[myId]?.name} />}
+
+      {/* Notes */}
+      {notesOpen && <NotesPanel notes={notes} onChange={setNotes} onClose={() => setNotesOpen(false)} />}
+
+      {/* Mana Tracker */}
+      {manaOpen && <ManaTracker mana={mana} onChange={setMana} onClose={() => setManaOpen(false)} />}
+      {cmdDmgOpen && <CmdDmgPanel myPid={myId} players={players} playerOrder={playerOrder} avatarMap={avatarMap} onAdjust={(fromPid, d) => adjCmdDmg(fromPid, myId, d)} onClose={() => setCmdDmgOpen(false)} />}
 
 
 
-    {/* Board: PhasePanel | Grid | ActionPanel */}
-    <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
 
-      {/* LEFT: Phase + Turn order panel */}
-      <PhasePanel
-        playerOrder={playerOrder} players={players} activePlayer={activePlayer}
-        turn={turn} phase={phase} isMyTurn={isMyTurn}
-        onNextPhase={nextPhase} onEndTurn={() => {
-          const msg = `Fase: ${PHASES[5]}`;
-          addLog(msg);
-          setPhase(5);
-          setAttackers(new Set());
-          rt.current?.broadcast("turn_change", { ap: activePlayer, ph: 5, t: turn, log: msg });
-          setTimeout(nextPhase, 150);
+      {/* Notifications */}
+      <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 600, display: "flex", flexDirection: "column", gap: 6, alignItems: "center", pointerEvents: "none" }}>
+        {notifications.map(n => (
+          <div key={n.id} style={{ background: "#1a1a2eee", border: "1px solid #3a3a6a", borderRadius: 10, padding: "8px 16px", fontSize: 12, color: "#e8e0d0", boxShadow: "0 4px 16px #000a", animation: "slideDown 0.3s ease" }}>
+            {n.msg}
+          </div>
+        ))}
+      </div>
+
+      {/* Spectator banner */}
+      {isSpectator && (
+        <div style={{ position: "fixed", top: 8, left: "50%", transform: "translateX(-50%)", background: "#0d0d1eee", border: "1px solid #3a3a6a", borderRadius: 20, padding: "6px 18px", fontSize: 12, color: "#8888aa", zIndex: 500, pointerEvents: "none" }}>
+          👁 Modo Espectador — Solo lectura
+        </div>
+      )}
+      {/* Dice Result Overlay — visible to all players */}
+      <DiceResultOverlay result={diceResult} />
+      {/* Abilities Modal */}
+      {abilitiesModal && (
+        <AbilitiesModal
+          markers={abilityMarkers}
+          onAdd={(key) => setAbilityMarkers(m => [...m, { id: uid(), ability: key }])}
+          onRemove={(id) => {
+            if (id === "all") setAbilityMarkers([]);
+            else setAbilityMarkers(m => m.filter(x => x.id !== id));
+          }}
+          onClose={() => setAbilitiesModal(false)}
+        />
+      )}
+      {/* Dice Modal */}
+      {diceModal && <DiceModal
+        onClose={() => setDiceModal(false)}
+        playerName={players[myId]?.name}
+        onRoll={(rollData) => {
+          // Show to myself
+          setDiceResult(rollData);
+          addLog(`🎲 ${rollData.playerName} tira d${rollData.die}: ${rollData.value}${rollData.value === rollData.die ? " 🎉" : rollData.value === 1 ? " 💀" : ""}`);
+          setTimeout(() => setDiceResult(null), 4000);
+          // Broadcast to all others
+          rt.current?.broadcast("dice_roll", rollData);
         }}
-        onMulligan={startMulligan} onHome={onHome}
-        avatars={avatarMap}
-      />
+      />}
+      {/* Zoom Card */}
+      {zoomCard && <ZoomCardModal card={zoomCard} onClose={() => setZoomCard(null)} />}
 
-      {/* CENTER: Player grids */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", gap: 4, padding: 4 }}>
-        {/* Opponents row — in 2-player mode takes 50% height */}
-        {opponentSlots.length > 0 && (
-          <div style={{ flex: isTwoPlayer ? 1 : 1, display: "flex", gap: 4, minHeight: 0 }}>
-            {opponentSlots.map(p => (
-              <div key={p.id} style={{ flex: 1, minWidth: 0 }}>
-                {renderPlayerPanel(p.id, false, 0)}
-              </div>
-            ))}
-          </div>
-        )}
-        {/* My panel — 50% in 2-player */}
-        <div style={{ flex: 1, minHeight: 0 }}>
-          {renderPlayerPanel(myId, true, 0)}
-        </div>
-      </div>
+      {/* Mulligan Modal */}
+      {mulliganModal && (
+        <MulliganModal
+          player={players[myId]}
+          mulliganCount={mulliganCount}
+          onKeep={keepHand}
+          onMulligan={doMulligan}
+          onClose={() => setMulliganModal(false)}
+          onHome={onHome}
+        />
+      )}
+      {/* Counter Modal */}
+      {counterModal && (() => {
+        const card = players[myId]?.battlefield.find(c => c.instanceId === counterModal);
+        if (!card) { setCounterModal(null); return null; }
+        return <CounterModal card={card} onUpdate={(newCounters) => setCounters(counterModal, newCounters)} onClose={() => setCounterModal(null)} />;
+      })()}
+      {/* Context Menu */}
+      <CtxMenu menu={ctxMenu} onClose={() => setCtxMenu(null)} />
 
-      {/* RIGHT: Actions + Log panel */}
-      <div style={{ width: 68, flexShrink: 0, background: "#06060e", borderLeft: "1px solid #1a1a2e", display: "flex", flexDirection: "column", alignItems: "center", padding: "4px 4px", gap: 2, overflowY: "auto", flexShrink: 0 }}>
-        {/* PRIMARY buttons — always visible */}
-        {[
-          { icon: "📚", label: "Robar", action: () => libActions.draw(myId, 1), color: "#7fc4ff" },
-          { icon: "⟲", label: "Destapar", action: untapAll, color: "#88ff88" },
-          { icon: "🪄", label: "Token", action: () => setTokenModal(true), color: "#cc88ff" },
-          { icon: "🎲", label: "Dado", action: () => setDiceModal(true), color: "#ffaa44" },
-          { icon: "💬", label: "Chat", action: () => setChatOpen(o => !o), color: chatOpen ? "#7fc4ff" : "#888" },
-          { icon: "🎙", label: voiceEnabled ? (muted ? "Silenc." : "Voz ON") : "Voz", action: toggleVoice, color: voiceEnabled ? (muted ? "#ff8888" : "#44ff88") : "#555" },
-        ].map(btn => (
-          <button key={btn.label} onClick={btn.action} title={btn.label}
-            style={{ width: "100%", padding: "4px 2px", borderRadius: 6, border: "1px solid #1a1a2e", background: "#0a0a14", color: btn.color, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-            <span style={{ fontSize: 14 }}>{btn.icon}</span>
-            <span style={{ fontSize: 7, lineHeight: 1 }}>{btn.label}</span>
-          </button>
-        ))}
-
-        {/* Separator */}
-        <div style={{ width: "80%", height: 1, background: "#1a1a2e", margin: "2px 0", flexShrink: 0 }} />
-
-        {/* SECONDARY buttons — smaller */}
-        {[
-          { icon: "↩", label: "Deshacer", action: undo, color: history.length ? "#ffcc88" : "#333", disabled: !history.length },
-          { icon: "✨", label: "Habil.", action: () => setAbilitiesModal(true), color: "#88eeff" },
-          { icon: "❤", label: "Vida", action: () => setLifeHistoryOpen(o => !o), color: "#ff8888" },
-          { icon: "💎", label: "Maná", action: () => setManaOpen(o => !o), color: manaOpen ? "#ffd700" : "#888" },
-          { icon: "⚔", label: "CmdDmg", action: () => setCmdDmgOpen(o => !o), color: cmdDmgOpen ? "#ff8844" : "#888" },
-          { icon: "📝", label: "Notas", action: () => setNotesOpen(o => !o), color: notesOpen ? "#88ff88" : "#888" },
-          { icon: "🔍", label: "Buscar", action: () => setCardSearch(s => ({ ...s, open: !s.open, query: "", results: [] })), color: cardSearch.open ? "#ffd700" : "#888" },
-          ...(voiceEnabled ? [{ icon: muted ? "🔇" : "🔊", label: muted ? "Unmute" : "Mute", action: toggleMute, color: muted ? "#ff4444" : "#88ff88" }] : []),
-        ].map(btn => (
-          <button key={btn.label} onClick={btn.action} disabled={btn.disabled} title={btn.label}
-            style={{ width: "100%", padding: "3px 2px", borderRadius: 5, border: "1px solid #141420", background: "#080810", color: btn.color, cursor: btn.disabled ? "default" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 0, opacity: btn.disabled ? 0.3 : 1 }}>
-            <span style={{ fontSize: 12 }}>{btn.icon}</span>
-            <span style={{ fontSize: 6, lineHeight: 1 }}>{btn.label}</span>
-          </button>
-        ))}
-
-        {/* Separator */}
-        <div style={{ width: "80%", height: 1, background: "#1a1a2e", margin: "2px 0", flexShrink: 0 }} />
-
-        {/* UTILITY buttons — icon only, smallest */}
-        {[
-          {
-            icon: "📤", label: "Exportar", action: () => {
-              const txt = exportGameState(players, playerOrder, turn, phase, turnLog, roomCode);
-              const blob = new Blob([txt], { type: "text/plain" });
-              const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-              a.download = `partida-${roomCode}-T${turn}.txt`; a.click();
-            }, color: "#555"
-          },
-          {
-            icon: "🔄", label: "Reiniciar", action: () => {
-              if (window.confirm("¿Reiniciar la partida?")) {
-                const newPlayers = {};
-                initialPlayers.forEach(p => {
-                  newPlayers[p.id] = mkState(p.id, p.name, p.playerState?.fullDeck || p.playerState?.library || [], p.playerState?.commandZone?.[0] || null, p.format?.life || 40);
-                });
-                setPlayers(newPlayers); setTurn(1); setPhase(0);
-                setActivePlayer(initialPlayers[0]?.id);
-                setTurnLog([{ turn: 1, entries: ["¡Partida reiniciada!"] }]);
-                setAttackers(new Set()); addLog("🔄 Partida reiniciada.");
-                rt.current?.broadcast("notification", { msg: "🔄 La partida fue reiniciada", from: myId });
-              }
-            }, color: "#555"
-          },
-          { icon: "✕", label: "Salir", action: onExit, color: "#444" },
-        ].map(btn => (
-          <button key={btn.label} onClick={btn.action} title={btn.label}
-            style={{ width: "100%", padding: "3px 2px", borderRadius: 5, border: "none", background: "transparent", color: btn.color, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <span style={{ fontSize: 12 }}>{btn.icon}</span>
-            <span style={{ fontSize: 6, lineHeight: 1 }}>{btn.label}</span>
-          </button>
-        ))}
-        {/* Card Search Panel */}
-        {cardSearch.open && (
-          <div style={{ width: "100%", borderTop: "1px solid #1a1a2e", paddingTop: 6, marginBottom: 4 }}>
-            <input value={cardSearch.query}
-              onChange={async e => {
-                const q = e.target.value;
-                setCardSearch(s => ({ ...s, query: q, loading: true }));
-                if (q.length < 2) { setCardSearch(s => ({ ...s, results: [], loading: false })); return; }
-                try {
-                  const r = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&unique=cards&order=name`);
-                  const d = r.ok ? await r.json() : { data: [] };
-                  setCardSearch(s => ({ ...s, results: (d.data || []).slice(0, 20), loading: false }));
-                } catch { setCardSearch(s => ({ ...s, results: [], loading: false })); }
-              }}
-              placeholder="Buscar carta..."
-              style={{ width: "100%", padding: "5px 7px", borderRadius: 6, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 10, outline: "none", boxSizing: "border-box" }}
-            />
-            {cardSearch.loading && <div style={{ fontSize: 8, color: "#888", textAlign: "center", padding: 4 }}>...</div>}
-            <div style={{ maxHeight: 200, overflowY: "auto", marginTop: 4 }}>
-              {cardSearch.results.map(card => {
-                const img = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal;
-                return (
-                  <div key={card.id}
-                    onContextMenu={e => {
-                      e.preventDefault();
-                      setCtxMenu({
-                        x: e.clientX, y: e.clientY, title: card.printed_name || card.name,
-                        items: [
-                          { label: "🤚 A la mano", action: () => updMe(p => ({ ...p, hand: [...p.hand, { ...card, image_url: img, instanceId: uid() }] }), `${players[myId]?.name} busca ${card.printed_name || card.name} → mano.`) },
-                          { label: "🔝 Tope biblioteca", action: () => updMe(p => ({ ...p, library: [{ ...card, image_url: img, instanceId: uid() }, ...p.library] }), `${players[myId]?.name} busca ${card.printed_name || card.name} → tope.`) },
-                          { label: "🔽 Fondo biblioteca", action: () => updMe(p => ({ ...p, library: [...p.library, { ...card, image_url: img, instanceId: uid() }] }), `${players[myId]?.name} busca ${card.printed_name || card.name} → fondo.`) },
-                          { label: "⚔ Al campo", action: () => updMe(p => ({ ...p, battlefield: [...p.battlefield, { ...card, image_url: img, instanceId: uid(), tapped: false, counters: [], abilities: cardAbilitiesFromKeywords(card) }] }), `${players[myId]?.name} busca ${card.printed_name || card.name} → campo.`) },
-                          { label: "✨ Al exilio", action: () => updMe(p => ({ ...p, exile: [{ ...card, image_url: img, instanceId: uid() }, ...p.exile] }), `${players[myId]?.name} busca ${card.printed_name || card.name} → exilio.`) },
-                        ]
-                      });
-                    }}
-                    onMouseEnter={e => setHover({ card: { ...card, image_url: img }, x: e.clientX, y: e.clientY })}
-                    onMouseMove={e => setHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
-                    onMouseLeave={() => setHover(null)}
-                    style={{ padding: "4px 6px", borderRadius: 5, cursor: "context-menu", borderBottom: "1px solid #0d0d18", display: "flex", gap: 6, alignItems: "center" }}
-                    onMouseOver={e => e.currentTarget.style.background = "#1a1a2e"}
-                    onMouseOut={e => e.currentTarget.style.background = "transparent"}>
-                    {img && <img src={img} style={{ width: 24, height: 33, borderRadius: 2, objectFit: "cover", flexShrink: 0 }} />}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 8, color: "#e8e0d0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{card.printed_name || card.name}</div>
-                      <div style={{ fontSize: 7, color: "#555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{card.type_line?.split("—")[0]}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
-
-
-    </div>{/* end board flex row */}
-
-
-
-    {/* Zone modal */}
-    {showZone && (
-      <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 400 }} onClick={() => setShowZone(null)}>
-        <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 14, padding: 22, maxWidth: 680, maxHeight: "80vh", overflowY: "auto", minWidth: 360 }} onClick={e => e.stopPropagation()}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#ffd700" }}>
-              {showZone.zone === "graveyard" ? "🪦 Cementerio" : "✨ Exilio"} — {players[showZone.pid]?.name}
-            </span>
-            <button onClick={() => setShowZone(null)} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 17 }}>✕</button>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {(players[showZone.pid]?.[showZone.zone] || []).map(card => (
-              <div key={card.instanceId} onContextMenu={e => { setShowZone(null); openCardCtx(e, showZone.pid, card, showZone.zone, showZone.pid === myId); }}>
-                <CardTile card={card} onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
-              </div>
-            ))}
-            {!players[showZone.pid]?.[showZone.zone]?.length && <div style={{ color: "#555", padding: 18 }}>Vacío</div>}
-          </div>
-        </div>
-      </div>
-    )}
-
-    {/* View top modal */}
-    {viewTopModal && (
-      <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }} onClick={() => setViewTopModal(null)}>
-        <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 14, padding: 22, maxWidth: 600 }} onClick={e => e.stopPropagation()}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#ffd700", marginBottom: 14 }}>🔍 Tope de biblioteca — {players[viewTopModal.pid]?.name}</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {viewTopModal.cards.map((card, i) => <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}><CardTile card={card} onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} /><span style={{ fontSize: 9, color: "#888" }}>#{i + 1}</span></div>)}
-          </div>
-          <button onClick={() => setViewTopModal(null)} style={{ marginTop: 16, padding: "8px 24px", borderRadius: 8, border: "none", background: "#1a1a3e", color: "#e8e0d0", cursor: "pointer" }}>Cerrar</button>
-        </div>
-      </div>
-    )}
-
-    {/* Scry/Surveil modal */}
-    {scryModal && <ScryModal cards={scryModal.cards} title={`${scryModal.mode === "scry" ? "🔮 Scry" : "👁 Surveil"} ${scryModal.cards.length}`} onDone={resolveScry} />}
-
-    {/* Search lib modal */}
-    {searchLibModal && (() => {
-      const pid = typeof searchLibModal === "string" ? searchLibModal : searchLibModal.pid;
-      const zone = typeof searchLibModal === "string" ? "library" : (searchLibModal.zone || "library");
-      const dest = typeof searchLibModal === "string" ? "hand" : (searchLibModal.dest || "hand");
-      return <SearchLibModal library={players[pid]?.library || []} graveyard={players[pid]?.graveyard || []} sideboard={players[pid]?.sideboard || []} zone={zone} dest={dest} onPick={resolveSearchLib} onClose={() => setSearchLibModal(null)} />;
-    })()}
-
-    {/* Resolve Modal (Cascade, Discover, Impulse, etc.) */}
-    {resolveModal && (
-      <ResolveModal
-        modal={resolveModal}
-        players={players}
-        onResolve={resolveModalAction}
-        onClose={() => setResolveModal(null)}
-      />
-    )}
-    {/* Token Modal */}
-    {tokenModal && <TokenModal cmdTokenSuggestions={cmdTokenSuggestions} onCreate={createToken} onClose={() => setTokenModal(false)} />}
-
-    {/* Life History */}
-    {lifeHistoryOpen && <LifeHistoryPanel players={players} lifeHistory={lifeHistory} onClose={() => setLifeHistoryOpen(false)} />}
-
-    {/* Chat */}
-    {chatOpen && <ChatPanel messages={chatMessages} input={chatInput} onInput={setChatInput} onSend={sendChatMessage} onClose={() => setChatOpen(false)} playerName={players[myId]?.name} />}
-
-    {/* Notes */}
-    {notesOpen && <NotesPanel notes={notes} onChange={setNotes} onClose={() => setNotesOpen(false)} />}
-
-    {/* Mana Tracker */}
-    {manaOpen && <ManaTracker mana={mana} onChange={setMana} onClose={() => setManaOpen(false)} />}
-    {cmdDmgOpen && <CmdDmgPanel myPid={myId} players={players} playerOrder={playerOrder} avatarMap={avatarMap} onAdjust={(fromPid, d) => adjCmdDmg(fromPid, myId, d)} onClose={() => setCmdDmgOpen(false)} />}
-
-
-
-
-    {/* Notifications */}
-    <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 600, display: "flex", flexDirection: "column", gap: 6, alignItems: "center", pointerEvents: "none" }}>
-      {notifications.map(n => (
-        <div key={n.id} style={{ background: "#1a1a2eee", border: "1px solid #3a3a6a", borderRadius: 10, padding: "8px 16px", fontSize: 12, color: "#e8e0d0", boxShadow: "0 4px 16px #000a", animation: "slideDown 0.3s ease" }}>
-          {n.msg}
-        </div>
-      ))}
+      {/* Hover Zoom */}
+      {hover && <HoverZoom card={hover.card} x={hover.x} y={hover.y} />}
     </div>
-
-    {/* Spectator banner */}
-    {isSpectator && (
-      <div style={{ position: "fixed", top: 8, left: "50%", transform: "translateX(-50%)", background: "#0d0d1eee", border: "1px solid #3a3a6a", borderRadius: 20, padding: "6px 18px", fontSize: 12, color: "#8888aa", zIndex: 500, pointerEvents: "none" }}>
-        👁 Modo Espectador — Solo lectura
-      </div>
-    )}
-    {/* Dice Result Overlay — visible to all players */}
-    <DiceResultOverlay result={diceResult} />
-    {/* Abilities Modal */}
-    {abilitiesModal && (
-      <AbilitiesModal
-        markers={abilityMarkers}
-        onAdd={(key) => setAbilityMarkers(m => [...m, { id: uid(), ability: key }])}
-        onRemove={(id) => {
-          if (id === "all") setAbilityMarkers([]);
-          else setAbilityMarkers(m => m.filter(x => x.id !== id));
-        }}
-        onClose={() => setAbilitiesModal(false)}
-      />
-    )}
-    {/* Dice Modal */}
-    {diceModal && <DiceModal
-      onClose={() => setDiceModal(false)}
-      playerName={players[myId]?.name}
-      onRoll={(rollData) => {
-        // Show to myself
-        setDiceResult(rollData);
-        addLog(`🎲 ${rollData.playerName} tira d${rollData.die}: ${rollData.value}${rollData.value === rollData.die ? " 🎉" : rollData.value === 1 ? " 💀" : ""}`);
-        setTimeout(() => setDiceResult(null), 4000);
-        // Broadcast to all others
-        rt.current?.broadcast("dice_roll", rollData);
-      }}
-    />}
-    {/* Zoom Card */}
-    {zoomCard && <ZoomCardModal card={zoomCard} onClose={() => setZoomCard(null)} />}
-
-    {/* Mulligan Modal */}
-    {mulliganModal && (
-      <MulliganModal
-        player={players[myId]}
-        mulliganCount={mulliganCount}
-        onKeep={keepHand}
-        onMulligan={doMulligan}
-        onClose={() => setMulliganModal(false)}
-        onHome={onHome}
-      />
-    )}
-    {/* Counter Modal */}
-    {counterModal && (() => {
-      const card = players[myId]?.battlefield.find(c => c.instanceId === counterModal);
-      if (!card) { setCounterModal(null); return null; }
-      return <CounterModal card={card} onUpdate={(newCounters) => setCounters(counterModal, newCounters)} onClose={() => setCounterModal(null)} />;
-    })()}
-    {/* Context Menu */}
-    <CtxMenu menu={ctxMenu} onClose={() => setCtxMenu(null)} />
-
-    {/* Hover Zoom */}
-    {hover && <HoverZoom card={hover.card} x={hover.x} y={hover.y} />}
-  </div>
-);
+  );
 }
 
 function mbtn(bg, col) { return { width: 20, height: 20, borderRadius: "50%", border: "none", background: bg, color: col, cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0, flexShrink: 0, transition: "all 0.15s cubic-bezier(0.34,1.56,0.64,1)" }; }
