@@ -2439,7 +2439,7 @@ function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
   ];
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700, fontFamily: "'Crimson Text',Georgia,serif" }} onClick={onClose}>
-      <div style={{ background: "#08080f", border: "1px solid #2a2a4a", borderRadius: 18, width: 560, maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 20px 60px #000c" }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: "#08080f", border: "1px solid #2a2a4a", borderRadius: 18, width: 560, maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, boxShadow: "0 20px 60px #000c" }} onClick={e => e.stopPropagation()}>
         <div style={{ padding: "16px 20px 12px", background: "linear-gradient(180deg,#0f0f1e,#08080f)", borderBottom: "1px solid #2a2a4a", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div>
@@ -2470,7 +2470,7 @@ function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
         )}
         <div style={{ height: 320, overflowY: "auto", padding: "12px 16px" }}>
           {search ? (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {filtered.map(ab => <AbilityBtn key={ab.key} ab={ab} isActive={markers.some(m => m.ability === ab.key)} onAdd={onAdd} />)}
               {!filtered.length && <div style={{ gridColumn: "span 3", textAlign: "center", color: "#555", padding: 20, fontSize: 13 }}>Sin resultados</div>}
             </div>
@@ -2479,7 +2479,7 @@ function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
             return (
               <div key={group.label} style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 10, color: "#ffd70088", letterSpacing: 2, marginBottom: 8, fontWeight: 700 }}>{group.label}</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {groupAbs.map(ab => <AbilityBtn key={ab.key} ab={ab} isActive={markers.some(m => m.ability === ab.key)} onAdd={onAdd} />)}
                 </div>
               </div>
@@ -2494,16 +2494,19 @@ function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
 function AbilityBtn({ ab, isActive, onAdd }) {
   return (
     <button onClick={() => onAdd(ab.key)}
-      style={{ padding: "10px 8px", borderRadius: 10, border: `1.5px solid ${isActive ? ab.text : ab.color + "88"}`, background: isActive ? ab.color + "cc" : ab.color + "22", cursor: "pointer", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, transition: "all 0.15s", position: "relative" }}
-      onMouseEnter={e => { e.currentTarget.style.background = ab.color + "66"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 4px 16px ${ab.color}44`; }}
+      style={{ padding: "6px 8px", borderRadius: 8, border: `1.5px solid ${isActive ? ab.text : ab.color + "88"}`, background: isActive ? ab.color + "cc" : ab.color + "22", cursor: "pointer", textAlign: "left", display: "flex", flexDirection: "row", alignItems: "center", gap: 8, transition: "all 0.15s", position: "relative", width: "100%" }}
+      onMouseEnter={e => { e.currentTarget.style.background = ab.color + "66"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = `0 3px 12px ${ab.color}44`; }}
       onMouseLeave={e => { e.currentTarget.style.background = isActive ? ab.color + "cc" : ab.color + "22"; e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = ""; }}>
-      <span style={{ fontSize: 22 }}>{ab.icon}</span>
-      <div style={{ fontSize: 10, fontWeight: 700, color: ab.text, lineHeight: 1.2 }}>{ab.name}</div>
-      <div style={{ fontSize: 9, color: ab.text, opacity: 0.6, fontStyle: "italic" }}>{ab.en}</div>
-      {isActive && <div style={{ position: "absolute", top: 5, right: 5, width: 7, height: 7, borderRadius: "50%", background: ab.text, boxShadow: `0 0 6px ${ab.text}` }} />}
+      <span style={{ fontSize: 18, flexShrink: 0 }}>{ab.icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: ab.text, lineHeight: 1.2 }}>{ab.name}</div>
+        <div style={{ fontSize: 9, color: ab.text, opacity: 0.6, fontStyle: "italic" }}>{ab.en}</div>
+      </div>
+      {isActive && <div style={{ width: 7, height: 7, borderRadius: "50%", background: ab.text, boxShadow: `0 0 6px ${ab.text}`, flexShrink: 0 }} />}
     </button>
   );
 }
+
 
 
 // ─── Ability Marker (rendered on battlefield) ─────────────────────────────────
@@ -3770,8 +3773,24 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                         const ab = ABILITIES.find(a => a.key === key);
                         return ab ? (
                           <span key={key}
-                            onMouseEnter={e => { const el = e.currentTarget; const tip = document.createElement("div"); tip.id = "ab-tip-" + key; tip.style.cssText = `position:fixed;z-index:9999;background:#0d0d1e;border:1px solid ${ab.text}88;color:${ab.text};padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px #000a;font-family:'Crimson Text',Georgia,serif;`; tip.textContent = ab.name + (ab.en ? " · " + ab.en : ""); document.body.appendChild(tip); const r = el.getBoundingClientRect(); tip.style.left = (r.left + r.width / 2 - tip.offsetWidth / 2) + "px"; tip.style.top = (r.top - tip.offsetHeight - 6) + "px"; }}
-                            onMouseLeave={() => { document.getElementById("ab-tip-" + key)?.remove(); }}
+                            onMouseEnter={e => {
+                              const el = e.currentTarget;
+                              const ab2 = ABILITIES.find(a => a.key === key);
+                              if (!ab2) return;
+                              document.getElementById("ab-tip-" + key)?.remove();
+                              const tip = document.createElement("div");
+                              tip.id = "ab-tip-" + key;
+                              tip.style.cssText = "position:fixed;z-index:9999;background:#0d0d1e;border:1px solid " + ab2.text + "88;color:" + ab2.text + ";padding:5px 10px;border-radius:8px;font-size:12px;font-weight:700;pointer-events:none;white-space:nowrap;box-shadow:0 4px 20px #000c;font-family:'Crimson Text',Georgia,serif;opacity:0;transition:opacity 0.15s;";
+                              tip.textContent = ab2.name + (ab2.en ? " · " + ab2.en : "");
+                              document.body.appendChild(tip);
+                              requestAnimationFrame(() => {
+                                const r = el.getBoundingClientRect();
+                                tip.style.left = Math.max(4, r.left + r.width / 2 - tip.offsetWidth / 2) + "px";
+                                tip.style.top = (r.top - tip.offsetHeight - 8) + "px";
+                                tip.style.opacity = "1";
+                              });
+                            }}
+                            onMouseLeave={() => { const t = document.getElementById("ab-tip-" + key); if (t) { t.style.opacity = "0"; setTimeout(() => t.remove(), 150); } }}
                             style={{
                               fontSize: isMe ? 12 : 8,
                               lineHeight: 1,
