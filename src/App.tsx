@@ -504,6 +504,79 @@ function ScrollIndicator({ containerRef }) {
   );
 }
 
+// ─── Card Version Selector Modal ────────────────────────────────────────────────
+function CardVersionModal({ cardName, onSelect, onClose }) {
+  const [versions, setVersions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [hover, setHover] = useState(null);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        // Fetch all printings of the card
+        const r = await fetch(`https://api.scryfall.com/cards/search?q=!"${encodeURIComponent(cardName)}"&unique=prints&order=released&dir=desc`);
+        if (r.ok) {
+          const d = await r.json();
+          setVersions(d.data || []);
+        }
+      } catch { }
+      setLoading(false);
+    };
+    load();
+  }, [cardName]);
+
+  const RARITY = { common: "⬤", uncommon: "◆", rare: "★", mythic: "✦", special: "⬟", bonus: "⬟" };
+  const RARITY_COLOR = { common: "#aaa", uncommon: "#88aacc", rare: "#ffcc44", mythic: "#ff8844", special: "#cc88ff", bonus: "#cc88ff" };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 900, fontFamily: "'Crimson Text',Georgia,serif" }} onClick={onClose}>
+      <div style={{ background: "#08080f", border: "1px solid #2a2a4a", borderRadius: 18, width: 680, maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 20px 60px #000c" }} onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{ padding: "16px 20px", background: "linear-gradient(180deg,#0f0f1e,#08080f)", borderBottom: "1px solid #2a2a4a", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#ffd700" }}>🎨 Cambiar versión</div>
+            <div style={{ fontSize: 12, color: "#8888aa", marginTop: 2 }}>{cardName} — {versions.length} versiones disponibles</div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20 }}>✕</button>
+        </div>
+
+        {/* Versions grid */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexWrap: "wrap", gap: 12, alignContent: "flex-start" }}>
+          {loading && <div style={{ width: "100%", textAlign: "center", color: "#555", padding: 40, fontSize: 13 }}>Cargando versiones...</div>}
+          {!loading && versions.map(v => {
+            const img = v.image_uris?.normal || v.card_faces?.[0]?.image_uris?.normal;
+            const year = v.released_at?.slice(0, 4);
+            const rarity = v.rarity || "common";
+            return (
+              <div key={v.id}
+                onClick={() => onSelect(v)}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 8px 24px #000c, 0 0 16px #ffd70033"; setHover({ card: { ...v, image_url: img }, x: e.clientX, y: e.clientY }); }}
+                onMouseMove={e => setHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
+                onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = ""; setHover(null); }}
+                style={{ width: 130, cursor: "pointer", borderRadius: 10, border: "1px solid #2a2a4a", background: "#0d0d1e", overflow: "hidden", transition: "all 0.18s", flexShrink: 0 }}>
+                {img
+                  ? <img src={img} style={{ width: "100%", display: "block" }} />
+                  : <div style={{ width: "100%", aspectRatio: "2.5/3.5", background: "#1a1a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>🃏</div>}
+                <div style={{ padding: "6px 8px" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#e8e0d0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.set_name}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                    <span style={{ fontSize: 11, color: RARITY_COLOR[rarity] || "#aaa" }}>{RARITY[rarity] || "⬤"}</span>
+                    <span style={{ fontSize: 9, color: "#8888aa" }}>{v.set?.toUpperCase()} · {year}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {!loading && !versions.length && <div style={{ width: "100%", textAlign: "center", color: "#555", padding: 40 }}>Sin versiones encontradas</div>}
+        </div>
+      </div>
+      {hover && <HoverZoom card={hover.card} x={hover.x} y={hover.y} />}
+    </div>
+  );
+}
+
 // ─── Hover Zoom ───────────────────────────────────────────────────────────────
 function HoverZoom({ card, x, y }) {
   if (!card) return null;
@@ -1134,6 +1207,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
   const [tab, setTab] = useState(initialDeck?.length > 0 ? "mazo" : "buscar"); const [playerName, setPlayerName] = useState(initialPlayerName || "Jugador");
   const [deckCtx, setDeckCtx] = useState(null);
   const [hover, setHover] = useState(null); // {card, x, y}
+  const [versionModal, setVersionModal] = useState(null); // card to change version
   const [savedDecks, setSavedDecks] = useState(getSavedDecks);
   const [deckName, setDeckName] = useState(initialDeckName || "Mi Mazo");
   const lang = "es"; // always Spanish, fallback to English if not found
@@ -1306,6 +1380,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
     isLegendary(card) && formatHasCommander(format) && { label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "#ffd700" },
     isLegendary(card) && source === "results" && formatHasCommander(format) && { label: "⚔ + Agregar como Comandante", action: () => { addCard(card); setCmd(card); }, color: "#ffd700" },
     source === "deck" && formatHasCommander(format) && { label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "#ffd700" },
+    source === "deck" && { label: "🎨 Cambiar versión", action: () => setVersionModal(card), color: "#88aaff" },
     source === "deck" && { label: "🗑 Quitar del mazo", action: () => setDeck(d => d.filter(c => c.instanceId !== card.instanceId)), color: "#ff8888" },
   ].filter(Boolean);
 
@@ -1562,6 +1637,21 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
         )}
       </div>
 
+      {/* Version selector */}
+      {versionModal && (
+        <CardVersionModal
+          cardName={versionModal.name || versionModal.printed_name}
+          onSelect={(v) => {
+            const img = v.image_uris?.normal || v.card_faces?.[0]?.image_uris?.normal || null;
+            setDeck(d => d.map(c => c.instanceId === versionModal.instanceId
+              ? { ...c, image_url: img, set: v.set, set_name: v.set_name, rarity: v.rarity, released_at: v.released_at, collector_number: v.collector_number }
+              : c
+            ));
+            setVersionModal(null);
+          }}
+          onClose={() => setVersionModal(null)}
+        />
+      )}
       {/* Context Menu */}
       <CtxMenu menu={deckCtx} onClose={() => setDeckCtx(null)} />
       {/* Hover zoom */}
@@ -4378,6 +4468,21 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         if (!card) { setCounterModal(null); return null; }
         return <CounterModal card={card} onUpdate={(newCounters) => setCounters(counterModal, newCounters)} onClose={() => setCounterModal(null)} />;
       })()}
+      {/* Version selector */}
+      {versionModal && (
+        <CardVersionModal
+          cardName={versionModal.name || versionModal.printed_name}
+          onSelect={(v) => {
+            const img = v.image_uris?.normal || v.card_faces?.[0]?.image_uris?.normal || null;
+            setDeck(d => d.map(c => c.instanceId === versionModal.instanceId
+              ? { ...c, image_url: img, set: v.set, set_name: v.set_name, rarity: v.rarity, released_at: v.released_at }
+              : c
+            ));
+            setVersionModal(null);
+          }}
+          onClose={() => setVersionModal(null)}
+        />
+      )}
       {/* Context Menu */}
       <CtxMenu menu={ctxMenu} onClose={() => setCtxMenu(null)} />
 
