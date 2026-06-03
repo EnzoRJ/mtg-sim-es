@@ -2427,70 +2427,84 @@ function cardAbilitiesFromKeywords(card) {
 }
 
 function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
+  const [search, setSearch] = useState("");
+  const filtered = ABILITIES.filter(ab =>
+    !search || ab.name.toLowerCase().includes(search.toLowerCase()) ||
+    ab.en.toLowerCase().includes(search.toLowerCase())
+  );
+  const groups = [
+    { label: "⚔ Combate", keys: ["trample", "firststrike", "doublestrike", "menace", "flanking", "reach", "flying", "shadow", "fear", "intimidate"] },
+    { label: "🛡 Defensiva", keys: ["hexproof", "indestructible", "protection", "vigilance"] },
+    { label: "✨ Especial", keys: ["lifelink", "deathtouch", "haste", "wither", "infect", "enrage", "undying", "persist", "exploit", "annihilator", "unblockable"] },
+  ];
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#000c", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700, fontFamily: "'Crimson Text',Georgia,serif" }} onClick={onClose}>
-      <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 16, padding: 0, width: 500, maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden" }} onClick={e => e.stopPropagation()}>
-
-        {/* Header */}
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid #2a2a4a", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#ffd700" }}>✨ Habilidades activas</div>
-            <div style={{ fontSize: 11, color: "#8888aa", marginTop: 2 }}>Agrega marcadores de habilidad al tablero</div>
-          </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 18 }}>✕</button>
-        </div>
-
-        {/* Active markers */}
-        {markers.length > 0 && (
-          <div style={{ padding: "10px 16px", borderBottom: "1px solid #2a2a4a", flexShrink: 0 }}>
-            <div style={{ fontSize: 10, color: "#8888aa", letterSpacing: 2, marginBottom: 8 }}>MARCADORES ACTIVOS</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {markers.map(m => {
-                const ab = ABILITIES.find(a => a.key === m.ability) || { icon: "?", name: m.ability, color: "#2a2a4a", text: "#fff" };
-                return (
-                  <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 20, background: ab.color, border: `1px solid ${ab.text}44` }}>
-                    <span style={{ fontSize: 14 }}>{ab.icon}</span>
-                    <span style={{ fontSize: 11, color: ab.text, fontWeight: 700 }}>{ab.name}</span>
-                    <button onClick={() => onRemove(m.id)} style={{ background: "none", border: "none", color: ab.text, cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 0, opacity: 0.7 }}>✕</button>
-                  </div>
-                );
-              })}
+    <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700, fontFamily: "'Crimson Text',Georgia,serif" }} onClick={onClose}>
+      <div style={{ background: "#08080f", border: "1px solid #2a2a4a", borderRadius: 18, width: 560, maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 20px 60px #000c" }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: "16px 20px 12px", background: "linear-gradient(180deg,#0f0f1e,#08080f)", borderBottom: "1px solid #2a2a4a", flexShrink: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "#ffd700", letterSpacing: 1 }}>✨ Habilidades</div>
+              <div style={{ fontSize: 11, color: "#8888aa", marginTop: 2 }}>{ABILITIES.length} habilidades · click para asignar a un marcador</div>
             </div>
+            <button onClick={onClose} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20, lineHeight: 1 }}>✕</button>
           </div>
-        )}
-
-        {/* Abilities grid */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {ABILITIES.map(ab => {
-              const isActive = markers.some(m => m.ability === ab.key);
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar habilidad..."
+            style={{ width: "100%", padding: "7px 12px", borderRadius: 8, border: "1px solid #2a2a4a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+        </div>
+        {markers.length > 0 && (
+          <div style={{ padding: "8px 16px", background: "#0a0a18", borderBottom: "1px solid #1a1a2e", flexShrink: 0, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ fontSize: 10, color: "#555", marginRight: 2 }}>Activos:</span>
+            {markers.map(m => {
+              const ab = ABILITIES.find(a => a.key === m.ability) || { icon: "?", name: m.ability, color: "#2a2a4a", text: "#fff" };
               return (
-                <button key={ab.key} onClick={() => onAdd(ab.key)}
-                  style={{ padding: "10px 14px", borderRadius: 10, border: `2px solid ${isActive ? ab.text : ab.color}`, background: isActive ? ab.color + "88" : ab.color + "22", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 10, transition: "all 0.15s", position: "relative" }}
-                  onMouseEnter={e => e.currentTarget.style.background = ab.color + "55"}
-                  onMouseLeave={e => e.currentTarget.style.background = isActive ? ab.color + "88" : ab.color + "22"}>
-                  <span style={{ fontSize: 22, flexShrink: 0 }}>{ab.icon}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: ab.text }}>{ab.name}</div>
-                    <div style={{ fontSize: 9, color: ab.text, opacity: 0.7, fontStyle: "italic" }}>{ab.en}</div>
-                    <div style={{ fontSize: 9, color: "#8888aa", marginTop: 2, lineHeight: 1.3 }}>{ab.desc}</div>
-                  </div>
-                  {isActive && <div style={{ position: "absolute", top: 6, right: 8, width: 8, height: 8, borderRadius: "50%", background: ab.text }} />}
-                </button>
+                <div key={m.id} onClick={() => onRemove(m.id)} title="Click para quitar"
+                  style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 20, background: ab.color + "aa", border: `1px solid ${ab.text}66`, cursor: "pointer" }}>
+                  <span style={{ fontSize: 12 }}>{ab.icon}</span>
+                  <span style={{ fontSize: 10, color: ab.text, fontWeight: 700 }}>{ab.name}</span>
+                  <span style={{ fontSize: 9, color: ab.text, opacity: 0.6 }}>✕</span>
+                </div>
               );
             })}
+            <button onClick={() => onRemove("all")} style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 6, border: "1px solid #4a2a2a", background: "transparent", color: "#ff8888", cursor: "pointer", fontSize: 10 }}>Quitar todos</button>
           </div>
-        </div>
-
-        <div style={{ padding: "12px 16px", borderTop: "1px solid #2a2a4a", flexShrink: 0 }}>
-          <button onClick={() => { onRemove("all"); }} style={{ width: "100%", padding: "8px 0", borderRadius: 8, border: "1px solid #4a2a2a", background: "#1a0a0a", color: "#ff8888", cursor: "pointer", fontSize: 12 }}>
-            🗑 Quitar todos los marcadores
-          </button>
+        )}
+        <div style={{ height: 320, overflowY: "auto", padding: "12px 16px" }}>
+          {search ? (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+              {filtered.map(ab => <AbilityBtn key={ab.key} ab={ab} isActive={markers.some(m => m.ability === ab.key)} onAdd={onAdd} />)}
+              {!filtered.length && <div style={{ gridColumn: "span 3", textAlign: "center", color: "#555", padding: 20, fontSize: 13 }}>Sin resultados</div>}
+            </div>
+          ) : groups.map(group => {
+            const groupAbs = ABILITIES.filter(ab => group.keys.includes(ab.key));
+            return (
+              <div key={group.label} style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 10, color: "#ffd70088", letterSpacing: 2, marginBottom: 8, fontWeight: 700 }}>{group.label}</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                  {groupAbs.map(ab => <AbilityBtn key={ab.key} ab={ab} isActive={markers.some(m => m.ability === ab.key)} onAdd={onAdd} />)}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
+
+function AbilityBtn({ ab, isActive, onAdd }) {
+  return (
+    <button onClick={() => onAdd(ab.key)}
+      style={{ padding: "10px 8px", borderRadius: 10, border: `1.5px solid ${isActive ? ab.text : ab.color + "88"}`, background: isActive ? ab.color + "cc" : ab.color + "22", cursor: "pointer", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, transition: "all 0.15s", position: "relative" }}
+      onMouseEnter={e => { e.currentTarget.style.background = ab.color + "66"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 4px 16px ${ab.color}44`; }}
+      onMouseLeave={e => { e.currentTarget.style.background = isActive ? ab.color + "cc" : ab.color + "22"; e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = ""; }}>
+      <span style={{ fontSize: 22 }}>{ab.icon}</span>
+      <div style={{ fontSize: 10, fontWeight: 700, color: ab.text, lineHeight: 1.2 }}>{ab.name}</div>
+      <div style={{ fontSize: 9, color: ab.text, opacity: 0.6, fontStyle: "italic" }}>{ab.en}</div>
+      {isActive && <div style={{ position: "absolute", top: 5, right: 5, width: 7, height: 7, borderRadius: "50%", background: ab.text, boxShadow: `0 0 6px ${ab.text}` }} />}
+    </button>
+  );
+}
+
 
 // ─── Ability Marker (rendered on battlefield) ─────────────────────────────────
 function AbilityMarker({ marker, onRemove }) {
