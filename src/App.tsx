@@ -4120,7 +4120,27 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                 }
               }, color: "#555"
             },
-            { icon: "✕", label: "Salir", action: onExit, color: "#444" },
+            {
+              icon: "✕", label: "Salir", action: () => {
+                // Flush debounce
+                if (syncDebounce.current) {
+                  clearTimeout(syncDebounce.current);
+                  if (pendingSync.current) {
+                    const { state: s, logMsg: msg } = pendingSync.current;
+                    rt.current?.broadcast("state_update", { pid: myId, state: s, log: msg });
+                  }
+                }
+                // Save full state
+                try {
+                  const sess = JSON.parse(localStorage.getItem("commander_es_session") || "{}");
+                  const allStates = Object.fromEntries(Object.entries(players).map(([pid, p]) => [pid, p]));
+                  const snapshot = { ...sess, players: (sess.players || []).map(p => ({ ...p, playerState: allStates[p.id] || p.playerState })), turn, phase, activePlayer, turnLog, savedAt: Date.now() };
+                  localStorage.setItem("commander_es_session", JSON.stringify(snapshot));
+                  localStorage.setItem("commander_es_full_save", JSON.stringify(snapshot));
+                } catch { }
+                onExit();
+              }, color: "#444"
+            },
           ].map(btn => (
             <button key={btn.label} onClick={btn.action} title={btn.label}
               style={{ width: "100%", padding: "3px 2px", borderRadius: 5, border: "none", background: "transparent", color: btn.color, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -5069,32 +5089,7 @@ export default function App() {
     setStage("game");
   };
 
-  const handleExit = async () => {
-    // Flush any pending debounced sync immediately
-    if (syncDebounce.current) {
-      clearTimeout(syncDebounce.current);
-      if (pendingSync.current) {
-        const { state: s, logMsg: msg } = pendingSync.current;
-        rt.current?.broadcast("state_update", { pid: myId, state: s, log: msg });
-      }
-    }
-    // Save full game state before exiting
-    try {
-      const sess = JSON.parse(localStorage.getItem("commander_es_session") || "{}");
-      if (sess.roomCode && sess.players) {
-        const allStates = {};
-        Object.entries(players).forEach(([pid, pstate]) => { allStates[pid] = pstate; });
-        const snapshot = {
-          ...sess,
-          players: (sess.players || []).map(p => ({ ...p, playerState: allStates[p.id] || p.playerState })),
-          turn, phase, activePlayer,
-          turnLog,
-          savedAt: Date.now(),
-        };
-        localStorage.setItem("commander_es_session", JSON.stringify(snapshot));
-        localStorage.setItem("commander_es_full_save", JSON.stringify(snapshot));
-      }
-    } catch { }
+  const handleExit = () => {
     gameData?.rt?.disconnect();
     goHome();
   };
