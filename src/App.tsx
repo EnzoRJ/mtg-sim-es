@@ -3755,15 +3755,20 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       {(card.abilities || []).map(key => {
                         const ab = ABILITIES.find(a => a.key === key);
                         return ab ? (
-                          <span key={key} title={ab.name} style={{
-                            fontSize: isMe ? 12 : 8,
-                            lineHeight: 1,
-                            background: "#000000ee",
-                            borderRadius: 3,
-                            padding: "1px 2px",
-                            border: `1px solid ${ab.text}44`,
-                            flexShrink: 0,
-                          }}>
+                          <span key={key}
+                            onMouseEnter={e => { const el = e.currentTarget; const tip = document.createElement("div"); tip.id = "ab-tip-" + key; tip.style.cssText = `position:fixed;z-index:9999;background:#0d0d1e;border:1px solid ${ab.text}88;color:${ab.text};padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px #000a;font-family:'Crimson Text',Georgia,serif;`; tip.textContent = ab.name + (ab.en ? " · " + ab.en : ""); document.body.appendChild(tip); const r = el.getBoundingClientRect(); tip.style.left = (r.left + r.width / 2 - tip.offsetWidth / 2) + "px"; tip.style.top = (r.top - tip.offsetHeight - 6) + "px"; }}
+                            onMouseLeave={() => { document.getElementById("ab-tip-" + key)?.remove(); }}
+                            style={{
+                              fontSize: isMe ? 12 : 8,
+                              lineHeight: 1,
+                              background: "#000000ee",
+                              borderRadius: 3,
+                              padding: "1px 2px",
+                              border: `1px solid ${ab.text}44`,
+                              flexShrink: 0,
+                              cursor: "help",
+                            }}
+                          >
                             {ab.icon}
                           </span>
                         ) : null;
