@@ -339,6 +339,16 @@ function setSavedPlayerName(name) {
   localStorage.setItem("commander_es_player_name", name);
 }
 
+// Persistent player ID — stable across sessions for the same browser/account
+function getOrCreatePlayerId(user) {
+  // If logged in, use user.id as stable identifier
+  if (user?.id) return "user_" + user.id.slice(0, 16);
+  // Otherwise use/create a persistent browser ID
+  let bid = localStorage.getItem("commander_es_player_id");
+  if (!bid) { bid = uid(); localStorage.setItem("commander_es_player_id", bid); }
+  return bid;
+}
+
 // Handle OAuth callback (token in URL hash)
 function handleAuthCallback() {
   const hash = window.location.hash;
@@ -1580,7 +1590,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
     const name = user ? (user.user_metadata?.full_name || user.email?.split("@")[0]) : "";
     return name ? `Mazo de ${name}` : "Mi Mazo";
   });
-  const [myId] = useState(uid);
+  const [myId] = useState(() => getOrCreatePlayerId(getCurrentUser()));
 
   // Auto-reconnect when resuming a session
   useEffect(() => {
@@ -5021,7 +5031,16 @@ export default function App() {
       setTimeout(() => {
         const u = getCurrentUser();
         setUser(u);
-        // Show name modal if no name saved yet
+        // Migrate anonymous player ID to user-based ID
+        if (u?.id) {
+          const newId = "user_" + u.id.slice(0, 16);
+          const sess = JSON.parse(localStorage.getItem("commander_es_session") || "{}");
+          if (sess.myId && sess.myId !== newId) {
+            // Update session to use new stable ID
+            localStorage.setItem("commander_es_session", JSON.stringify({ ...sess, myId: newId }));
+          }
+          localStorage.setItem("commander_es_player_id", newId);
+        }
         if (u && !getSavedPlayerName()) setShowNameModal(true);
       }, 500);
     }
@@ -5037,6 +5056,8 @@ export default function App() {
   const handleGameStart = (players, code, myId, rt) => {
     const isHostPlayer = players.find(p => p.id === myId)?.isHost || false;
     const sessionData = { roomCode: code, myId, turn: 1, playerName: players.find(p => p.id === myId)?.name, savedAt: Date.now(), players, isHost: isHostPlayer };
+    // Ensure myId is persisted for reconnection
+    if (!getCurrentUser()) localStorage.setItem("commander_es_player_id", myId);
     localStorage.setItem("commander_es_session", JSON.stringify(sessionData));
     setGameData({ players, myId, rt, roomCode: code });
     setSavedSession(sessionData);
