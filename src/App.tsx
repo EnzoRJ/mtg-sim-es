@@ -2636,7 +2636,7 @@ function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
   ];
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700, fontFamily: "'Crimson Text',Georgia,serif" }} onClick={onClose}>
-      <div style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", borderRadius: 18, width: 560, maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, boxShadow: "0 20px 60px var(--scrim-80)" }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", borderRadius: 18, width: 560, height: "min(80vh, 620px)", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 20px 60px var(--scrim-80)" }} onClick={e => e.stopPropagation()}>
         <div style={{ padding: "16px 20px 12px", background: "linear-gradient(180deg,#0f0f1e,var(--bg-input))", borderBottom: "1px solid var(--border-default)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div>
@@ -4072,7 +4072,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   <div style={{ position: "relative", flex: 1, minHeight: 141, overflow: "hidden", borderBottom: "1px solid var(--bg-subtle)" }}>
                     {/* Ability markers — overlay separado, sin draggable, arriba a la izquierda */}
                     {isMe && abilityMarkers.length > 0 && (
-                      <div style={{ position: "absolute", top: 4, left: 6, zIndex: 10, display: "flex", gap: 4, flexWrap: "wrap", maxWidth: 180, pointerEvents: "auto" }}>
+                      <div className="ability-marker-zone" style={{ position: "absolute", top: 4, left: 6, zIndex: 10, display: "flex", gap: 4, flexWrap: "wrap", maxWidth: 180, pointerEvents: "auto" }}>
                         {abilityMarkers.map(m => (
                           <AbilityMarker key={m.id} marker={m} onRemove={id => setAbilityMarkers(p => p.filter(x => x.id !== id))} />
                         ))}
