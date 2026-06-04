@@ -149,8 +149,8 @@ var SFX = {
 
 
 // ─── Supabase ─────────────────────────────────────────────────────────────────
-var SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://uiadnflgzuisymxbxbyi.supabase.co";
-var SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpYWRuZmxnenVpc3lteGJ4YnlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDY2MDksImV4cCI6MjA5NDI4MjYwOX0.rw-iCALIbf0pzc-9ENtKiklKPVPknrg95fsdNfqi9F8";
+var SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+var SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
 
 class SupabaseRealtime {
   constructor() { this.ws = null; this.channel = null; this.heartbeat = null; this.ref = 1; this.onMessage = null; }
