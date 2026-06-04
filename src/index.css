@@ -334,6 +334,14 @@
 .has-sub:hover > .submenu-panel { display: block !important; }
 .has-sub:hover > button         { background: #1a1a3e !important; }
 
+/* ── Ability markers: forzar cursor default sin importar draggables cercanos ── */
+.ability-marker-zone,
+.ability-marker-zone * {
+  cursor: default !important;
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    ACCESIBILIDAD — REDUCED MOTION
    ═══════════════════════════════════════════════════════════════════════ */
