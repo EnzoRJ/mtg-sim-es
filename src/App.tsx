@@ -1,16 +1,22 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+  BookOpen, RotateCcw, Wand2, Dice6, MessageCircle, Mic, MicOff,
+  Undo2, Sparkles, Heart, Gem, Swords, FileText, Search,
+  Download, RefreshCw, X, Eye, Ghost, Home, Volume2, VolumeX,
+  ChevronRight, Plus, Minus, Shuffle,
+} from "lucide-react";
 
 // ─── Static Data (moved to top to prevent TDZ in production build) ─────────
 var COUNTER_TYPES = [
-  { key: "+1/+1", label: "+1/+1", color: "#1a4a1a", text: "#7fff7f", desc: "Poder y resistencia" },
-  { key: "-1/-1", label: "-1/-1", color: "#4a1a1a", text: "#ff8888", desc: "Reducir P/R" },
-  { key: "loyalty", label: "Lealtad", color: "#1a2a5a", text: "#7fc4ff", desc: "Planeswalker" },
-  { key: "charge", label: "Carga", color: "#3a2a1a", text: "#ffcc88", desc: "Artefactos, hechizos" },
-  { key: "poison", label: "Veneno", color: "#2a1a4a", text: "#cc88ff", desc: "Infect" },
+  { key: "+1/+1", label: "+1/+1", color: "var(--bg-life)", text: "var(--color-life)", desc: "Poder y resistencia" },
+  { key: "-1/-1", label: "-1/-1", color: "var(--bg-damage)", text: "var(--color-damage)", desc: "Reducir P/R" },
+  { key: "loyalty", label: "Lealtad", color: "#1a2a5a", text: "var(--color-info)", desc: "Planeswalker" },
+  { key: "charge", label: "Carga", color: "#3a2a1a", text: "var(--color-warn-dim)", desc: "Artefactos, hechizos" },
+  { key: "poison", label: "Veneno", color: "#2a1a4a", text: "var(--color-poison)", desc: "Infect" },
   { key: "energy", label: "⚡ Energía", color: "#1a3a3a", text: "#88ffee", desc: "Contador de energía" },
   { key: "time", label: "⏳ Tiempo", color: "#2a2a1a", text: "#eeee88", desc: "Suspense, Vanishing" },
-  { key: "quest", label: "📜 Misión", color: "#2a1a2a", text: "#ff88cc", desc: "Quest enchantments" },
+  { key: "quest", label: "📜 Misión", color: "#2a1a2a", text: "var(--color-exile)", desc: "Quest enchantments" },
   { key: "shield", label: "🛡 Escudo", color: "#1a2a2a", text: "#88ffcc", desc: "Ward counters" },
   { key: "custom", label: "✏ Custom", color: "#2a2a2a", text: "#cccccc", desc: "Contador personalizado" },
 ];
@@ -27,11 +33,11 @@ var TOKEN_PRESETS = [
   { name: "Tesorero", p: "0", t: "1", color: "#c0a020" },
 ];
 var DICE = [
-  { sides: 4, icon: "▲", color: "#ff8844" },
-  { sides: 6, icon: "⬡", color: "#ffcc44" },
-  { sides: 8, icon: "◆", color: "#44ff88" },
-  { sides: 10, icon: "⬟", color: "#44ccff" },
-  { sides: 12, icon: "⬠", color: "#cc88ff" },
+  { sides: 4, icon: "▲", color: "var(--color-orange)" },
+  { sides: 6, icon: "⬡", color: "var(--color-warning)" },
+  { sides: 8, icon: "◆", color: "var(--color-life-bright)" },
+  { sides: 10, icon: "⬟", color: "var(--color-info-bright)" },
+  { sides: 12, icon: "⬠", color: "var(--color-poison)" },
   { sides: 20, icon: "⬡", color: "#ff4488" },
 ];
 var KEYWORD_MAP = {
@@ -56,30 +62,30 @@ var KEYWORD_MAP = {
   "protection": "protection",
 };
 var ABILITIES = [
-  { key: "lifelink", name: "Vínculo vital", en: "Lifelink", icon: "💚", color: "#2a6a2a", text: "#88ff88", desc: "El daño que hace cura al jugador" },
-  { key: "trample", name: "Arrollar", en: "Trample", icon: "🐂", color: "#5a3a1a", text: "#ffaa44", desc: "El exceso de daño pasa al jugador" },
-  { key: "deathtouch", name: "Toque mortal", en: "Deathtouch", icon: "💀", color: "#2a1a3a", text: "#cc88ff", desc: "Mata a cualquier criatura que dañe" },
-  { key: "flying", name: "Volar", en: "Flying", icon: "🦅", color: "#1a2a4a", text: "#88ccff", desc: "Solo puede bloquearse con voladoras" },
+  { key: "lifelink", name: "Vínculo vital", en: "Lifelink", icon: "💚", color: "#2a6a2a", text: "var(--color-life)", desc: "El daño que hace cura al jugador" },
+  { key: "trample", name: "Arrollar", en: "Trample", icon: "🐂", color: "#5a3a1a", text: "var(--color-orange)", desc: "El exceso de daño pasa al jugador" },
+  { key: "deathtouch", name: "Toque mortal", en: "Deathtouch", icon: "💀", color: "#2a1a3a", text: "var(--color-poison)", desc: "Mata a cualquier criatura que dañe" },
+  { key: "flying", name: "Volar", en: "Flying", icon: "🦅", color: "var(--bg-mana)", text: "var(--color-info)", desc: "Solo puede bloquearse con voladoras" },
   { key: "firststrike", name: "Dañar primero", en: "First Strike", icon: "⚡", color: "#4a3a0a", text: "#ffdd44", desc: "Hace daño antes que las demás" },
-  { key: "haste", name: "Prisa", en: "Haste", icon: "💨", color: "#4a1a1a", text: "#ff8844", desc: "Puede atacar el mismo turno que entra" },
+  { key: "haste", name: "Prisa", en: "Haste", icon: "💨", color: "var(--bg-damage)", text: "var(--color-orange)", desc: "Puede atacar el mismo turno que entra" },
   { key: "vigilance", name: "Vigilancia", en: "Vigilance", icon: "👁", color: "#3a3a1a", text: "#eedd88", desc: "No se gira al atacar" },
   { key: "hexproof", name: "Protección mágica", en: "Hexproof", icon: "🛡", color: "#1a3a3a", text: "#88ffee", desc: "No puede ser objetivo de hechizos del oponente" },
-  { key: "indestructible", name: "Indestructible", en: "Indestructible", icon: "♾", color: "#2a2a4a", text: "#aaaaff", desc: "No puede ser destruida" },
+  { key: "indestructible", name: "Indestructible", en: "Indestructible", icon: "♾", color: "var(--border-default)", text: "var(--color-info)", desc: "No puede ser destruida" },
   { key: "menace", name: "Amenaza", en: "Menace", icon: "😈", color: "#3a1a2a", text: "#ff88aa", desc: "Debe bloquearse con 2+ criaturas" },
   { key: "reach", name: "Alcance", en: "Reach", icon: "🌿", color: "#1a3a1a", text: "#88dd88", desc: "Puede bloquear criaturas con volar" },
-  { key: "doublestrike", name: "Doble golpe", en: "Double Strike", icon: "⚔⚔", color: "#4a2a0a", text: "#ffcc44", desc: "Daña primero y también en combate normal" },
+  { key: "doublestrike", name: "Doble golpe", en: "Double Strike", icon: "⚔⚔", color: "#4a2a0a", text: "var(--color-warning)", desc: "Daña primero y también en combate normal" },
   { key: "fear", name: "Inspirar temor", en: "Fear", icon: "👻", color: "#1a0a2a", text: "#bb88ff", desc: "Solo puede bloquearse con artefactos o criaturas negras" },
   { key: "intimidate", name: "Intimidar", en: "Intimidate", icon: "😱", color: "#2a1a3a", text: "#dd99ff", desc: "Solo puede bloquearse con artefactos o criaturas del mismo color" },
-  { key: "shadow", name: "Sombra", en: "Shadow", icon: "🌑", color: "#0a0a1a", text: "#9999cc", desc: "Solo bloquea y es bloqueada por criaturas con sombra" },
+  { key: "shadow", name: "Sombra", en: "Shadow", icon: "🌑", color: "var(--bg-well)", text: "#9999cc", desc: "Solo bloquea y es bloqueada por criaturas con sombra" },
   { key: "wither", name: "Marchitar", en: "Wither", icon: "🥀", color: "#1a2a0a", text: "#88cc44", desc: "Inflige daño a criaturas como contadores -1/-1" },
-  { key: "infect", name: "Infectar", en: "Infect", icon: "☣", color: "#0a2a0a", text: "#44ff44", desc: "Daña como contadores -1/-1 a criaturas y contadores de veneno a jugadores" },
+  { key: "infect", name: "Infectar", en: "Infect", icon: "☣", color: "#0a2a0a", text: "var(--color-life-bright)", desc: "Daña como contadores -1/-1 a criaturas y contadores de veneno a jugadores" },
   { key: "flanking", name: "Flanquear", en: "Flanking", icon: "🐎", color: "#3a2a0a", text: "#ffbb44", desc: "Criaturas que lo bloquean sin flanquear obtienen -1/-1" },
   { key: "protection", name: "Protección", en: "Protection", icon: "🔰", color: "#0a2a3a", text: "#44ddff", desc: "Protegida de un color o tipo específico" },
   { key: "enrage", name: "Enfurecer", en: "Enrage", icon: "🔴", color: "#3a0a0a", text: "#ff6644", desc: "Se activa cuando recibe daño" },
-  { key: "undying", name: "Inmortal", en: "Undying", icon: "🔁", color: "#0a1a2a", text: "#44ccff", desc: "Vuelve del cementerio con +1/+1 si no tenía contadores" },
-  { key: "persist", name: "Persistir", en: "Persist", icon: "🔄", color: "#1a0a2a", text: "#cc88ff", desc: "Vuelve del cementerio con -1/-1 si no tenía contadores" },
+  { key: "undying", name: "Inmortal", en: "Undying", icon: "🔁", color: "#0a1a2a", text: "var(--color-info-bright)", desc: "Vuelve del cementerio con +1/+1 si no tenía contadores" },
+  { key: "persist", name: "Persistir", en: "Persist", icon: "🔄", color: "#1a0a2a", text: "var(--color-poison)", desc: "Vuelve del cementerio con -1/-1 si no tenía contadores" },
   { key: "exploit", name: "Explotar", en: "Exploit", icon: "💥", color: "#2a0a1a", text: "#ff44aa", desc: "Puedes sacrificar una criatura al entrar al campo" },
-  { key: "annihilator", name: "Aniquilador", en: "Annihilator", icon: "☠⚡", color: "#1a0a0a", text: "#ff2222", desc: "El defensor sacrifica permanentes al atacar" },
+  { key: "annihilator", name: "Aniquilador", en: "Annihilator", icon: "☠⚡", color: "var(--bg-damage)", text: "#ff2222", desc: "El defensor sacrifica permanentes al atacar" },
   { key: "unblockable", name: "Imbloqueable", en: "Unblockable", icon: "👻", color: "#0a0a2a", text: "#8888ff", desc: "No puede ser bloqueada" },
 ];
 var MANA_DEFS = [
@@ -272,7 +278,7 @@ async function authFetch(path, opts = {}) {
 
 // Sign in with Google OAuth
 async function signInWithGoogle() {
-  const redirectTo = encodeURIComponent("https://v0-vite-react-setup-sand.vercel.app");
+  const redirectTo = encodeURIComponent("https://mtg-sim-es.vercel.app");
   window.location.href = `${SB_AUTH}/authorize?provider=google&redirect_to=${redirectTo}`;
 }
 
@@ -498,8 +504,8 @@ function ScrollIndicator({ containerRef }) {
   }, [containerRef]);
   if (!hasOverflow || atEnd) return null;
   return (
-    <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 32, background: "linear-gradient(to right, transparent, #06060eee)", display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 5, pointerEvents: "none", zIndex: 5 }}>
-      <span style={{ fontSize: 16, color: "#ffd700cc" }}>›</span>
+    <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 32, background: "linear-gradient(to right, transparent, rgba(6, 6, 14, 0.93))", display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 5, pointerEvents: "none", zIndex: 5 }}>
+      <span style={{ fontSize: 16, color: "var(--gold-80)" }}>›</span>
     </div>
   );
 }
@@ -555,24 +561,24 @@ function CardVersionModal({ cardName, onSelect, onClose }) {
   }, [cardName]);
 
   const RARITY = { common: "⬤", uncommon: "◆", rare: "★", mythic: "✦", special: "⬟", bonus: "⬟" };
-  const RARITY_COLOR = { common: "#aaa", uncommon: "#88aacc", rare: "#ffcc44", mythic: "#ff8844", special: "#cc88ff", bonus: "#cc88ff" };
+  const RARITY_COLOR = { common: "var(--gray-light)", uncommon: "#88aacc", rare: "var(--color-warning)", mythic: "var(--color-orange)", special: "var(--color-poison)", bonus: "var(--color-poison)" };
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 900, fontFamily: "'Crimson Text',Georgia,serif" }} onClick={onClose}>
-      <div style={{ background: "#08080f", border: "1px solid #2a2a4a", borderRadius: 18, width: 680, maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 20px 60px #000c" }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", borderRadius: 18, width: 680, maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 20px 60px var(--scrim-80)" }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div style={{ padding: "16px 20px", background: "linear-gradient(180deg,#0f0f1e,#08080f)", borderBottom: "1px solid #2a2a4a", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ padding: "16px 20px", background: "linear-gradient(180deg,#0f0f1e,var(--bg-input))", borderBottom: "1px solid var(--border-default)", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "#ffd700" }}>🎨 Cambiar versión</div>
-            <div style={{ fontSize: 12, color: "#8888aa", marginTop: 2 }}>{cardName} — {versions.length} versiones disponibles</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--gold)" }}>🎨 Cambiar versión</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{cardName} — {versions.length} versiones disponibles</div>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20 }}>✕</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-dark)", cursor: "pointer", fontSize: 20 }}>✕</button>
         </div>
 
         {/* Versions grid */}
         <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexWrap: "wrap", gap: 12, alignContent: "flex-start" }}>
-          {loading && <div style={{ width: "100%", textAlign: "center", color: "#555", padding: 40, fontSize: 13 }}>Cargando versiones...</div>}
+          {loading && <div style={{ width: "100%", textAlign: "center", color: "var(--gray-dark)", padding: 40, fontSize: 13 }}>Cargando versiones...</div>}
           {!loading && versions.map(v => {
             const img = v.image_uris?.normal || v.card_faces?.[0]?.image_uris?.normal;
             const year = v.released_at?.slice(0, 4);
@@ -580,28 +586,28 @@ function CardVersionModal({ cardName, onSelect, onClose }) {
             return (
               <div key={v.id}
                 onClick={() => onSelect(v)}
-                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 8px 24px #000c, 0 0 16px #ffd70033"; setHover({ card: { ...v, image_url: img }, x: e.clientX, y: e.clientY }); }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 8px 24px var(--scrim-80), 0 0 16px var(--gold-glow)"; setHover({ card: { ...v, image_url: img }, x: e.clientX, y: e.clientY }); }}
                 onMouseMove={e => setHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
                 onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = ""; setHover(null); }}
-                style={{ width: 130, cursor: "pointer", borderRadius: 10, border: "1px solid #2a2a4a", background: "#0d0d1e", overflow: "hidden", transition: "all 0.18s", flexShrink: 0 }}>
+                style={{ width: 130, cursor: "pointer", borderRadius: 10, border: "1px solid var(--border-default)", background: "var(--bg-elevated)", overflow: "hidden", transition: "all 0.18s", flexShrink: 0 }}>
                 <div style={{ position: "relative" }}>
                   {img
                     ? <img src={img} style={{ width: "100%", display: "block" }} />
-                    : <div style={{ width: "100%", aspectRatio: "2.5/3.5", background: "#1a1a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>🃏</div>}
-                  {v._hasSpanish && <div style={{ position: "absolute", top: 4, right: 4, background: "#1a5a1a", color: "#88ff88", fontSize: 9, fontWeight: 800, padding: "2px 5px", borderRadius: 4 }}>ES</div>}
+                    : <div style={{ width: "100%", aspectRatio: "2.5/3.5", background: "var(--bg-panel)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>🃏</div>}
+                  {v._hasSpanish && <div style={{ position: "absolute", top: 4, right: 4, background: "var(--bg-life)", color: "var(--color-life)", fontSize: 9, fontWeight: 800, padding: "2px 5px", borderRadius: 4 }}>ES</div>}
                 </div>
                 <div style={{ padding: "6px 8px" }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "#e8e0d0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.set_name}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.set_name}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
-                    <span style={{ fontSize: 11, color: RARITY_COLOR[rarity] || "#aaa" }}>{RARITY[rarity] || "⬤"}</span>
-                    <span style={{ fontSize: 9, color: "#8888aa" }}>{v.set?.toUpperCase()} · {year}</span>
-                    {v._hasSpanish && <span style={{ fontSize: 8, color: "#44ff88" }}>🌐 ES</span>}
+                    <span style={{ fontSize: 11, color: RARITY_COLOR[rarity] || "var(--gray-light)" }}>{RARITY[rarity] || "⬤"}</span>
+                    <span style={{ fontSize: 9, color: "var(--text-muted)" }}>{v.set?.toUpperCase()} · {year}</span>
+                    {v._hasSpanish && <span style={{ fontSize: 8, color: "var(--color-life-bright)" }}>🌐 ES</span>}
                   </div>
                 </div>
               </div>
             );
           })}
-          {!loading && !versions.length && <div style={{ width: "100%", textAlign: "center", color: "#555", padding: 40 }}>Sin versiones encontradas</div>}
+          {!loading && !versions.length && <div style={{ width: "100%", textAlign: "center", color: "var(--gray-dark)", padding: 40 }}>Sin versiones encontradas</div>}
         </div>
       </div>
       {hover && <HoverZoom card={hover.card} x={hover.x} y={hover.y} />}
@@ -616,10 +622,10 @@ function HoverZoom({ card, x, y }) {
   const left = x > window.innerWidth - 240 ? x - 230 : x + 16;
   const top = Math.min(y - 60, window.innerHeight - 360);
   return (
-    <div style={{ position: "fixed", left, top, zIndex: 9999, pointerEvents: "none", filter: "drop-shadow(0 8px 32px #000c)" }}>
+    <div style={{ position: "fixed", left, top, zIndex: 9999, pointerEvents: "none", filter: "drop-shadow(0 8px 32px var(--scrim-80))" }}>
       {imgUrl
         ? <img src={imgUrl} style={{ width: 210, borderRadius: 12 }} alt={getCardName(card)} />
-        : <div style={{ width: 210, aspectRatio: "2.5/3.5", borderRadius: 12, background: "#1a1a3e", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8, color: "#ccc", fontSize: 13, padding: 16, textAlign: "center" }}>
+        : <div style={{ width: 210, aspectRatio: "2.5/3.5", borderRadius: 12, background: "var(--bg-panel)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8, color: "#ccc", fontSize: 13, padding: 16, textAlign: "center" }}>
           <div style={{ fontSize: 32 }}>🃏</div><div>{getCardName(card)}</div>
         </div>}
     </div>
@@ -640,19 +646,19 @@ function CardTile({ card, onClick, onDoubleClick, onRightClick, onHover, onHover
       onMouseLeave={() => onHoverEnd?.()}
       title={faceDown ? "?" : getCardName(card)}
       className="card-tile"
-      style={{ width: w, height: h, borderRadius: 5, overflow: "hidden", cursor: "pointer", flexShrink: 0, transform: tapped ? "rotate(90deg)" : "none", boxShadow: selected ? "0 0 0 2px #ffd700,0 4px 16px #0008" : "0 2px 8px #0005", border: selected ? "2px solid #ffd700" : "2px solid #2a2a4a", background: "#1a1a2e", position: "relative" }}>
+      style={{ width: w, height: h, borderRadius: 5, overflow: "hidden", cursor: "pointer", flexShrink: 0, transform: tapped ? "rotate(90deg)" : "none", boxShadow: selected ? "0 0 0 2px var(--gold),0 4px 16px rgba(0,0,0,0.53)" : "0 2px 8px rgba(0,0,0,0.33)", border: selected ? "2px solid var(--gold)" : "2px solid var(--border-default)", background: "var(--bg-subtle)", position: "relative" }}>
       {faceDown
-        ? <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,#1a2a4a 0%,#0d1a2e 40%,#1a0a2a 100%)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", inset: 4, border: "2px solid #3a4a6a", borderRadius: 4 }} />
+        ? <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,var(--bg-mana) 0%,var(--bg-mana) 40%,#1a0a2a 100%)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", inset: 4, border: "2px solid var(--border-strong)", borderRadius: 4 }} />
           <div style={{ position: "absolute", inset: 6, border: "1px solid #2a3a5a", borderRadius: 3 }} />
           <div style={{ fontSize: 28, opacity: 0.6 }}>🌟</div>
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: "linear-gradient(90deg,#1a2a8a,#8a1a8a,#1a2a8a)" }} />
         </div>
         : imgUrl
-          ? <><div style={{ position: "absolute", inset: 0, display: loaded ? "none" : "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "#888", padding: 3, textAlign: "center" }}>{getCardName(card)}</div><img src={imgUrl} alt={getCardName(card)} onLoad={() => setLoaded(true)} style={{ width: "100%", height: "100%", objectFit: "cover", display: loaded ? "block" : "none" }} /></>
+          ? <><div style={{ position: "absolute", inset: 0, display: loaded ? "none" : "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "var(--gray-mid)", padding: 3, textAlign: "center" }}>{getCardName(card)}</div><img src={imgUrl} alt={getCardName(card)} onLoad={() => setLoaded(true)} style={{ width: "100%", height: "100%", objectFit: "cover", display: loaded ? "block" : "none" }} /></>
           : card?.isToken
-            ? <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 3, background: `linear-gradient(135deg,${card.tokenColor || "#2a2a4a"}44,#0d0d1a)`, fontSize: 8, color: card.tokenColor || "#aaa", textAlign: "center", gap: 3 }}><div style={{ fontSize: 14, fontWeight: 800, color: card.tokenColor || "#fff" }}>{card.power}/{card.toughness}</div><div style={{ fontSize: 7, opacity: 0.8 }}>{getCardName(card)}</div><div style={{ fontSize: 6, opacity: 0.5 }}>TOKEN</div></div>
-            : <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 3, background: "linear-gradient(135deg,#1a1a3e,#0d0d1a)", fontSize: 8, color: "#ccc", textAlign: "center", gap: 3 }}><div style={{ fontSize: 16 }}>🃏</div><div>{getCardName(card)}</div></div>}
+            ? <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 3, background: `linear-gradient(135deg,${card.tokenColor || "var(--border-default)"}44,var(--bg-card))`, fontSize: 8, color: card.tokenColor || "var(--gray-light)", textAlign: "center", gap: 3 }}><div style={{ fontSize: 14, fontWeight: 800, color: card.tokenColor || "var(--color-white)" }}>{card.power}/{card.toughness}</div><div style={{ fontSize: 7, opacity: 0.8 }}>{getCardName(card)}</div><div style={{ fontSize: 6, opacity: 0.5 }}>TOKEN</div></div>
+            : <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 3, background: "linear-gradient(135deg,var(--bg-panel),var(--bg-card))", fontSize: 8, color: "#ccc", textAlign: "center", gap: 3 }}><div style={{ fontSize: 16 }}>🃏</div><div>{getCardName(card)}</div></div>}
     </div>
   );
 }
@@ -667,7 +673,7 @@ function CtxMenu({ menu, onClose }) {
 
   const renderItems = (items, depth = 0) => items.map((item, i) => {
     const key = depth + "-" + i;
-    if (item === "---") return <div key={key} style={{ borderTop: "1px solid #2a2a4a", margin: "3px 0" }} />;
+    if (item === "---") return <div key={key} style={{ borderTop: "1px solid var(--border-default)", margin: "3px 0" }} />;
 
     if (item.submenu) {
       // Submenu shown via CSS :hover on the parent .has-sub div
@@ -678,11 +684,11 @@ function CtxMenu({ menu, onClose }) {
           <button style={{
             display: "flex", justifyContent: "space-between", alignItems: "center",
             width: "100%", padding: "7px 10px", border: "none", background: "none",
-            color: item.color || "#e8e0d0", cursor: "pointer", textAlign: "left",
+            color: item.color || "var(--text-primary)", cursor: "pointer", textAlign: "left",
             fontSize: 12, borderRadius: 5, boxSizing: "border-box"
           }}>
             <span>{item.label}</span>
-            <span style={{ color: "#666", fontSize: 9, marginLeft: 8 }}>▶</span>
+            <span style={{ color: "var(--gray-mid)", fontSize: 9, marginLeft: 8 }}>▶</span>
           </button>
           {/* Invisible bridge: fills the gap between button and submenu */}
           <div style={{
@@ -691,8 +697,8 @@ function CtxMenu({ menu, onClose }) {
           }} />
           <div style={{
             position: "absolute", top: -8, left: subLeft,
-            background: "#161630", border: "1px solid #3a3a6a", borderRadius: 10,
-            padding: 7, minWidth: W, boxShadow: "0 8px 40px #000c", zIndex: 20,
+            background: "var(--bg-raised)", border: "1px solid var(--border-strong)", borderRadius: 10,
+            padding: 7, minWidth: W, boxShadow: "0 8px 40px var(--scrim-80)", zIndex: 20,
             display: "none"  // toggled by CSS .has-sub:hover > .submenu-panel
           }} className="submenu-panel">
             {renderItems(item.submenu, depth + 1)}
@@ -706,10 +712,10 @@ function CtxMenu({ menu, onClose }) {
         onClick={e => { e.stopPropagation(); item.action(); onClose(); }}
         style={{
           display: "block", width: "100%", padding: "7px 10px", border: "none",
-          background: "none", color: item.color || "#e8e0d0",
+          background: "none", color: item.color || "var(--text-primary)",
           cursor: "pointer", textAlign: "left", fontSize: 12, borderRadius: 5
         }}
-        onMouseEnter={e => e.currentTarget.style.background = "#2a2a5a"}
+        onMouseEnter={e => e.currentTarget.style.background = "var(--border-panel)"}
         onMouseLeave={e => e.currentTarget.style.background = "none"}>
         {item.label}
       </button>
@@ -718,72 +724,11 @@ function CtxMenu({ menu, onClose }) {
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
-        .has-sub:hover > .submenu-panel { display: block !important; }
-        .has-sub:hover > button { background: #1a1a3e !important; }
-
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-        @keyframes slideDown { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes shimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
-        @keyframes neonPulse { 0%,100%{text-shadow:0 0 8px #ffd700,0 0 20px #ffd70088,0 0 40px #ff8c0044} 50%{text-shadow:0 0 16px #ffd700,0 0 40px #ffd700cc,0 0 80px #ff8c0088} }
-        @keyframes borderNeon { 0%,100%{box-shadow:0 0 6px #ffd70066,inset 0 0 6px #ffd70022} 50%{box-shadow:0 0 18px #ffd700cc,inset 0 0 12px #ffd70044} }
-        @keyframes scanline { 0%{transform:translateY(-100%)} 100%{transform:translateY(400%)} }
-        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
-        @keyframes flicker { 0%,19%,21%,23%,25%,54%,56%,100%{opacity:1} 20%,24%,55%{opacity:0.6} }
-        @keyframes blueGlow { 0%,100%{box-shadow:0 0 8px #4466ffaa,0 0 20px #4466ff44} 50%{box-shadow:0 0 20px #4466ffcc,0 0 40px #4466ff88} }
-        @keyframes typewriter { from{width:0} to{width:100%} }
-
-        .mtg-btn { transition: all 0.18s cubic-bezier(0.34,1.56,0.64,1); }
-        .mtg-btn:hover { transform: translateY(-2px) scale(1.04); filter: brightness(1.2); }
-        .mtg-btn:active { transform: translateY(1px) scale(0.97); }
-
-        .neon-text { animation: neonPulse 3s ease-in-out infinite; }
-        .neon-border { animation: borderNeon 2s ease-in-out infinite; }
-        .blue-glow { animation: blueGlow 2s ease-in-out infinite; }
-        .float-anim { animation: float 3s ease-in-out infinite; }
-
-        .card-tile { transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s; }
-        .card-tile:hover { transform: translateY(-8px) scale(1.07); box-shadow: 0 16px 40px #000e, 0 0 20px #ffd70077, 0 0 40px #ffd70033, 0 0 1px #ffd700; z-index: 50; }
-
-        .cyber-panel {
-          background: linear-gradient(135deg, #0a0a1a 0%, #0d0d20 100%);
-          border: 1px solid #ffd70044;
-          box-shadow: 0 0 10px #ffd70022, inset 0 0 20px #ffd70008;
-        }
-        .cyber-panel:hover { border-color: #ffd70099; box-shadow: 0 0 20px #ffd70044, inset 0 0 20px #ffd70011; }
-
-        .scanline-overlay::after {
-          content: '';
-          position: absolute;
-          top: 0; left: 0; right: 0;
-          height: 3px;
-          background: linear-gradient(transparent, #ffffff08, transparent);
-          animation: scanline 4s linear infinite;
-          pointer-events: none;
-          z-index: 100;
-        }
-
-        ::-webkit-scrollbar { width: 3px; height: 3px; }
-        ::-webkit-scrollbar-track { background: #050510; }
-        ::-webkit-scrollbar-thumb { background: linear-gradient(180deg,#ffd700,#ff8c00); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #ffd700; }
-
-        .corner-bracket::before, .corner-bracket::after {
-          content: '';
-          position: absolute;
-          width: 12px; height: 12px;
-          border-color: #ffd70088;
-          border-style: solid;
-        }
-        .corner-bracket::before { top: 0; left: 0; border-width: 1px 0 0 1px; }
-        .corner-bracket::after { top: 0; right: 0; border-width: 1px 1px 0 0; }
-      `}</style>
       <div style={{ position: "fixed", inset: 0, zIndex: 500 }} onClick={onClose}>
-        <div style={{ position: "absolute", left, top, background: "#161630", border: "1px solid #3a3a6a", borderRadius: 10, padding: 7, minWidth: W, boxShadow: "0 8px 40px #000c" }}
+        <div style={{ position: "absolute", left, top, background: "var(--bg-raised)", border: "1px solid var(--border-strong)", borderRadius: 10, padding: 7, minWidth: W, boxShadow: "0 8px 40px var(--scrim-80)" }}
           onClick={e => e.stopPropagation()}>
           {menu.title && (
-            <div style={{ fontSize: 10, color: "#ffd700", padding: "3px 10px 6px", borderBottom: "1px solid #2a2a4a", marginBottom: 3, fontWeight: 700 }}>
+            <div style={{ fontSize: 10, color: "var(--gold)", padding: "3px 10px 6px", borderBottom: "1px solid var(--border-default)", marginBottom: 3, fontWeight: 700 }}>
               {menu.title}
             </div>
           )}
@@ -906,15 +851,15 @@ function ScryModal({ cards, onDone, title }) {
   const toggle = (idx, dest) => setTop(t => t.map((c, i) => i === idx ? { ...c, dest } : c));
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
-      <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 16, padding: 24, maxWidth: 600, width: "90vw" }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: "#ffd700", marginBottom: 16 }}>{title}</div>
+      <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 16, padding: 24, maxWidth: 600, width: "90vw" }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--gold)", marginBottom: 16 }}>{title}</div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
           {top.map((card, i) => (
             <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
               <CardTile card={card} small onClick={() => { }} />
               <div style={{ display: "flex", gap: 4 }}>
                 {["top", "bottom", "graveyard"].map(d => (
-                  <button key={d} onClick={() => toggle(i, d)} style={{ padding: "2px 6px", borderRadius: 4, border: "none", background: card.dest === d ? "#ffd700" : "#2a2a4a", color: card.dest === d ? "#000" : "#aaa", cursor: "pointer", fontSize: 10 }}>
+                  <button key={d} onClick={() => toggle(i, d)} style={{ padding: "2px 6px", borderRadius: 4, border: "none", background: card.dest === d ? "var(--gold)" : "var(--border-default)", color: card.dest === d ? "var(--color-black)" : "var(--gray-light)", cursor: "pointer", fontSize: 10 }}>
                     {d === "top" ? "↑Top" : d === "bottom" ? "↓Bot" : "🪦"}
                   </button>
                 ))}
@@ -922,7 +867,7 @@ function ScryModal({ cards, onDone, title }) {
             </div>
           ))}
         </div>
-        <button onClick={() => onDone(top)} style={{ padding: "10px 28px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, cursor: "pointer" }}>Confirmar</button>
+        <button onClick={() => onDone(top)} style={{ padding: "10px 28px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, cursor: "pointer" }}>Confirmar</button>
       </div>
     </div>
   );
@@ -951,27 +896,27 @@ function SearchLibModal({ library, graveyard, sideboard, zone, dest, onPick, onC
     : "🔎 Buscar en Biblioteca";
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
-      <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 16, padding: 24, maxWidth: 500, width: "90vw", maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#ffd700", marginBottom: 12 }}>{title}</div>
-        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Nombre de carta..." style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 13, outline: "none", marginBottom: 12 }} autoFocus />
+      <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 16, padding: 24, maxWidth: 500, width: "90vw", maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gold)", marginBottom: 12 }}>{title}</div>
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Nombre de carta..." style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", marginBottom: 12 }} autoFocus />
         <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
           {filtered.map((card, i) => (
             <div key={card.instanceId} onClick={() => onPick(card)}
               onMouseEnter={e => { e.currentTarget.style.background = "#2a2a4e"; setHover({ card, x: e.clientX, y: e.clientY }); }}
               onMouseMove={e => setHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
-              onMouseLeave={e => { e.currentTarget.style.background = "#1a1a2e"; setHover(null); }}
-              style={{ padding: "8px 12px", borderRadius: 7, background: "#1a1a2e", cursor: "pointer", fontSize: 12, display: "flex", gap: 10, alignItems: "center" }}>
-              <span style={{ color: "#888", minWidth: 24 }}>#{cards.indexOf(card) + 1}</span>
+              onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-subtle)"; setHover(null); }}
+              style={{ padding: "8px 12px", borderRadius: 7, background: "var(--bg-subtle)", cursor: "pointer", fontSize: 12, display: "flex", gap: 10, alignItems: "center" }}>
+              <span style={{ color: "var(--gray-mid)", minWidth: 24 }}>#{cards.indexOf(card) + 1}</span>
               {card.image_url && <img src={card.image_url} style={{ width: 28, height: 39, borderRadius: 3, objectFit: "cover", flexShrink: 0 }} />}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600 }}>{getCardName(card)}</div>
-                <div style={{ fontSize: 10, color: "#555" }}>{card.type_line?.split("—")[0]}</div>
+                <div style={{ fontSize: 10, color: "var(--gray-dark)" }}>{card.type_line?.split("—")[0]}</div>
               </div>
             </div>
           ))}
-          {!filtered.length && <div style={{ color: "#555", padding: "20px 0", textAlign: "center" }}>Sin resultados</div>}
+          {!filtered.length && <div style={{ color: "var(--gray-dark)", padding: "20px 0", textAlign: "center" }}>Sin resultados</div>}
         </div>
-        <button onClick={onClose} style={{ marginTop: 14, padding: "8px 0", borderRadius: 8, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer" }}>Cancelar</button>
+        <button onClick={onClose} style={{ marginTop: 14, padding: "8px 0", borderRadius: 8, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer" }}>Cancelar</button>
       </div>
       {hover && <HoverZoom card={hover.card} x={hover.x} y={hover.y} />}
     </div>
@@ -1037,48 +982,48 @@ function CounterModal({ card, onUpdate, onClose }) {
   return (
     <>
       <div style={{ position: "fixed", inset: 0, background: "#000c", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700 }} onClick={onClose}>
-        <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 16, padding: 22, width: 440, maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+        <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 16, padding: 22, width: 440, maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#ffd700" }}>🎯 Contadores</div>
-              <div style={{ fontSize: 11, color: "#8888aa" }}>{card.printed_name || card.name}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)" }}>🎯 Contadores</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{card.printed_name || card.name}</div>
             </div>
-            <button onClick={onClose} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 18 }}>✕</button>
+            <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 18 }}>✕</button>
           </div>
 
           {/* ── P/R TRACKER ─────────────────────────────────────────────── */}
-          <div style={{ background: "#0a0a18", border: "1px solid #3a3a6a", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
-            <div style={{ fontSize: 11, color: "#ffd700", fontWeight: 700, marginBottom: 12, letterSpacing: 1 }}>⚔ PODER / RESISTENCIA</div>
+          <div style={{ background: "var(--bg-well)", border: "1px solid var(--border-strong)", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, marginBottom: 12, letterSpacing: 1 }}>⚔ PODER / RESISTENCIA</div>
             <div style={{ display: "flex", gap: 16, justifyContent: "center", alignItems: "center" }}>
 
               {/* Power */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                <div style={{ fontSize: 10, color: "#8888aa", letterSpacing: 1 }}>PODER</div>
+                <div style={{ fontSize: 10, color: "var(--text-muted)", letterSpacing: 1 }}>PODER</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <button onClick={() => adjPow(-1)} style={btnS("#4a1a1a", "#ff8888")}>−</button>
-                  <div style={{ width: 52, height: 52, borderRadius: 10, background: dispPow > 0 ? "#1a4a1a" : dispPow < 0 ? "#4a1a1a" : "#1a1a2e", border: `2px solid ${dispPow > 0 ? "#88ff88" : dispPow < 0 ? "#ff8888" : "#3a3a6a"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontSize: 22, fontWeight: 900, color: dispPow > 0 ? "#88ff88" : dispPow < 0 ? "#ff8888" : "#e8e0d0" }}>
+                  <button onClick={() => adjPow(-1)} style={btnS("var(--bg-damage)", "var(--color-damage)")}>−</button>
+                  <div style={{ width: 52, height: 52, borderRadius: 10, background: dispPow > 0 ? "var(--bg-life)" : dispPow < 0 ? "var(--bg-damage)" : "var(--bg-subtle)", border: `2px solid ${dispPow > 0 ? "var(--color-life)" : dispPow < 0 ? "var(--color-damage)" : "var(--border-strong)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontSize: 22, fontWeight: 900, color: dispPow > 0 ? "var(--color-life)" : dispPow < 0 ? "var(--color-damage)" : "var(--text-primary)" }}>
                       {dispPow > 0 ? `+${dispPow}` : dispPow}
                     </span>
                   </div>
-                  <button onClick={() => adjPow(+1)} style={btnS("#1a4a1a", "#88ff88")}>+</button>
+                  <button onClick={() => adjPow(+1)} style={btnS("var(--bg-life)", "var(--color-life)")}>+</button>
                 </div>
               </div>
 
               {/* Separator */}
-              <div style={{ fontSize: 28, color: "#555", fontWeight: 300 }}>/</div>
+              <div style={{ fontSize: 28, color: "var(--gray-dark)", fontWeight: 300 }}>/</div>
 
               {/* Toughness */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                <div style={{ fontSize: 10, color: "#8888aa", letterSpacing: 1 }}>RESISTENCIA</div>
+                <div style={{ fontSize: 10, color: "var(--text-muted)", letterSpacing: 1 }}>RESISTENCIA</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <button onClick={() => adjTgh(-1)} style={btnS("#4a1a1a", "#ff8888")}>−</button>
-                  <div style={{ width: 52, height: 52, borderRadius: 10, background: dispTgh > 0 ? "#1a4a1a" : dispTgh < 0 ? "#4a1a1a" : "#1a1a2e", border: `2px solid ${dispTgh > 0 ? "#88ff88" : dispTgh < 0 ? "#ff8888" : "#3a3a6a"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontSize: 22, fontWeight: 900, color: dispTgh > 0 ? "#88ff88" : dispTgh < 0 ? "#ff8888" : "#e8e0d0" }}>
+                  <button onClick={() => adjTgh(-1)} style={btnS("var(--bg-damage)", "var(--color-damage)")}>−</button>
+                  <div style={{ width: 52, height: 52, borderRadius: 10, background: dispTgh > 0 ? "var(--bg-life)" : dispTgh < 0 ? "var(--bg-damage)" : "var(--bg-subtle)", border: `2px solid ${dispTgh > 0 ? "var(--color-life)" : dispTgh < 0 ? "var(--color-damage)" : "var(--border-strong)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontSize: 22, fontWeight: 900, color: dispTgh > 0 ? "var(--color-life)" : dispTgh < 0 ? "var(--color-damage)" : "var(--text-primary)" }}>
                       {dispTgh > 0 ? `+${dispTgh}` : dispTgh}
                     </span>
                   </div>
-                  <button onClick={() => adjTgh(+1)} style={btnS("#1a4a1a", "#88ff88")}>+</button>
+                  <button onClick={() => adjTgh(+1)} style={btnS("var(--bg-life)", "var(--color-life)")}>+</button>
                 </div>
               </div>
 
@@ -1086,14 +1031,14 @@ function CounterModal({ card, onUpdate, onClose }) {
 
             {/* Net display + reset */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-              <div style={{ fontSize: 11, color: "#8888aa" }}>
-                Modificador neto: <span style={{ fontWeight: 800, color: dispPow === 0 && dispTgh === 0 ? "#555" : "#ffd700" }}>
+              <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                Modificador neto: <span style={{ fontWeight: 800, color: dispPow === 0 && dispTgh === 0 ? "var(--gray-dark)" : "var(--gold)" }}>
                   {dispPow > 0 ? `+${dispPow}` : dispPow}/{dispTgh > 0 ? `+${dispTgh}` : dispTgh}
                 </span>
-                {(pp > 0 || mm > 0) && <span style={{ fontSize: 9, color: "#555", marginLeft: 6 }}>(incluye {pp > 0 ? `${pp}×+1/+1 ` : ""}{mm > 0 ? `${mm}×-1/-1` : ""} )</span>}
+                {(pp > 0 || mm > 0) && <span style={{ fontSize: 9, color: "var(--gray-dark)", marginLeft: 6 }}>(incluye {pp > 0 ? `${pp}×+1/+1 ` : ""}{mm > 0 ? `${mm}×-1/-1` : ""} )</span>}
               </div>
               {(extraPow !== 0 || extraTgh !== 0) && (
-                <button onClick={resetPR} style={{ padding: "3px 10px", borderRadius: 5, border: "1px solid #4a2a2a", background: "#1a0a0a", color: "#ff8888", cursor: "pointer", fontSize: 10 }}>
+                <button onClick={resetPR} style={{ padding: "3px 10px", borderRadius: 5, border: "1px solid var(--bg-damage)", background: "var(--bg-damage)", color: "var(--color-damage)", cursor: "pointer", fontSize: 10 }}>
                   Resetear P/R
                 </button>
               )}
@@ -1102,7 +1047,7 @@ function CounterModal({ card, onUpdate, onClose }) {
 
           {/* Active counters summary */}
           {Object.keys(counts).filter(k => k !== "+pow" && k !== "-pow" && k !== "+tgh" && k !== "-tgh").length > 0 && (
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14, padding: "8px 10px", background: "#0a0a18", borderRadius: 8 }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14, padding: "8px 10px", background: "var(--bg-well)", borderRadius: 8 }}>
               {Object.entries(counts).filter(([t]) => t !== "+pow" && t !== "-pow" && t !== "+tgh" && t !== "-tgh").map(([type, n]) => {
                 const def = COUNTER_TYPES.find(t => t.key === type) || { color: "#2a2a2a", text: "#ccc" };
                 return (
@@ -1124,12 +1069,12 @@ function CounterModal({ card, onUpdate, onClose }) {
               <div key={ct.key} style={{ background: ct.color + "44", border: `1px solid ${ct.color}`, borderRadius: 8, padding: "7px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
                   <div style={{ fontSize: 12, color: ct.text, fontWeight: 700 }}>{ct.label}</div>
-                  <div style={{ fontSize: 9, color: "#8888aa" }}>{ct.desc}</div>
+                  <div style={{ fontSize: 9, color: "var(--text-muted)" }}>{ct.desc}</div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <button onClick={() => remove(ct.key)} style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "#4a1a1a", color: "#ff8888", cursor: "pointer", fontSize: 15, fontWeight: 800, padding: 0 }}>−</button>
+                  <button onClick={() => remove(ct.key)} style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "var(--bg-damage)", color: "var(--color-damage)", cursor: "pointer", fontSize: 15, fontWeight: 800, padding: 0 }}>−</button>
                   <span style={{ color: ct.text, fontWeight: 800, minWidth: 18, textAlign: "center", fontSize: 14 }}>{counts[ct.key] || 0}</span>
-                  <button onClick={() => add(ct.key)} style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "#1a4a1a", color: "#7fff7f", cursor: "pointer", fontSize: 15, fontWeight: 800, padding: 0 }}>+</button>
+                  <button onClick={() => add(ct.key)} style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "var(--bg-life)", color: "var(--color-life)", cursor: "pointer", fontSize: 15, fontWeight: 800, padding: 0 }}>+</button>
                 </div>
               </div>
             ))}
@@ -1137,11 +1082,11 @@ function CounterModal({ card, onUpdate, onClose }) {
 
           {/* Custom counter */}
           <div style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center" }}>
-            <input value={customName} onChange={e => setCustomName(e.target.value)} placeholder="Nombre contador custom..." style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 12, outline: "none" }} />
-            <button onClick={() => { if (customName.trim()) { add("custom"); } }} style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "#2a2a4a", color: "#cccccc", cursor: "pointer", fontSize: 12 }}>+ Agregar</button>
+            <input value={customName} onChange={e => setCustomName(e.target.value)} placeholder="Nombre contador custom..." style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 12, outline: "none" }} />
+            <button onClick={() => { if (customName.trim()) { add("custom"); } }} style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "var(--border-default)", color: "#cccccc", cursor: "pointer", fontSize: 12 }}>+ Agregar</button>
           </div>
 
-          <button onClick={onClose} style={{ marginTop: 14, width: "100%", padding: "9px 0", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, cursor: "pointer" }}>Listo</button>
+          <button onClick={onClose} style={{ marginTop: 14, width: "100%", padding: "9px 0", borderRadius: 8, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, cursor: "pointer" }}>Listo</button>
         </div>
       </div>
     </>
@@ -1201,11 +1146,11 @@ function MulliganModal({ player, mulliganCount, onKeep, onMulligan, onHome }) {
   return (
     <>
       <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 800, fontFamily: "'Crimson Text',Georgia,serif" }}>
-        <div style={{ background: "#0a0a1a", border: "2px solid #ffd70066", borderRadius: 18, padding: 28, maxWidth: 700, width: "95vw" }}>
+        <div style={{ background: "var(--bg-well)", border: "2px solid var(--gold-40)", borderRadius: 18, padding: 28, maxWidth: 700, width: "95vw" }}>
           <div style={{ textAlign: "center", marginBottom: 18 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: mulliganCount === 1 ? "#88ff88" : "#ffd700" }}>{title}</div>
-            <div style={{ fontSize: 13, color: "#aaa", marginTop: 6 }}>{subtitle}</div>
-            {hint && <div style={{ fontSize: 11, color: "#555", marginTop: 4, fontStyle: "italic" }}>{hint}</div>}
+            <div style={{ fontSize: 22, fontWeight: 800, color: mulliganCount === 1 ? "var(--color-life)" : "var(--gold)" }}>{title}</div>
+            <div style={{ fontSize: 13, color: "var(--gray-light)", marginTop: 6 }}>{subtitle}</div>
+            {hint && <div style={{ fontSize: 11, color: "var(--gray-dark)", marginTop: 4, fontStyle: "italic" }}>{hint}</div>}
           </div>
 
           {/* Hand */}
@@ -1223,14 +1168,14 @@ function MulliganModal({ player, mulliganCount, onKeep, onMulligan, onHome }) {
                     <div style={{
                       position: "absolute", inset: 0, borderRadius: 6, zIndex: 2, pointerEvents: "none",
                       background: marked ? "#ff000033" : "transparent",
-                      border: marked ? "3px solid #ff4444" : "3px solid transparent",
+                      border: marked ? "3px solid var(--color-red)" : "3px solid transparent",
                       transition: "all 0.15s"
                     }} />
                     {card.image_url
                       ? <img src={card.image_url} style={{ width: 74, borderRadius: 6, display: "block" }} />
-                      : <div style={{ width: 74, height: 103, borderRadius: 6, background: "#1a1a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#888", textAlign: "center", padding: 4 }}>{getCardName(card)}</div>}
+                      : <div style={{ width: 74, height: 103, borderRadius: 6, background: "var(--bg-panel)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "var(--gray-mid)", textAlign: "center", padding: 4 }}>{getCardName(card)}</div>}
                   </div>
-                  {marked && <div style={{ fontSize: 9, color: "#ff8888", fontWeight: 700 }}>↓ fondo</div>}
+                  {marked && <div style={{ fontSize: 9, color: "var(--color-damage)", fontWeight: 700 }}>↓ fondo</div>}
                 </div>
               );
             })}
@@ -1241,12 +1186,12 @@ function MulliganModal({ player, mulliganCount, onKeep, onMulligan, onHome }) {
             <button
               onClick={() => canConfirm && onKeep([...selected])}
               disabled={!canConfirm}
-              style={{ padding: "12px 32px", borderRadius: 10, border: "none", background: canConfirm ? "linear-gradient(90deg,#1a5a1a,#2a8a2a)" : "#222", color: canConfirm ? "#7fff7f" : "#444", fontWeight: 800, fontSize: 15, cursor: canConfirm ? "pointer" : "default", transition: "all 0.2s" }}>
+              style={{ padding: "12px 32px", borderRadius: 10, border: "none", background: canConfirm ? "linear-gradient(90deg,var(--bg-life),var(--bg-life))" : "var(--gray-222)", color: canConfirm ? "var(--color-life)" : "var(--gray-darker)", fontWeight: 800, fontSize: 15, cursor: canConfirm ? "pointer" : "default", transition: "all 0.2s" }}>
               {mustPutBack === 0 ? "✅ Guardar mano" : `✅ Confirmar (${selected.size}/${mustPutBack} seleccionadas)`}
             </button>
             <button
               onClick={onMulligan}
-              style={{ padding: "12px 28px", borderRadius: 10, border: "1px solid #ffd70055", background: "#1a140a", color: "#ffd700", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+              style={{ padding: "12px 28px", borderRadius: 10, border: "1px solid var(--gold-33)", background: "var(--bg-gold)", color: "var(--gold)", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
               {nextMulliganLabel}
             </button>
           </div>
@@ -1254,7 +1199,7 @@ function MulliganModal({ player, mulliganCount, onKeep, onMulligan, onHome }) {
           {onHome && (
             <div style={{ textAlign: "center", marginTop: 8 }}>
               <button onClick={onHome}
-                style={{ padding: "5px 16px", borderRadius: 6, border: "1px solid #333", background: "transparent", color: "#666", cursor: "pointer", fontSize: 11 }}>
+                style={{ padding: "5px 16px", borderRadius: 6, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer", fontSize: 11 }}>
                 🏠 Volver al inicio
               </button>
             </div>
@@ -1441,32 +1386,32 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
     a[t].push(c);
     return a;
   }, {});
-  const tabBtn = (t, label) => <button onClick={() => setTab(t)} style={{ flex: 1, padding: "10px 0", border: "none", cursor: "pointer", background: tab === t ? "#1a1a3e" : "transparent", color: tab === t ? "#ffd700" : "#888", fontWeight: 600, fontSize: 13, borderBottom: tab === t ? "2px solid #ffd700" : "2px solid transparent" }}>{label}</button>;
+  const tabBtn = (t, label) => <button onClick={() => setTab(t)} style={{ flex: 1, padding: "10px 0", border: "none", cursor: "pointer", background: tab === t ? "var(--bg-panel)" : "transparent", color: tab === t ? "var(--gold)" : "var(--gray-mid)", fontWeight: 600, fontSize: 13, borderBottom: tab === t ? "2px solid var(--gold)" : "2px solid transparent" }}>{label}</button>;
 
   const ctxItems = (card, source) => [
     source === "results" && { label: "➕ Agregar al mazo", action: () => addCard(card) },
     source === "results" && !format?.singletons && { label: "➕➕ Agregar x4", action: () => [1, 2, 3, 4].forEach(() => addCard(card)) },
-    source === "results" && !formatHasCommander(format) && sideboard.length < 15 && { label: "↔ Agregar al Sideboard", action: () => setSideboard(s => [...s, { ...card, image_url: card.image_uris?.normal || card.image_url, instanceId: uid() }]), color: "#88aaff" },
-    isLegendary(card) && formatHasCommander(format) && { label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "#ffd700" },
-    isLegendary(card) && source === "results" && formatHasCommander(format) && { label: "⚔ + Agregar como Comandante", action: () => { addCard(card); setCmd(card); }, color: "#ffd700" },
-    source === "deck" && formatHasCommander(format) && { label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "#ffd700" },
-    source === "deck" && { label: "🎨 Cambiar versión", action: () => setVersionModal(card), color: "#88aaff" },
-    source === "deck" && { label: "🗑 Quitar del mazo", action: () => setDeck(d => d.filter(c => c.instanceId !== card.instanceId)), color: "#ff8888" },
+    source === "results" && !formatHasCommander(format) && sideboard.length < 15 && { label: "↔ Agregar al Sideboard", action: () => setSideboard(s => [...s, { ...card, image_url: card.image_uris?.normal || card.image_url, instanceId: uid() }]), color: "var(--color-info)" },
+    isLegendary(card) && formatHasCommander(format) && { label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "var(--gold)" },
+    isLegendary(card) && source === "results" && formatHasCommander(format) && { label: "⚔ + Agregar como Comandante", action: () => { addCard(card); setCmd(card); }, color: "var(--gold)" },
+    source === "deck" && formatHasCommander(format) && { label: "⚔ Elegir como Comandante", action: () => setCmd(card), color: "var(--gold)" },
+    source === "deck" && { label: "🎨 Cambiar versión", action: () => setVersionModal(card), color: "var(--color-info)" },
+    source === "deck" && { label: "🗑 Quitar del mazo", action: () => setDeck(d => d.filter(c => c.instanceId !== card.instanceId)), color: "var(--color-damage)" },
   ].filter(Boolean);
 
   return (
-    <div style={{ minHeight: "100vh", background: "radial-gradient(ellipse at 30% 10%, #160a28 0%, #0a0a1e 60%, #060616 100%)", color: "#e8e0d0", fontFamily: "'Crimson Text',Georgia,serif", display: "flex", flexDirection: "column" }}
+    <div style={{ minHeight: "100vh", background: "radial-gradient(ellipse at 30% 10%, #160a28 0%, #0a0a1e 60%, #060616 100%)", color: "var(--text-primary)", fontFamily: "'Crimson Text',Georgia,serif", display: "flex", flexDirection: "column" }}
       onClick={() => setDeckCtx(null)}>
-      <div style={{ padding: "16px 28px", borderBottom: "1px solid #2a2a4a", background: "linear-gradient(90deg,#0a0a1a,#1a0a2e,#0a0a1a)", display: "flex", alignItems: "center", gap: 14 }}>
+      <div style={{ padding: "16px 28px", borderBottom: "1px solid var(--border-default)", background: "linear-gradient(90deg,var(--bg-well),#1a0a2e,var(--bg-well))", display: "flex", alignItems: "center", gap: 14 }}>
         <span style={{ fontSize: 26 }}>⚔️</span>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: 2, background: "linear-gradient(90deg,#ffd700,#ff8c00)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>COMMANDER ES</h1>
-          <div style={{ fontSize: 11, color: "#8888aa" }}>Multijugador Online · Cartas en Español</div>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: 2, background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>COMMANDER ES</h1>
+          <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Multijugador Online · Cartas en Español</div>
         </div>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, color: "#888" }}>Tu nombre:</span>
-          <input value={playerName} onChange={e => setPlayerName(e.target.value)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 14, outline: "none", width: 120 }} />
-          <input value={deckName} onChange={e => setDeckName(e.target.value)} placeholder="Nombre del mazo" style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 13, outline: "none", width: 140 }} />
+          <span style={{ fontSize: 12, color: "var(--gray-mid)" }}>Tu nombre:</span>
+          <input value={playerName} onChange={e => setPlayerName(e.target.value)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 14, outline: "none", width: 120 }} />
+          <input value={deckName} onChange={e => setDeckName(e.target.value)} placeholder="Nombre del mazo" style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 13, outline: "none", width: 140 }} />
           <button onClick={async () => {
             if (formatHasCommander(format) && !commander) return alert(`Selecciona un comandante para el formato ${format.label}.`);
             const currentUser = getCurrentUser();
@@ -1480,17 +1425,17 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
               alert(`✓ Mazo "${deckName}" guardado como ${format.label}`);
             }
           }}
-            style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#1a4a1a,#2a6a2a)", color: "#7fff7f", cursor: "pointer", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
+            style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,var(--bg-life),#2a6a2a)", color: "var(--color-life)", cursor: "pointer", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
             💾 Guardar mazo
           </button>
-          {onHome && <button onClick={onHome} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", fontSize: 12 }}>🏠</button>}
+          {onHome && <button onClick={onHome} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer", fontSize: 12 }}>🏠</button>}
         </div>
       </div>
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         {/* Search panel */}
-        <div style={{ width: 290, borderRight: "1px solid #2a2a4a", display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", borderBottom: "1px solid #2a2a4a" }}>
+        <div style={{ width: 290, borderRight: "1px solid var(--border-default)", display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", borderBottom: "1px solid var(--border-default)" }}>
             {tabBtn("buscar", "🔍 Buscar")}
             {tabBtn("importar", "📋 Importar")}
             {!formatHasCommander(format) && tabBtn("sideboard", `↔ SB (${sideboard.length}/15)`)}
@@ -1499,23 +1444,23 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
             <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 7 }}>
 
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cartas en español..." style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cartas en español..." style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: "0 10px 10px" }}>
-                {loading && <div style={{ color: "#888", textAlign: "center", padding: 16 }}>Buscando...</div>}
+                {loading && <div style={{ color: "var(--gray-mid)", textAlign: "center", padding: 16 }}>Buscando...</div>}
                 {results.map(card => (
                   <div key={card.id}
                     onMouseEnter={e => { setPreview(card); setHover({ card: { ...card, image_url: card.image_uris?.normal }, x: e.clientX, y: e.clientY }); }}
                     onMouseMove={e => setHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
                     onMouseLeave={() => { setPreview(null); setHover(null); }}
                     onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setDeckCtx({ x: e.clientX, y: e.clientY, items: ctxItems(card, "results"), title: getCardName(card) }); }}
-                    style={{ display: "flex", gap: 8, alignItems: "center", padding: "7px 0", borderBottom: "1px solid #1a1a2e", cursor: "context-menu" }}>
+                    style={{ display: "flex", gap: 8, alignItems: "center", padding: "7px 0", borderBottom: "1px solid var(--bg-subtle)", cursor: "context-menu" }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 12, fontWeight: 600 }}>{getCardName(card)}</div>
-                      <div style={{ fontSize: 10, color: "#8888aa" }}>{card.type_line}</div>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{card.type_line}</div>
                     </div>
-                    <button onClick={() => addCard(card)} style={{ padding: "3px 8px", borderRadius: 4, border: "none", background: "#1a4a1a", color: "#7fff7f", cursor: "pointer", fontSize: 11 }}>+</button>
-                    {isLegendary(card) && <button onClick={() => setCmd(card)} style={{ padding: "3px 8px", borderRadius: 4, border: "none", background: "#4a3a0a", color: "#ffd700", cursor: "pointer", fontSize: 11 }}>⚔</button>}
+                    <button onClick={() => addCard(card)} style={{ padding: "3px 8px", borderRadius: 4, border: "none", background: "var(--bg-life)", color: "var(--color-life)", cursor: "pointer", fontSize: 11 }}>+</button>
+                    {isLegendary(card) && <button onClick={() => setCmd(card)} style={{ padding: "3px 8px", borderRadius: 4, border: "none", background: "#4a3a0a", color: "var(--gold)", cursor: "pointer", fontSize: 11 }}>⚔</button>}
                   </div>
                 ))}
               </div>
@@ -1524,18 +1469,18 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
           {tab === "sideboard" && (
             <div style={{ flex: 1, padding: 14, display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontSize: 12, color: "#8888aa" }}>Sideboard ({sideboard.length}/15)</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Sideboard ({sideboard.length}/15)</div>
                 <div style={{ display: "flex", gap: 6 }}>
-                  {sideboard.length > 0 && <button onClick={() => setSideboard([])} style={{ background: "none", border: "none", color: "#ff8888", cursor: "pointer", fontSize: 11 }}>Vaciar</button>}
+                  {sideboard.length > 0 && <button onClick={() => setSideboard([])} style={{ background: "none", border: "none", color: "var(--color-damage)", cursor: "pointer", fontSize: 11 }}>Vaciar</button>}
                 </div>
               </div>
-              {sideboard.length >= 15 && <div style={{ fontSize: 11, color: "#ff8888", background: "#2a0a0a", borderRadius: 6, padding: "6px 10px" }}>⚠ Sideboard completo (máx. 15 cartas)</div>}
+              {sideboard.length >= 15 && <div style={{ fontSize: 11, color: "var(--color-damage)", background: "#2a0a0a", borderRadius: 6, padding: "6px 10px" }}>⚠ Sideboard completo (máx. 15 cartas)</div>}
               {/* Paste/import for sideboard */}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <textarea
                   placeholder={"Pegar lista (ej: 2x Negate\n1x Counterspell...)"}
                   rows={3}
-                  style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 11, resize: "none", outline: "none", fontFamily: "monospace" }}
+                  style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 11, resize: "none", outline: "none", fontFamily: "monospace" }}
                   onPaste={async (e) => {
                     e.preventDefault();
                     const text = e.clipboardData.getData("text");
@@ -1560,18 +1505,18 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                   }}
                   onChange={() => { }}
                 />
-                <div style={{ fontSize: 10, color: "#555" }}>Pega una lista aquí (Ctrl+V) — se importa automáticamente</div>
+                <div style={{ fontSize: 10, color: "var(--gray-dark)" }}>Pega una lista aquí (Ctrl+V) — se importa automáticamente</div>
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {sideboard.map((card, i) => (
                   <div key={card.instanceId} style={{ position: "relative", width: 52 }}>
                     <CardTile card={card} small onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
                     <button onClick={() => setSideboard(s => s.filter(c => c.instanceId !== card.instanceId))}
-                      style={{ position: "absolute", top: -4, right: -4, width: 15, height: 15, borderRadius: "50%", border: "none", background: "#cc2222", color: "#fff", cursor: "pointer", fontSize: 9, padding: 0 }}>×</button>
+                      style={{ position: "absolute", top: -4, right: -4, width: 15, height: 15, borderRadius: "50%", border: "none", background: "#cc2222", color: "var(--color-white)", cursor: "pointer", fontSize: 9, padding: 0 }}>×</button>
                   </div>
                 ))}
                 {sideboard.length === 0 && (
-                  <div style={{ border: "2px dashed #2a2a4a", borderRadius: 8, padding: "16px", color: "#444", fontSize: 12, textAlign: "center", width: "100%" }}>
+                  <div style={{ border: "2px dashed var(--border-default)", borderRadius: 8, padding: "16px", color: "var(--gray-darker)", fontSize: 12, textAlign: "center", width: "100%" }}>
                     Busca cartas, click derecho → Sideboard, o pega una lista arriba
                   </div>
                 )}
@@ -1580,23 +1525,23 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
           )}
           {tab === "importar" && (
             <div style={{ flex: 1, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={{ fontSize: 11, color: "#8888aa" }}>Una carta por línea. Ej: "4x Sol Ring"</div>
-              <textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder={"1x Sol Ring\n1x Command Tower\n..."} style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 12, resize: "none", outline: "none", fontFamily: "monospace" }} />
+              <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Una carta por línea. Ej: "4x Sol Ring"</div>
+              <textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder={"1x Sol Ring\n1x Command Tower\n..."} style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 12, resize: "none", outline: "none", fontFamily: "monospace" }} />
               {importLoading ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#7fc4ff" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--color-info)" }}>
                     <span>Importando cartas...</span>
                     <span>{importProgress.done}/{importProgress.total}</span>
                   </div>
-                  <div style={{ height: 8, borderRadius: 4, background: "#1a1a2e", overflow: "hidden" }}>
-                    <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#1a4a8a,#7fc4ff)", width: importProgress.total > 0 ? `${Math.round(importProgress.done / importProgress.total * 100)}%` : "0%", transition: "width 0.3s ease" }} />
+                  <div style={{ height: 8, borderRadius: 4, background: "var(--bg-subtle)", overflow: "hidden" }}>
+                    <div style={{ height: "100%", borderRadius: 4, background: "linear-gradient(90deg,#1a4a8a,var(--color-info))", width: importProgress.total > 0 ? `${Math.round(importProgress.done / importProgress.total * 100)}%` : "0%", transition: "width 0.3s ease" }} />
                   </div>
-                  <div style={{ fontSize: 10, color: "#555", textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: "var(--gray-dark)", textAlign: "center" }}>
                     {importProgress.total > 0 ? `${Math.round(importProgress.done / importProgress.total * 100)}%` : "Preparando..."}
                   </div>
                 </div>
               ) : (
-                <button onClick={handleImport} style={{ padding: "10px 0", borderRadius: 8, border: "none", background: "#1a4a8a", color: "#7fc4ff", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>Importar lista</button>
+                <button onClick={handleImport} style={{ padding: "10px 0", borderRadius: 8, border: "none", background: "#1a4a8a", color: "var(--color-info)", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>Importar lista</button>
               )}
             </div>
           )}
@@ -1604,13 +1549,13 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
 
         {/* Deck */}
         <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: "10px 18px", borderBottom: "1px solid #2a2a4a", display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "#ffd700" }}>Mi Mazo</span>
-            <span style={{ background: "#1a1a3e", borderRadius: 20, padding: "2px 9px", fontSize: 12, color: "#8888aa" }}>
+          <div style={{ padding: "10px 18px", borderBottom: "1px solid var(--border-default)", display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--gold)" }}>Mi Mazo</span>
+            <span style={{ background: "var(--bg-panel)", borderRadius: 20, padding: "2px 9px", fontSize: 12, color: "var(--text-muted)" }}>
               {deck.length}{format.deckSize > 0 ? `/${formatHasCommander(format) ? format.deckSize - 1 : format.deckSize}` : ""}
             </span>
             {Object.keys(formatWarnings).length > 0 && (
-              <span title="Hay cartas no legales en este formato" style={{ background: "#4a0a0a", borderRadius: 20, padding: "2px 9px", fontSize: 11, color: "#ff8888", cursor: "default" }}>
+              <span title="Hay cartas no legales en este formato" style={{ background: "#4a0a0a", borderRadius: 20, padding: "2px 9px", fontSize: 11, color: "var(--color-damage)", cursor: "default" }}>
                 🚫 {Object.values(formatWarnings).filter(v => v === "banned").length} ban
               </span>
             )}
@@ -1629,12 +1574,12 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                 );
                 onReady({ deck: shuffle(deckWithoutCmd), commander, playerName, format, sideboard });
               }}
-                style={{ padding: "9px 22px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>▶ JUGAR</button>
+                style={{ padding: "9px 22px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>▶ JUGAR</button>
             </div>
           </div>
           {/* Format selector — always visible dropdown in sidebar */}
-          <div style={{ padding: "8px 18px", borderBottom: "1px solid #1a1a2e", display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 10, color: "#8888aa", flexShrink: 0 }}>Formato:</span>
+          <div style={{ padding: "8px 18px", borderBottom: "1px solid var(--bg-subtle)", display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 10, color: "var(--text-muted)", flexShrink: 0 }}>Formato:</span>
             <select
               value={format.key}
               onChange={e => {
@@ -1643,23 +1588,23 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                 setFormatWarnings({});
                 if (!['commander', 'duel', 'brawl', 'oathbreaker'].includes(f.key)) setCommander(null);
               }}
-              style={{ flex: 1, padding: "4px 8px", borderRadius: 7, border: "1px solid #3a3a6a", background: "#0a0a18", color: "#e8e0d0", fontSize: 12, cursor: "pointer", outline: "none" }}>
+              style={{ flex: 1, padding: "4px 8px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-well)", color: "var(--text-primary)", fontSize: 12, cursor: "pointer", outline: "none" }}>
               {FORMATS.map(f => (
                 <option key={f.key} value={f.key}>{f.icon} {f.label}</option>
               ))}
             </select>
-            <span style={{ fontSize: 10, color: "#666" }}>♥{format.life}</span>
+            <span style={{ fontSize: 10, color: "var(--gray-mid)" }}>♥{format.life}</span>
           </div>
 
           {formatHasCommander(format) && (
-            <div style={{ padding: "10px 18px 8px", borderBottom: "1px solid #1a1a2e" }}>
-              <div style={{ fontSize: 10, color: "#ffd700", letterSpacing: 2, marginBottom: 6 }}>⚔ COMANDANTE</div>
+            <div style={{ padding: "10px 18px 8px", borderBottom: "1px solid var(--bg-subtle)" }}>
+              <div style={{ fontSize: 10, color: "var(--gold)", letterSpacing: 2, marginBottom: 6 }}>⚔ COMANDANTE</div>
               {commander
                 ? <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <CardTile card={commander} small onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
-                  <div><div style={{ fontWeight: 700, fontSize: 13 }}>{getCardName(commander)}</div><div style={{ fontSize: 10, color: "#8888aa" }}>{commander.type_line}</div><button onClick={() => setCommander(null)} style={{ marginTop: 4, padding: "2px 8px", borderRadius: 4, border: "none", background: "#4a1a1a", color: "#ff8888", cursor: "pointer", fontSize: 11 }}>Quitar</button></div>
+                  <div><div style={{ fontWeight: 700, fontSize: 13 }}>{getCardName(commander)}</div><div style={{ fontSize: 10, color: "var(--text-muted)" }}>{commander.type_line}</div><button onClick={() => setCommander(null)} style={{ marginTop: 4, padding: "2px 8px", borderRadius: 4, border: "none", background: "var(--bg-damage)", color: "var(--color-damage)", cursor: "pointer", fontSize: 11 }}>Quitar</button></div>
                 </div>
-                : <div style={{ border: "2px dashed #3a3a6a", borderRadius: 8, padding: "10px 16px", color: "#555", fontSize: 12, textAlign: "center" }}>Busca una criatura legendaria y pulsa ⚔ (o click derecho → Elegir como Comandante)</div>}
+                : <div style={{ border: "2px dashed var(--border-strong)", borderRadius: 8, padding: "10px 16px", color: "var(--gray-dark)", fontSize: 12, textAlign: "center" }}>Busca una criatura legendaria y pulsa ⚔ (o click derecho → Elegir como Comandante)</div>}
             </div>
           )}
           <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
@@ -1671,38 +1616,38 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
               return ai - bi;
             }).map(([type, cards]) => (
               <div key={type} style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, color: "#8888aa", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>{type} ({cards.length})</div>
+                <div style={{ fontSize: 10, color: "var(--text-muted)", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>{type} ({cards.length})</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                   {cards.map(card => (
                     <div key={card.instanceId}
                       onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setDeckCtx({ x: e.clientX, y: e.clientY, items: ctxItems(card, "deck"), title: getCardName(card) }); }}
                       style={{ position: "relative" }}>
                       <CardTile card={card} small onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
-                      <button onClick={() => setDeck(d => d.filter(c => c.instanceId !== card.instanceId))} style={{ position: "absolute", top: -4, right: -4, width: 15, height: 15, borderRadius: "50%", border: "none", background: "#cc2222", color: "#fff", cursor: "pointer", fontSize: 9, padding: 0 }}>×</button>
+                      <button onClick={() => setDeck(d => d.filter(c => c.instanceId !== card.instanceId))} style={{ position: "absolute", top: -4, right: -4, width: 15, height: 15, borderRadius: "50%", border: "none", background: "#cc2222", color: "var(--color-white)", cursor: "pointer", fontSize: 9, padding: 0 }}>×</button>
                       {formatWarnings[card.name] && (
                         <div title={formatWarnings[card.name] === "banned" ? "Baneada en " + format.label : formatWarnings[card.name] === "restricted" ? "Restringida (solo 1 copia)" : "No legal en " + format.label}
-                          style={{ position: "absolute", bottom: -4, left: "50%", transform: "translateX(-50%)", background: formatWarnings[card.name] === "banned" ? "#cc0000" : formatWarnings[card.name] === "restricted" ? "#ff8800" : "#888", borderRadius: 3, padding: "1px 4px", fontSize: 7, color: "#fff", whiteSpace: "nowrap", pointerEvents: "none" }}>
+                          style={{ position: "absolute", bottom: -4, left: "50%", transform: "translateX(-50%)", background: formatWarnings[card.name] === "banned" ? "#cc0000" : formatWarnings[card.name] === "restricted" ? "#ff8800" : "var(--gray-mid)", borderRadius: 3, padding: "1px 4px", fontSize: 7, color: "var(--color-white)", whiteSpace: "nowrap", pointerEvents: "none" }}>
                           {formatWarnings[card.name] === "banned" ? "🚫BAN" : formatWarnings[card.name] === "restricted" ? "⚠️REST" : "✗"}
                         </div>
                       )}
                       {isLegendary(card) && formatHasCommander(format) && (
                         <button onClick={() => setCmd(card)} title="Elegir como Comandante"
-                          style={{ position: "absolute", top: -4, left: -4, width: 18, height: 18, borderRadius: "50%", border: "none", background: "#4a3a0a", color: "#ffd700", cursor: "pointer", fontSize: 10, padding: 0, fontWeight: 800 }}>⚔</button>
+                          style={{ position: "absolute", top: -4, left: -4, width: 18, height: 18, borderRadius: "50%", border: "none", background: "#4a3a0a", color: "var(--gold)", cursor: "pointer", fontSize: 10, padding: 0, fontWeight: 800 }}>⚔</button>
                       )}
                     </div>
                   ))}
                 </div>
               </div>
             ))}
-            {!deck.length && <div style={{ color: "#333", textAlign: "center", marginTop: 50, fontSize: 15 }}>Busca cartas y agrégalas a tu mazo</div>}
+            {!deck.length && <div style={{ color: "var(--gray-deep)", textAlign: "center", marginTop: 50, fontSize: 15 }}>Busca cartas y agrégalas a tu mazo</div>}
           </div>
         </div>
 
         {/* Preview panel */}
         {preview && (
-          <div style={{ width: 200, borderLeft: "1px solid #2a2a4a", padding: 14, display: "flex", flexDirection: "column", gap: 10, background: "#080814", flexShrink: 0 }}>
-            {preview.image_uris?.normal ? <img src={preview.image_uris.normal} style={{ width: "100%", borderRadius: 7 }} /> : <div style={{ width: "100%", aspectRatio: "2.5/3.5", borderRadius: 7, background: "#1a1a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>🃏</div>}
-            <div><div style={{ fontWeight: 700, fontSize: 13 }}>{getCardName(preview)}</div><div style={{ fontSize: 10, color: "#8888aa", marginTop: 3 }}>{preview.type_line}</div>{preview.oracle_text && <div style={{ fontSize: 10, color: "#b0a888", marginTop: 6, lineHeight: 1.5 }}>{preview.printed_text || preview.oracle_text}</div>}{preview.power && <div style={{ fontSize: 12, color: "#ffd700", marginTop: 6 }}>⚔ {preview.power}/{preview.toughness}</div>}</div>
+          <div style={{ width: 200, borderLeft: "1px solid var(--border-default)", padding: 14, display: "flex", flexDirection: "column", gap: 10, background: "#080814", flexShrink: 0 }}>
+            {preview.image_uris?.normal ? <img src={preview.image_uris.normal} style={{ width: "100%", borderRadius: 7 }} /> : <div style={{ width: "100%", aspectRatio: "2.5/3.5", borderRadius: 7, background: "var(--bg-panel)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>🃏</div>}
+            <div><div style={{ fontWeight: 700, fontSize: 13 }}>{getCardName(preview)}</div><div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3 }}>{preview.type_line}</div>{preview.oracle_text && <div style={{ fontSize: 10, color: "#b0a888", marginTop: 6, lineHeight: 1.5 }}>{preview.printed_text || preview.oracle_text}</div>}{preview.power && <div style={{ fontSize: 12, color: "var(--gold)", marginTop: 6 }}>⚔ {preview.power}/{preview.toughness}</div>}</div>
           </div>
         )}
       </div>
@@ -1863,25 +1808,25 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
 
   return (
     <>
-      <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#0a0a1a,#0d1b2a)", color: "#e8e0d0", fontFamily: "'Crimson Text',Georgia,serif", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,var(--bg-well),#0d1b2a)", color: "var(--text-primary)", fontFamily: "'Crimson Text',Georgia,serif", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ width: 480, display: "flex", flexDirection: "column", gap: 22 }}>
           <div style={{ textAlign: "center" }}>
-            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, background: "linear-gradient(90deg,#ffd700,#ff8c00)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>⚔ COMMANDER ES</h1>
-            <div style={{ color: "#8888aa", marginTop: 4 }}>Hola, <strong style={{ color: "#e8e0d0" }}>{name || "..."}</strong></div>
-            {onHome && <button onClick={onHome} style={{ marginTop: 8, padding: "4px 14px", borderRadius: 6, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", fontSize: 11 }}>← Volver al inicio</button>}
+            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>⚔ COMMANDER ES</h1>
+            <div style={{ color: "var(--text-muted)", marginTop: 4 }}>Hola, <strong style={{ color: "var(--text-primary)" }}>{name || "..."}</strong></div>
+            {onHome && <button onClick={onHome} style={{ marginTop: 8, padding: "4px 14px", borderRadius: 6, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer", fontSize: 11 }}>← Volver al inicio</button>}
           </div>
 
           {/* Step 1: Confirm player name */}
           {!nameConfirmed && !mode && (
-            <div style={{ background: "#0d0d1e", borderRadius: 14, border: "1px solid #2a2a4a", padding: "22px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#ffd700" }}>¿Cómo te llamas?</div>
-              <div style={{ fontSize: 12, color: "#8888aa" }}>Este nombre y avatar verán los demás jugadores</div>
+            <div style={{ background: "var(--bg-elevated)", borderRadius: 14, border: "1px solid var(--border-default)", padding: "22px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)" }}>¿Cómo te llamas?</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Este nombre y avatar verán los demás jugadores</div>
 
               {/* Avatar picker */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "8px 0" }}>
                 {AVATARS.map(av => (
                   <button key={av} onClick={() => setAvatar(av)}
-                    style={{ width: 40, height: 40, borderRadius: 8, border: avatar === av ? "2px solid #ffd700" : "2px solid #2a2a4a", background: avatar === av ? "#ffd70022" : "transparent", fontSize: 22, cursor: "pointer", transition: "all 0.15s" }}>
+                    style={{ width: 40, height: 40, borderRadius: 8, border: avatar === av ? "2px solid var(--gold)" : "2px solid var(--border-default)", background: avatar === av ? "var(--gold-20)" : "transparent", fontSize: 22, cursor: "pointer", transition: "all 0.15s" }}>
                     {av}
                   </button>
                 ))}
@@ -1896,16 +1841,16 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
                   onKeyDown={e => e.key === "Enter" && name.trim() && setNameConfirmed(true)}
                   placeholder="Tu nombre (ej. Enzo)"
                   autoFocus maxLength={20}
-                  style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 18, outline: "none", fontWeight: 700 }}
+                  style={{ flex: 1, padding: "12px 16px", borderRadius: 10, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 18, outline: "none", fontWeight: 700 }}
                 />
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => { setName(`Jugador ${Math.floor(Math.random() * 900) + 100}`); setAvatar(AVATARS[Math.floor(Math.random() * AVATARS.length)]); setNameConfirmed(true); }}
-                  style={{ flex: 1, padding: "10px 0", borderRadius: 9, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", fontSize: 13 }}>
+                  style={{ flex: 1, padding: "10px 0", borderRadius: 9, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer", fontSize: 13 }}>
                   Aleatorio
                 </button>
                 <button onClick={() => name.trim() && setNameConfirmed(true)} disabled={!name.trim()}
-                  style={{ flex: 2, padding: "10px 0", borderRadius: 9, border: "none", background: name.trim() ? "linear-gradient(90deg,#ffd700,#ff8c00)" : "#222", color: name.trim() ? "#000" : "#555", fontWeight: 800, fontSize: 14, cursor: name.trim() ? "pointer" : "default" }}>
+                  style={{ flex: 2, padding: "10px 0", borderRadius: 9, border: "none", background: name.trim() ? "linear-gradient(90deg,var(--gold),var(--gold-dark))" : "var(--gray-222)", color: name.trim() ? "var(--color-black)" : "var(--gray-dark)", fontWeight: 800, fontSize: 14, cursor: name.trim() ? "pointer" : "default" }}>
                   ¡Jugar como {avatar} {name || "..."}!
                 </button>
               </div>
@@ -1916,19 +1861,19 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
           {nameConfirmed && !mode && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4 }}>
-                <span style={{ fontSize: 13, color: "#8888aa" }}>Jugando como</span>
-                <span style={{ fontSize: 15, fontWeight: 700, color: "#e8e0d0" }}>{name}</span>
-                <button onClick={() => setNameConfirmed(false)} style={{ padding: "2px 8px", borderRadius: 5, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", fontSize: 11 }}>✏</button>
+                <span style={{ fontSize: 13, color: "var(--text-muted)" }}>Jugando como</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{name}</span>
+                <button onClick={() => setNameConfirmed(false)} style={{ padding: "2px 8px", borderRadius: 5, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer", fontSize: 11 }}>✏</button>
               </div>
-              <button onClick={createRoom} style={{ padding: 18, borderRadius: 12, border: "1px solid #ffd70044", background: "linear-gradient(135deg,#1a140a,#2a1f0a)", color: "#ffd700", fontSize: 17, cursor: "pointer", fontWeight: 700 }}>
+              <button onClick={createRoom} style={{ padding: 18, borderRadius: 12, border: "1px solid var(--gold-27)", background: "linear-gradient(135deg,var(--bg-gold),#2a1f0a)", color: "var(--gold)", fontSize: 17, cursor: "pointer", fontWeight: 700 }}>
                 ✦ Crear Sala Nueva
               </button>
-              <div style={{ textAlign: "center", color: "#555" }}>— o únete con un código —</div>
+              <div style={{ textAlign: "center", color: "var(--gray-dark)" }}>— o únete con un código —</div>
               <div style={{ display: "flex", gap: 8 }}>
                 <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())} placeholder="Código (ej. XK9F)" maxLength={4}
                   onKeyDown={e => e.key === "Enter" && joinRoom()}
-                  style={{ flex: 1, padding: "13px 16px", borderRadius: 10, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 20, outline: "none", textAlign: "center", letterSpacing: 6, fontWeight: 700 }} />
-                <button onClick={joinRoom} style={{ padding: "13px 20px", borderRadius: 10, border: "none", background: "#1a3a6a", color: "#7fc4ff", fontSize: 14, cursor: "pointer", fontWeight: 700 }}>
+                  style={{ flex: 1, padding: "13px 16px", borderRadius: 10, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 20, outline: "none", textAlign: "center", letterSpacing: 6, fontWeight: 700 }} />
+                <button onClick={joinRoom} style={{ padding: "13px 20px", borderRadius: 10, border: "none", background: "#1a3a6a", color: "var(--color-info)", fontSize: 14, cursor: "pointer", fontWeight: 700 }}>
                   Unirse
                 </button>
               </div>
@@ -1937,34 +1882,34 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
 
           {/* In-room panel */}
           {mode && (
-            <div style={{ background: "#0d0d1e", borderRadius: 16, border: "1px solid #2a2a4a", padding: 22, display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ background: "var(--bg-elevated)", borderRadius: 16, border: "1px solid var(--border-default)", padding: 22, display: "flex", flexDirection: "column", gap: 14 }}>
 
               {/* Room code + copy */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 12, color: "#8888aa" }}>Código de sala</span>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Código de sala</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 36, fontWeight: 800, letterSpacing: 10, color: "#ffd700" }}>{roomCode}</span>
+                  <span style={{ fontSize: 36, fontWeight: 800, letterSpacing: 10, color: "var(--gold)" }}>{roomCode}</span>
                   <button onClick={copyCode} title="Copiar código"
-                    style={{ padding: "5px 10px", borderRadius: 6, border: copied ? "1px solid #44ff88" : "1px solid #3a3a6a", background: copied ? "#1a3a1a" : "#1a1a3e", color: copied ? "#44ff88" : "#aaa", cursor: "pointer", fontSize: 11, fontWeight: copied ? 700 : 400, transition: "all 0.2s", minWidth: 60 }}>
+                    style={{ padding: "5px 10px", borderRadius: 6, border: copied ? "1px solid var(--color-life-bright)" : "1px solid var(--border-strong)", background: copied ? "#1a3a1a" : "var(--bg-panel)", color: copied ? "var(--color-life-bright)" : "var(--gray-light)", cursor: "pointer", fontSize: 11, fontWeight: copied ? 700 : 400, transition: "all 0.2s", minWidth: 60 }}>
                     {copied ? "✓ COPIADO" : "📋"}
                   </button>
                 </div>
               </div>
 
               {isHost && (
-                <div style={{ fontSize: 11, color: "#555", textAlign: "center", background: "#0a0a18", borderRadius: 8, padding: "8px 12px" }}>
+                <div style={{ fontSize: 11, color: "var(--gray-dark)", textAlign: "center", background: "var(--bg-well)", borderRadius: 8, padding: "8px 12px" }}>
                   {deckData?.format && (
-                    <span style={{ color: "#ffd70088", marginRight: 8 }}>{deckData.format.icon} {deckData.format.label} · ♥ {deckData.format.life} vidas</span>
+                    <span style={{ color: "var(--gold-53)", marginRight: 8 }}>{deckData.format.icon} {deckData.format.label} · ♥ {deckData.format.life} vidas</span>
                   )}
                   Comparte este código con tus amigos
                 </div>
               )}
               {/* Save deck button — only for new unsaved decks */}
-              {deckData?.isNewDeck && <div style={{ background: "#0a0a18", border: "1px solid #2a2a4a", borderRadius: 10, padding: "10px 12px" }}>
-                <div style={{ fontSize: 10, color: "#8888aa", marginBottom: 7, letterSpacing: 1 }}>💾 GUARDAR MAZO ANTES DE JUGAR</div>
+              {deckData?.isNewDeck && <div style={{ background: "var(--bg-well)", border: "1px solid var(--border-default)", borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 7, letterSpacing: 1 }}>💾 GUARDAR MAZO ANTES DE JUGAR</div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <input value={lobbyDeckName} onChange={e => setLobbyDeckName(e.target.value)} placeholder="Nombre del mazo..."
-                    style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 13, outline: "none" }} />
+                    style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none" }} />
                   <button onClick={async () => {
                     const user = getCurrentUser();
                     if (user) {
@@ -1975,20 +1920,20 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
                       alert(`✓ Mazo "${lobbyDeckName}" guardado`);
                     }
                   }}
-                    style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "linear-gradient(90deg,#1a6a1a,#2a8a2a)", color: "#7fff7f", cursor: "pointer", fontSize: 12, fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap" }}>
+                    style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "linear-gradient(90deg,#1a6a1a,var(--bg-life))", color: "var(--color-life)", cursor: "pointer", fontSize: 12, fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap" }}>
                     💾 Guardar
                   </button>
                 </div>
-                <div style={{ fontSize: 10, color: "#555", marginTop: 5 }}>Guarda este mazo en tu colección para usarlo en futuras partidas</div>
+                <div style={{ fontSize: 10, color: "var(--gray-dark)", marginTop: 5 }}>Guarda este mazo en tu colección para usarlo en futuras partidas</div>
               </div>}
 
               {/* Players list */}
-              <div style={{ borderTop: "1px solid #2a2a4a", paddingTop: 14 }}>
-                <div style={{ fontSize: 10, color: "#8888aa", letterSpacing: 2, marginBottom: 10 }}>
+              <div style={{ borderTop: "1px solid var(--border-default)", paddingTop: 14 }}>
+                <div style={{ fontSize: 10, color: "var(--text-muted)", letterSpacing: 2, marginBottom: 10 }}>
                   JUGADORES ({players.length}/4)
                 </div>
                 {players.map(p => (
-                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid #1a1a2e" }}>
+                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--bg-subtle)" }}>
                     <span style={{ fontSize: 22, flexShrink: 0 }}>{p.avatar || "🧙"}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{p.name}{p.id === myId ? " (tú)" : ""}</div>
@@ -1997,18 +1942,18 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
                           onMouseEnter={e => setLobbyHover({ card: p.commander, x: e.clientX, y: e.clientY })}
                           onMouseMove={e => setLobbyHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
                           onMouseLeave={() => setLobbyHover(null)}
-                          style={{ fontSize: 10, color: "#ffd70099", display: "flex", alignItems: "center", gap: 5, marginTop: 2, cursor: "pointer" }}>
+                          style={{ fontSize: 10, color: "var(--gold-60)", display: "flex", alignItems: "center", gap: 5, marginTop: 2, cursor: "pointer" }}>
                           {p.commander.image_url && <img src={p.commander.image_url} style={{ width: 16, height: 22, borderRadius: 2, objectFit: "cover" }} />}
                           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>⚔ {p.commander.printed_name || p.commander.name}</span>
                         </div>
                       )}
                     </div>
-                    {p.isHost && <span style={{ fontSize: 10, color: "#ffd700" }}>👑 Host</span>}
+                    {p.isHost && <span style={{ fontSize: 10, color: "var(--gold)" }}>👑 Host</span>}
                   </div>
                 ))}
                 {[...Array(Math.max(0, 4 - players.length))].map((_, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid #1a1a2e", color: "#2a2a4a" }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#2a2a4a" }} />
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--bg-subtle)", color: "var(--border-default)" }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--border-default)" }} />
                     <span style={{ fontSize: 13 }}>Esperando jugador...</span>
                   </div>
                 ))}
@@ -2016,13 +1961,13 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
 
               {/* Start button — visible to HOST only */}
               {isHost ? (
-                <button onClick={startGame} style={{ padding: 13, borderRadius: 10, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 15, cursor: "pointer" }}>
+                <button onClick={startGame} style={{ padding: 13, borderRadius: 10, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, fontSize: 15, cursor: "pointer" }}>
                   {players.length === 1 ? "▶ Jugar Solo" : `▶ Comenzar con ${players.length} jugador${players.length > 1 ? "es" : ""}`}
                 </button>
               ) : (
                 <div style={{ textAlign: "center", padding: "10px 0" }}>
-                  <div style={{ color: "#8888aa", fontSize: 13 }}>Esperando que el host inicie la partida...</div>
-                  <div style={{ color: "#555", fontSize: 11, marginTop: 4 }}>Sala: <strong style={{ color: "#ffd700" }}>{roomCode}</strong></div>
+                  <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Esperando que el host inicie la partida...</div>
+                  <div style={{ color: "var(--gray-dark)", fontSize: 11, marginTop: 4 }}>Sala: <strong style={{ color: "var(--gold)" }}>{roomCode}</strong></div>
                 </div>
               )}
             </div>
@@ -2083,7 +2028,7 @@ function TokenModal({ onCreate, onClose, cmdTokenSuggestions }) {
     // Pick a color based on card colors
     const cols = card.colors || [];
     const colorMap = { W: "#f9f3d9", U: "#b3d9f7", B: "#c8a0c8", R: "#f7b3a0", G: "#a0d9b3" };
-    setColor(cols.length === 1 ? (colorMap[cols[0]] || "#e8e0d0") : "#e8e0d0");
+    setColor(cols.length === 1 ? (colorMap[cols[0]] || "var(--text-primary)") : "var(--text-primary)");
   };
 
   const handleCreate = () => {
@@ -2099,7 +2044,7 @@ function TokenModal({ onCreate, onClose, cmdTokenSuggestions }) {
   };
 
   const tabBtn = (t, label) => (
-    <button onClick={() => setTab(t)} style={{ flex: 1, padding: "8px 0", border: "none", cursor: "pointer", background: tab === t ? "#1a1a3e" : "transparent", color: tab === t ? "#ffd700" : "#888", fontWeight: 600, fontSize: 12, borderBottom: tab === t ? "2px solid #ffd700" : "2px solid transparent" }}>
+    <button onClick={() => setTab(t)} style={{ flex: 1, padding: "8px 0", border: "none", cursor: "pointer", background: tab === t ? "var(--bg-panel)" : "transparent", color: tab === t ? "var(--gold)" : "var(--gray-mid)", fontWeight: 600, fontSize: 12, borderBottom: tab === t ? "2px solid var(--gold)" : "2px solid transparent" }}>
       {label}
     </button>
   );
@@ -2107,30 +2052,30 @@ function TokenModal({ onCreate, onClose, cmdTokenSuggestions }) {
   return (
     <>
       <div style={{ position: "fixed", inset: 0, background: "#000c", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700 }} onClick={onClose}>
-        <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 16, padding: 0, width: 520, maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden" }} onClick={e => e.stopPropagation()}>
+        <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 16, padding: 0, width: 520, maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden" }} onClick={e => e.stopPropagation()}>
 
           {/* Header */}
           <div style={{ padding: "16px 20px 0", flexShrink: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#ffd700", marginBottom: 8 }}>🪄 Crear Token</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--gold)", marginBottom: 8 }}>🪄 Crear Token</div>
             {/* Commander token suggestions */}
             {cmdTokenSuggestions?.length > 0 && (
-              <div style={{ marginBottom: 10, padding: "8px 10px", background: "#0a0a18", borderRadius: 8, border: "1px solid #ffd70033" }}>
-                <div style={{ fontSize: 10, color: "#ffd700", marginBottom: 6 }}>⚔ Tokens sugeridos para tu comandante:</div>
+              <div style={{ marginBottom: 10, padding: "8px 10px", background: "var(--bg-well)", borderRadius: 8, border: "1px solid var(--gold-glow)" }}>
+                <div style={{ fontSize: 10, color: "var(--gold)", marginBottom: 6 }}>⚔ Tokens sugeridos para tu comandante:</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {cmdTokenSuggestions.map(t => (
                     <button key={t.id}
                       onClick={() => { onCreate([{ ...t, image_url: t.image_uris?.normal || null, instanceId: uid(), isToken: true, tapped: false, counters: [], abilities: [] }]); onClose(); }}
-                      style={{ padding: "3px 8px", borderRadius: 6, border: "1px solid #3a3a6a", background: "#1a1a3e", color: "#e8e0d0", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 5 }}>
+                      style={{ padding: "3px 8px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "var(--bg-panel)", color: "var(--text-primary)", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 5 }}>
                       {t.image_uris?.normal && <img src={t.image_uris.normal} style={{ width: 16, height: 22, borderRadius: 2, objectFit: "cover" }} />}
                       <span>{t.name}</span>
-                      {t.power && <span style={{ color: "#666", fontSize: 9 }}>{t.power}/{t.toughness}</span>}
+                      {t.power && <span style={{ color: "var(--gray-mid)", fontSize: 9 }}>{t.power}/{t.toughness}</span>}
                     </button>
                   ))}
                 </div>
               </div>
             )}
             {/* Tabs */}
-            <div style={{ display: "flex", borderBottom: "1px solid #2a2a4a" }}>
+            <div style={{ display: "flex", borderBottom: "1px solid var(--border-default)" }}>
               {tabBtn("buscar", "🔍 Buscar en Scryfall")}
               {tabBtn("manual", "✏ Crear manual")}
             </div>
@@ -2140,12 +2085,12 @@ function TokenModal({ onCreate, onClose, cmdTokenSuggestions }) {
           {tab === "buscar" && (
             <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", padding: "12px 20px" }}>
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar token (ej: Soldado, Zombie, Tesoro...)" autoFocus
-                style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 10 }} />
+                style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 10 }} />
 
               {/* Results grid */}
               <div style={{ flex: 1, overflowY: "auto", display: "flex", flexWrap: "wrap", gap: 8, alignContent: "flex-start" }}>
-                {searching && <div style={{ color: "#888", fontSize: 12, width: "100%", textAlign: "center", padding: 20 }}>Buscando...</div>}
-                {!searching && results.length === 0 && search && <div style={{ color: "#444", fontSize: 12, width: "100%", textAlign: "center", padding: 20 }}>Sin resultados — prueba "Soldier", "Zombie", "Treasure"</div>}
+                {searching && <div style={{ color: "var(--gray-mid)", fontSize: 12, width: "100%", textAlign: "center", padding: 20 }}>Buscando...</div>}
+                {!searching && results.length === 0 && search && <div style={{ color: "var(--gray-darker)", fontSize: 12, width: "100%", textAlign: "center", padding: 20 }}>Sin resultados — prueba "Soldier", "Zombie", "Treasure"</div>}
                 {results.map(card => {
                   const img = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal;
                   const isSelected = selectedCard?.id === card.id;
@@ -2154,10 +2099,10 @@ function TokenModal({ onCreate, onClose, cmdTokenSuggestions }) {
                       onMouseEnter={e => setHover({ card: { ...card, image_url: img }, x: e.clientX, y: e.clientY })}
                       onMouseMove={e => setHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
                       onMouseLeave={() => setHover(null)}
-                      style={{ cursor: "pointer", borderRadius: 8, border: isSelected ? "2px solid #ffd700" : "2px solid transparent", transition: "all 0.15s", overflow: "hidden", flexShrink: 0 }}>
+                      style={{ cursor: "pointer", borderRadius: 8, border: isSelected ? "2px solid var(--gold)" : "2px solid transparent", transition: "all 0.15s", overflow: "hidden", flexShrink: 0 }}>
                       {img
                         ? <img src={img} style={{ width: 72, height: 100, objectFit: "cover", borderRadius: 6, display: "block" }} />
-                        : <div style={{ width: 72, height: 100, borderRadius: 6, background: "#1a1a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#888", textAlign: "center", padding: 4 }}>{card.printed_name || card.name}</div>}
+                        : <div style={{ width: 72, height: 100, borderRadius: 6, background: "var(--bg-panel)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "var(--gray-mid)", textAlign: "center", padding: 4 }}>{card.printed_name || card.name}</div>}
                     </div>
                   );
                 })}
@@ -2165,18 +2110,18 @@ function TokenModal({ onCreate, onClose, cmdTokenSuggestions }) {
 
               {/* Selected card info */}
               {selectedCard && (
-                <div style={{ marginTop: 10, padding: "10px 14px", background: "#0a0a18", borderRadius: 10, display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+                <div style={{ marginTop: 10, padding: "10px 14px", background: "var(--bg-well)", borderRadius: 10, display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
                   <img src={selectedCard.image_url} style={{ width: 44, height: 62, borderRadius: 5, objectFit: "cover" }} />
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#e8e0d0" }}>{name}</div>
-                    <div style={{ fontSize: 11, color: "#8888aa" }}>{selectedCard.type_line}</div>
-                    {selectedCard.power && <div style={{ fontSize: 12, color: "#ffd700", marginTop: 2 }}>⚔ {power}/{tough}</div>}
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{name}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{selectedCard.type_line}</div>
+                    {selectedCard.power && <div style={{ fontSize: 12, color: "var(--gold)", marginTop: 2 }}>⚔ {power}/{tough}</div>}
                   </div>
                   {/* Quantity */}
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: "#4a1a1a", color: "#ff8888", cursor: "pointer", fontSize: 15, fontWeight: 800 }}>−</button>
-                    <span style={{ fontSize: 16, fontWeight: 800, color: "#e8e0d0", minWidth: 24, textAlign: "center" }}>{qty}</span>
-                    <button onClick={() => setQty(q => q + 1)} style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: "#1a4a1a", color: "#88ff88", cursor: "pointer", fontSize: 15, fontWeight: 800 }}>+</button>
+                    <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: "var(--bg-damage)", color: "var(--color-damage)", cursor: "pointer", fontSize: 15, fontWeight: 800 }}>−</button>
+                    <span style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", minWidth: 24, textAlign: "center" }}>{qty}</span>
+                    <button onClick={() => setQty(q => q + 1)} style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: "var(--bg-life)", color: "var(--color-life)", cursor: "pointer", fontSize: 15, fontWeight: 800 }}>+</button>
                   </div>
                 </div>
               )}
@@ -2194,27 +2139,27 @@ function TokenModal({ onCreate, onClose, cmdTokenSuggestions }) {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
                 <div>
-                  <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>Nombre</div>
-                  <input value={name} onChange={e => setName(e.target.value)} style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                  <div style={{ fontSize: 10, color: "var(--gray-mid)", marginBottom: 4 }}>Nombre</div>
+                  <input value={name} onChange={e => setName(e.target.value)} style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>Color</div>
-                  <input type="color" value={color} onChange={e => setColor(e.target.value)} style={{ width: "100%", height: 34, borderRadius: 7, border: "1px solid #3a3a6a", background: "#080810", cursor: "pointer" }} />
+                  <div style={{ fontSize: 10, color: "var(--gray-mid)", marginBottom: 4 }}>Color</div>
+                  <input type="color" value={color} onChange={e => setColor(e.target.value)} style={{ width: "100%", height: 34, borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", cursor: "pointer" }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>Poder</div>
-                  <input value={power} onChange={e => setPower(e.target.value)} style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                  <div style={{ fontSize: 10, color: "var(--gray-mid)", marginBottom: 4 }}>Poder</div>
+                  <input value={power} onChange={e => setPower(e.target.value)} style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>Resistencia</div>
-                  <input value={tough} onChange={e => setTough(e.target.value)} style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                  <div style={{ fontSize: 10, color: "var(--gray-mid)", marginBottom: 4 }}>Resistencia</div>
+                  <input value={tough} onChange={e => setTough(e.target.value)} style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                <span style={{ fontSize: 12, color: "#888" }}>Cantidad:</span>
-                <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{ width: 28, height: 28, borderRadius: "50%", border: "none", background: "#4a1a1a", color: "#ff8888", cursor: "pointer", fontSize: 16, fontWeight: 800 }}>−</button>
-                <span style={{ fontSize: 18, fontWeight: 800, color: "#e8e0d0", minWidth: 28, textAlign: "center" }}>{qty}</span>
-                <button onClick={() => setQty(q => q + 1)} style={{ width: 28, height: 28, borderRadius: "50%", border: "none", background: "#1a4a1a", color: "#88ff88", cursor: "pointer", fontSize: 16, fontWeight: 800 }}>+</button>
+                <span style={{ fontSize: 12, color: "var(--gray-mid)" }}>Cantidad:</span>
+                <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{ width: 28, height: 28, borderRadius: "50%", border: "none", background: "var(--bg-damage)", color: "var(--color-damage)", cursor: "pointer", fontSize: 16, fontWeight: 800 }}>−</button>
+                <span style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", minWidth: 28, textAlign: "center" }}>{qty}</span>
+                <button onClick={() => setQty(q => q + 1)} style={{ width: 28, height: 28, borderRadius: "50%", border: "none", background: "var(--bg-life)", color: "var(--color-life)", cursor: "pointer", fontSize: 16, fontWeight: 800 }}>+</button>
               </div>
               {/* Preview */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: color + "15", border: `1px solid ${color}44`, borderRadius: 10 }}>
@@ -2222,20 +2167,20 @@ function TokenModal({ onCreate, onClose, cmdTokenSuggestions }) {
                   <div style={{ fontSize: 9, color, fontWeight: 700, textAlign: "center", padding: "0 3px" }}>{name}</div>
                   <div style={{ fontSize: 13, color, fontWeight: 800 }}>{power}/{tough}</div>
                 </div>
-                <div style={{ fontSize: 12, color: "#aaa" }}>{qty}× {name} {power}/{tough}</div>
+                <div style={{ fontSize: 12, color: "var(--gray-light)" }}>{qty}× {name} {power}/{tough}</div>
               </div>
             </div>
           )}
 
           {/* Footer buttons */}
-          <div style={{ padding: "12px 20px", borderTop: "1px solid #2a2a4a", display: "flex", gap: 8, flexShrink: 0 }}>
+          <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border-default)", display: "flex", gap: 8, flexShrink: 0 }}>
             <button
               onClick={handleCreate}
               disabled={tab === "buscar" && !selectedCard}
-              style={{ flex: 1, padding: "11px 0", borderRadius: 9, border: "none", background: (tab === "manual" || selectedCard) ? "linear-gradient(90deg,#ffd700,#ff8c00)" : "#222", color: (tab === "manual" || selectedCard) ? "#000" : "#555", fontWeight: 800, fontSize: 14, cursor: (tab === "manual" || selectedCard) ? "pointer" : "default" }}>
+              style={{ flex: 1, padding: "11px 0", borderRadius: 9, border: "none", background: (tab === "manual" || selectedCard) ? "linear-gradient(90deg,var(--gold),var(--gold-dark))" : "var(--gray-222)", color: (tab === "manual" || selectedCard) ? "var(--color-black)" : "var(--gray-dark)", fontWeight: 800, fontSize: 14, cursor: (tab === "manual" || selectedCard) ? "pointer" : "default" }}>
               ✦ {tab === "buscar" && selectedCard ? `Agregar ${qty}× ${name}` : `Crear Token${qty > 1 ? "s" : ""}`}
             </button>
-            <button onClick={onClose} style={{ padding: "11px 16px", borderRadius: 9, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer" }}>✕</button>
+            <button onClick={onClose} style={{ padding: "11px 16px", borderRadius: 9, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer" }}>✕</button>
           </div>
         </div>
       </div>
@@ -2248,21 +2193,21 @@ function TokenModal({ onCreate, onClose, cmdTokenSuggestions }) {
 function LifeHistoryPanel({ players, lifeHistory, onClose }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }} onClick={onClose}>
-      <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 16, padding: 24, minWidth: 360, maxWidth: 500, maxHeight: "80vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 16, padding: 24, minWidth: 360, maxWidth: 500, maxHeight: "80vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#ffd700" }}>❤ Historial de Vida</div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 18 }}>✕</button>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gold)" }}>❤ Historial de Vida</div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 18 }}>✕</button>
         </div>
         {Object.entries(players).map(([pid, p]) => {
           const hist = lifeHistory[pid] || [40];
           return (
-            <div key={pid} style={{ marginBottom: 16, padding: "10px 14px", background: "#0a0a18", borderRadius: 10 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#e8e0d0", marginBottom: 8 }}>{p.name} — actual: <span style={{ color: p.life <= 10 ? "#ff4444" : "#88ff88", fontSize: 16 }}>{p.life}</span></div>
+            <div key={pid} style={{ marginBottom: 16, padding: "10px 14px", background: "var(--bg-well)", borderRadius: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>{p.name} — actual: <span style={{ color: p.life <= 10 ? "var(--color-red)" : "var(--color-life)", fontSize: 16 }}>{p.life}</span></div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                 {hist.map((v, i) => (
                   <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: v <= 10 ? "#ff4444" : v >= 50 ? "#44ff88" : "#e8e0d0", background: "#1a1a2e", borderRadius: 5, padding: "2px 7px", minWidth: 28, textAlign: "center" }}>{v}</div>
-                    {i < hist.length - 1 && <div style={{ fontSize: 8, color: hist[i + 1] > v ? "#88ff88" : "#ff8888" }}>{hist[i + 1] > v ? `+${hist[i + 1] - v}` : hist[i + 1] - v}</div>}
+                    <div style={{ fontSize: 11, fontWeight: 700, color: v <= 10 ? "var(--color-red)" : v >= 50 ? "var(--color-life-bright)" : "var(--text-primary)", background: "var(--bg-subtle)", borderRadius: 5, padding: "2px 7px", minWidth: 28, textAlign: "center" }}>{v}</div>
+                    {i < hist.length - 1 && <div style={{ fontSize: 8, color: hist[i + 1] > v ? "var(--color-life)" : "var(--color-damage)" }}>{hist[i + 1] > v ? `+${hist[i + 1] - v}` : hist[i + 1] - v}</div>}
                   </div>
                 ))}
               </div>
@@ -2279,24 +2224,24 @@ function ChatPanel({ messages, input, onInput, onSend, onClose, playerName }) {
   const bottomRef = useRef(null);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
   return (
-    <div style={{ position: "fixed", bottom: 0, right: 170, width: 280, height: 360, background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: "12px 12px 0 0", display: "flex", flexDirection: "column", zIndex: 400, boxShadow: "0 -4px 24px #000a" }}>
-      <div style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #2a2a4a", background: "#1a1a3e", borderRadius: "12px 12px 0 0" }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#ffd700" }}>💬 Chat</span>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 16 }}>✕</button>
+    <div style={{ position: "fixed", bottom: 0, right: 170, width: 280, height: 360, background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: "12px 12px 0 0", display: "flex", flexDirection: "column", zIndex: 400, boxShadow: "0 -4px 24px var(--scrim-67)" }}>
+      <div style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-default)", background: "var(--bg-panel)", borderRadius: "12px 12px 0 0" }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gold)" }}>💬 Chat</span>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 16 }}>✕</button>
       </div>
       <div style={{ flex: 1, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-        {messages.length === 0 && <div style={{ color: "#444", fontSize: 11, textAlign: "center", marginTop: 20 }}>Sin mensajes aún</div>}
+        {messages.length === 0 && <div style={{ color: "var(--gray-darker)", fontSize: 11, textAlign: "center", marginTop: 20 }}>Sin mensajes aún</div>}
         {messages.map((m, i) => (
           <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: m.sender === playerName ? "flex-end" : "flex-start" }}>
-            <div style={{ fontSize: 9, color: "#888", marginBottom: 2 }}>{m.sender} · {m.time}</div>
-            <div style={{ background: m.sender === playerName ? "#1a3a6a" : "#1a1a3e", color: "#e8e0d0", padding: "6px 10px", borderRadius: 9, fontSize: 12, maxWidth: "90%", wordBreak: "break-word" }}>{m.text}</div>
+            <div style={{ fontSize: 9, color: "var(--gray-mid)", marginBottom: 2 }}>{m.sender} · {m.time}</div>
+            <div style={{ background: m.sender === playerName ? "#1a3a6a" : "var(--bg-panel)", color: "var(--text-primary)", padding: "6px 10px", borderRadius: 9, fontSize: 12, maxWidth: "90%", wordBreak: "break-word" }}>{m.text}</div>
           </div>
         ))}
         <div ref={bottomRef} />
       </div>
-      <div style={{ padding: 8, borderTop: "1px solid #2a2a4a", display: "flex", gap: 6 }}>
-        <input value={input} onChange={e => onInput(e.target.value)} onKeyDown={e => e.key === "Enter" && onSend()} placeholder="Escribe..." style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 12, outline: "none" }} />
-        <button onClick={onSend} style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: "#1a3a6a", color: "#7fc4ff", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>→</button>
+      <div style={{ padding: 8, borderTop: "1px solid var(--border-default)", display: "flex", gap: 6 }}>
+        <input value={input} onChange={e => onInput(e.target.value)} onKeyDown={e => e.key === "Enter" && onSend()} placeholder="Escribe..." style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 12, outline: "none" }} />
+        <button onClick={onSend} style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: "#1a3a6a", color: "var(--color-info)", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>→</button>
       </div>
     </div>
   );
@@ -2305,12 +2250,12 @@ function ChatPanel({ messages, input, onInput, onSend, onClose, playerName }) {
 // ─── Notes Panel ──────────────────────────────────────────────────────────────
 function NotesPanel({ notes, onChange, onClose }) {
   return (
-    <div style={{ position: "fixed", bottom: 0, left: 10, width: 240, height: 300, background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: "12px 12px 0 0", display: "flex", flexDirection: "column", zIndex: 400, boxShadow: "0 -4px 24px #000a" }}>
-      <div style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #2a2a4a", background: "#1a1a3e", borderRadius: "12px 12px 0 0" }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#ffd700" }}>📝 Notas</span>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 16 }}>✕</button>
+    <div style={{ position: "fixed", bottom: 0, left: 10, width: 240, height: 300, background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: "12px 12px 0 0", display: "flex", flexDirection: "column", zIndex: 400, boxShadow: "0 -4px 24px var(--scrim-67)" }}>
+      <div style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-default)", background: "var(--bg-panel)", borderRadius: "12px 12px 0 0" }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gold)" }}>📝 Notas</span>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 16 }}>✕</button>
       </div>
-      <textarea value={notes} onChange={e => onChange(e.target.value)} placeholder="Tus notas: combos, recordatorios, conteos..." style={{ flex: 1, padding: 10, background: "#080810", color: "#e8e0d0", border: "none", outline: "none", resize: "none", fontSize: 12, lineHeight: 1.6, fontFamily: "monospace" }} />
+      <textarea value={notes} onChange={e => onChange(e.target.value)} placeholder="Tus notas: combos, recordatorios, conteos..." style={{ flex: 1, padding: 10, background: "var(--bg-input)", color: "var(--text-primary)", border: "none", outline: "none", resize: "none", fontSize: 12, lineHeight: 1.6, fontFamily: "monospace" }} />
     </div>
   );
 }
@@ -2322,16 +2267,16 @@ function ZoomCardModal({ card, onClose }) {
     <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 900 }} onClick={onClose}>
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }} onClick={e => e.stopPropagation()}>
         {card.image_url
-          ? <img src={card.image_url} style={{ width: 300, borderRadius: 14, boxShadow: "0 8px 48px #000c" }} />
-          : <div style={{ width: 300, aspectRatio: "2.5/3.5", borderRadius: 14, background: "#1a1a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 60 }}>🃏</div>}
-        <div style={{ maxWidth: 260, color: "#e8e0d0" }}>
+          ? <img src={card.image_url} style={{ width: 300, borderRadius: 14, boxShadow: "0 8px 48px var(--scrim-80)" }} />
+          : <div style={{ width: 300, aspectRatio: "2.5/3.5", borderRadius: 14, background: "var(--bg-panel)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 60 }}>🃏</div>}
+        <div style={{ maxWidth: 260, color: "var(--text-primary)" }}>
           <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>{getCardName(card)}</div>
-          <div style={{ fontSize: 12, color: "#8888aa", marginBottom: 10 }}>{card.type_line}</div>
-          {card.oracle_text && <div style={{ fontSize: 13, color: "#b0a888", lineHeight: 1.7, background: "#0a0a18", borderRadius: 8, padding: 12 }}>{card.printed_text || card.oracle_text}</div>}
-          {card.power && <div style={{ fontSize: 18, fontWeight: 800, color: "#ffd700", marginTop: 10 }}>⚔ {card.power}/{card.toughness}</div>}
-          {card.loyalty && <div style={{ fontSize: 18, fontWeight: 800, color: "#7fc4ff", marginTop: 10 }}>🔵 {card.loyalty}</div>}
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}>{card.type_line}</div>
+          {card.oracle_text && <div style={{ fontSize: 13, color: "#b0a888", lineHeight: 1.7, background: "var(--bg-well)", borderRadius: 8, padding: 12 }}>{card.printed_text || card.oracle_text}</div>}
+          {card.power && <div style={{ fontSize: 18, fontWeight: 800, color: "var(--gold)", marginTop: 10 }}>⚔ {card.power}/{card.toughness}</div>}
+          {card.loyalty && <div style={{ fontSize: 18, fontWeight: 800, color: "var(--color-info)", marginTop: 10 }}>🔵 {card.loyalty}</div>}
           {(card.counters || []).length > 0 && <div style={{ fontSize: 12, color: "#88ffcc", marginTop: 8 }}>Contadores: {[...new Set(card.counters)].map(t => `${t}×${card.counters.filter(x => x === t).length}`).join(", ")}</div>}
-          <button onClick={onClose} style={{ marginTop: 16, padding: "8px 24px", borderRadius: 8, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer" }}>Cerrar</button>
+          <button onClick={onClose} style={{ marginTop: 16, padding: "8px 24px", borderRadius: 8, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer" }}>Cerrar</button>
         </div>
       </div>
     </div>
@@ -2343,57 +2288,57 @@ function PhasePanel({ playerOrder, players, activePlayer, turn, phase, isMyTurn,
   const PHASE_ICONS = ["🌙", "📖", "⚡", "⚔️", "⚡", "🏁"];
   const PHASE_SHORT = ["Mant.", "Robo", "Prin 1", "Ataque", "Prin 2", "Fin"];
   return (
-    <div style={{ width: 72, flexShrink: 0, background: "#06060e", borderRight: "1px solid #1a1a2e", display: "flex", flexDirection: "column", alignItems: "center", padding: "6px 4px", gap: 3, overflowY: "auto" }}>
+    <div style={{ width: 72, flexShrink: 0, background: "var(--bg-base)", borderRight: "1px solid var(--bg-subtle)", display: "flex", flexDirection: "column", alignItems: "center", padding: "6px 4px", gap: 3, overflowY: "auto" }}>
       {/* Logo/Home */}
       <div onClick={onHome} title="Inicio" style={{ fontSize: 16, cursor: "pointer", marginBottom: 4 }}>⚔️</div>
       {/* Turn number */}
-      <div style={{ fontSize: 9, color: "#ffd700", fontWeight: 800, marginBottom: 2 }}>T{turn}</div>
+      <div style={{ fontSize: 9, color: "var(--gold)", fontWeight: 800, marginBottom: 2 }}>T{turn}</div>
       {/* Phase indicators */}
       {PHASE_SHORT.map((ph, i) => (
-        <div key={ph} style={{ width: "100%", padding: "5px 3px", borderRadius: 6, background: i === phase ? "#ffd70015" : "transparent", border: i === phase ? "1px solid #ffd700aa" : "1px solid transparent", boxShadow: i === phase ? "0 0 8px #ffd70066,inset 0 0 6px #ffd70011" : "none", textAlign: "center", cursor: isMyTurn ? "pointer" : "default", transition: "all 0.15s" }}>
+        <div key={ph} style={{ width: "100%", padding: "5px 3px", borderRadius: 6, background: i === phase ? "var(--gold-08)" : "transparent", border: i === phase ? "1px solid var(--gold-67)" : "1px solid transparent", boxShadow: i === phase ? "0 0 8px var(--gold-40),inset 0 0 6px var(--gold-glow)" : "none", textAlign: "center", cursor: isMyTurn ? "pointer" : "default", transition: "all 0.15s" }}>
           <div style={{ fontSize: 12 }}>{PHASE_ICONS[i]}</div>
-          <div style={{ fontSize: 7, color: i === phase ? "#ffd700" : "#555", fontWeight: i === phase ? 800 : 400, lineHeight: 1.2 }}>{ph}</div>
+          <div style={{ fontSize: 7, color: i === phase ? "var(--gold)" : "var(--gray-dark)", fontWeight: i === phase ? 800 : 400, lineHeight: 1.2 }}>{ph}</div>
         </div>
       ))}
       {/* Next phase + End turn buttons */}
       {isMyTurn && (
         <div style={{ position: "relative", marginTop: 4, display: "flex", flexDirection: "column", gap: 3 }}>
-          <button onClick={onNextPhase} className="mtg-btn" style={{ width: "100%", padding: "6px 2px", borderRadius: 6, border: "none", background: "linear-gradient(180deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 9, cursor: "pointer", lineHeight: 1.3, boxShadow: "0 0 12px #ffd70088, 0 0 24px #ffd70044" }}>
+          <button onClick={onNextPhase} className="mtg-btn" style={{ width: "100%", padding: "6px 2px", borderRadius: 6, border: "none", background: "linear-gradient(180deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, fontSize: 9, cursor: "pointer", lineHeight: 1.3, boxShadow: "0 0 12px var(--gold-53), 0 0 24px var(--gold-27)" }}>
             {phase >= 5 ? "Pasar turno" : "Sig. fase"} ▶
           </button>
           {phase < 5 && (
-            <button onClick={onEndTurn} style={{ width: "100%", padding: "5px 2px", borderRadius: 6, border: "1px solid #3a3a6a", background: "#0d0d1e", color: "#8888aa", fontWeight: 700, fontSize: 8, cursor: "pointer", lineHeight: 1.3 }}>
+            <button onClick={onEndTurn} style={{ width: "100%", padding: "5px 2px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-muted)", fontWeight: 700, fontSize: 8, cursor: "pointer", lineHeight: 1.3 }}>
               ⏭ Fin Turno
             </button>
           )}
           {/* Combat hint */}
           {phase === 3 && (
-            <div style={{ width: "100%", padding: "6px 8px", borderRadius: 8, background: "#2a0a0a", border: "1px solid #ff4444aa", textAlign: "center" }}>
+            <div style={{ width: "100%", padding: "6px 8px", borderRadius: 8, background: "#2a0a0a", border: "1px solid var(--color-red-67)", textAlign: "center" }}>
               <div style={{ fontSize: 10, color: "#ff6666", fontWeight: 800 }}>⚔ ATAQUE</div>
-              <div style={{ fontSize: 8, color: "#ff8888", lineHeight: 1.5, marginTop: 2 }}>Click derecho<br />en criatura para<br />declarar atacante</div>
+              <div style={{ fontSize: 8, color: "var(--color-damage)", lineHeight: 1.5, marginTop: 2 }}>Click derecho<br />en criatura para<br />declarar atacante</div>
             </div>
           )}
         </div>
       )}
       {/* Turn order */}
-      <div style={{ width: "100%", borderTop: "1px solid #1a1a2e", marginTop: 4, paddingTop: 4, display: "flex", flexDirection: "column", gap: 3 }}>
+      <div style={{ width: "100%", borderTop: "1px solid var(--bg-subtle)", marginTop: 4, paddingTop: 4, display: "flex", flexDirection: "column", gap: 3 }}>
         {playerOrder.map((pid, i) => {
           const p = players[pid]; if (!p) return null;
           const isActive = pid === activePlayer;
           return (
-            <div key={pid} style={{ padding: "3px 4px", borderRadius: 5, background: isActive ? "#1a140a" : "transparent", border: isActive ? "1px solid #ffd70044" : "1px solid transparent" }}>
+            <div key={pid} style={{ padding: "3px 4px", borderRadius: 5, background: isActive ? "var(--bg-gold)" : "transparent", border: isActive ? "1px solid var(--gold-27)" : "1px solid transparent" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
                 <span style={{ fontSize: 10 }}>{avatars?.[pid] || "🧙"}</span>
-                <div style={{ fontSize: 8, fontWeight: 700, color: isActive ? "#ffd700" : "#666", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name.slice(0, 7)}</div>
+                <div style={{ fontSize: 8, fontWeight: 700, color: isActive ? "var(--gold)" : "var(--gray-mid)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name.slice(0, 7)}</div>
               </div>
-              <div style={{ fontSize: 8, color: p.life <= 10 ? "#ff4444" : "#555" }}>❤{p.life}</div>
+              <div style={{ fontSize: 8, color: p.life <= 10 ? "var(--color-red)" : "var(--gray-dark)" }}>❤{p.life}</div>
             </div>
           );
         })}
       </div>
       {/* Mulligan button if turn 1 */}
       {isMyTurn && turn === 1 && (
-        <button onClick={onMulligan} style={{ marginTop: 4, width: "100%", padding: "4px 2px", borderRadius: 5, border: "1px solid #ffd70044", background: "#1a140a", color: "#ffd700", fontSize: 8, cursor: "pointer", fontWeight: 700 }}>
+        <button onClick={onMulligan} style={{ marginTop: 4, width: "100%", padding: "4px 2px", borderRadius: 5, border: "1px solid var(--gold-27)", background: "var(--bg-gold)", color: "var(--gold)", fontSize: 8, cursor: "pointer", fontWeight: 700 }}>
           🔄
         </button>
       )}
@@ -2440,11 +2385,11 @@ function ResolveModal({ modal, players, onResolve, onClose }) {
   return (
     <>
       <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 750, fontFamily: "'Crimson Text',Georgia,serif" }}>
-        <div style={{ background: "#0a0a1a", border: "2px solid #ffd70055", borderRadius: 18, padding: 26, maxWidth: 720, width: "95vw", maxHeight: "90vh", overflowY: "auto" }}>
+        <div style={{ background: "var(--bg-well)", border: "2px solid var(--gold-33)", borderRadius: 18, padding: 26, maxWidth: 720, width: "95vw", maxHeight: "90vh", overflowY: "auto" }}>
           {/* Header */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: "#ffd700" }}>{m.title}</div>
-            <div style={{ fontSize: 12, color: "#8888aa", marginTop: 4 }}>{m.desc}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: "var(--gold)" }}>{m.title}</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{m.desc}</div>
           </div>
 
           {/* Cards */}
@@ -2461,17 +2406,17 @@ function ResolveModal({ modal, players, onResolve, onClose }) {
                   <div style={{ position: "relative" }}>
                     <div style={{
                       position: "absolute", inset: 0, borderRadius: 7, zIndex: 2, pointerEvents: "none",
-                      background: sel ? "#ffd70033" : "transparent",
-                      border: sel ? "3px solid #ffd700" : "3px solid transparent",
+                      background: sel ? "var(--gold-glow)" : "transparent",
+                      border: sel ? "3px solid var(--gold)" : "3px solid transparent",
                       transition: "all 0.15s"
                     }} />
                     {card.image_url
                       ? <img src={card.image_url} style={{ width: 80, borderRadius: 7, display: "block" }} />
-                      : <div style={{ width: 80, height: 112, borderRadius: 7, background: "#1a1a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#888", textAlign: "center", padding: 4 }}>{getCardName(card)}</div>}
+                      : <div style={{ width: 80, height: 112, borderRadius: 7, background: "var(--bg-panel)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "var(--gray-mid)", textAlign: "center", padding: 4 }}>{getCardName(card)}</div>}
                   </div>
-                  <div style={{ fontSize: 9, color: "#8888aa", textAlign: "center", maxWidth: 80 }}>{getCardName(card)}</div>
-                  {mode === "connive" && sel && <div style={{ fontSize: 9, color: "#ff8888", fontWeight: 700 }}>🗑 Descartar</div>}
-                  {(mode === "cascade" || mode === "discover") && sel && <div style={{ fontSize: 9, color: "#ffd700", fontWeight: 700 }}>✓ Seleccionada</div>}
+                  <div style={{ fontSize: 9, color: "var(--text-muted)", textAlign: "center", maxWidth: 80 }}>{getCardName(card)}</div>
+                  {mode === "connive" && sel && <div style={{ fontSize: 9, color: "var(--color-damage)", fontWeight: 700 }}>🗑 Descartar</div>}
+                  {(mode === "cascade" || mode === "discover") && sel && <div style={{ fontSize: 9, color: "var(--gold)", fontWeight: 700 }}>✓ Seleccionada</div>}
                 </div>
               );
             })}
@@ -2482,26 +2427,26 @@ function ResolveModal({ modal, players, onResolve, onClose }) {
             {m.btnPlay && (
               <button onClick={() => canConfirm && onResolve(mode, "play", selected, selectedSet, modal)}
                 disabled={!canConfirm}
-                style={{ padding: "10px 22px", borderRadius: 9, border: "none", background: canConfirm ? "linear-gradient(90deg,#1a5a1a,#2a8a2a)" : "#222", color: canConfirm ? "#7fff7f" : "#444", fontWeight: 800, fontSize: 13, cursor: canConfirm ? "pointer" : "default" }}>
+                style={{ padding: "10px 22px", borderRadius: 9, border: "none", background: canConfirm ? "linear-gradient(90deg,var(--bg-life),var(--bg-life))" : "var(--gray-222)", color: canConfirm ? "var(--color-life)" : "var(--gray-darker)", fontWeight: 800, fontSize: 13, cursor: canConfirm ? "pointer" : "default" }}>
                 {m.btnPlay}
               </button>
             )}
             {m.btnHand && (
               <button onClick={() => canConfirm && onResolve(mode, "hand", selected, selectedSet, modal)}
                 disabled={!canConfirm}
-                style={{ padding: "10px 22px", borderRadius: 9, border: "1px solid #3a3a6a", background: canConfirm ? "#1a1a3e" : "#111", color: canConfirm ? "#e8e0d0" : "#444", fontWeight: 700, fontSize: 13, cursor: canConfirm ? "pointer" : "default" }}>
+                style={{ padding: "10px 22px", borderRadius: 9, border: "1px solid var(--border-strong)", background: canConfirm ? "var(--bg-panel)" : "#111", color: canConfirm ? "var(--text-primary)" : "var(--gray-darker)", fontWeight: 700, fontSize: 13, cursor: canConfirm ? "pointer" : "default" }}>
                 {m.btnHand}
               </button>
             )}
             {m.btnExile && (
               <button onClick={() => onResolve(mode, "exile", selected, selectedSet, modal)}
                 disabled={mode === "connive" && !canConfirm}
-                style={{ padding: "10px 22px", borderRadius: 9, border: "1px solid #4a3a3a", background: "#1a0a0a", color: "#ff8888", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                style={{ padding: "10px 22px", borderRadius: 9, border: "1px solid #4a3a3a", background: "var(--bg-damage)", color: "var(--color-damage)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                 {m.btnExile}
               </button>
             )}
             <button onClick={onClose}
-              style={{ padding: "10px 16px", borderRadius: 9, border: "1px solid #333", background: "transparent", color: "#555", cursor: "pointer", fontSize: 12 }}>
+              style={{ padding: "10px 16px", borderRadius: 9, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-dark)", cursor: "pointer", fontSize: 12 }}>
               Cancelar
             </button>
           </div>
@@ -2539,8 +2484,8 @@ function DiceModal({ onClose, playerName, onRoll }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000c", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700, fontFamily: "'Crimson Text',Georgia,serif" }} onClick={onClose}>
-      <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 16, padding: 24, width: 320 }} onClick={e => e.stopPropagation()}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: "#ffd700", marginBottom: 16, textAlign: "center" }}>🎲 Tirar Dado</div>
+      <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 16, padding: 24, width: 320 }} onClick={e => e.stopPropagation()}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--gold)", marginBottom: 16, textAlign: "center" }}>🎲 Tirar Dado</div>
 
         {/* Result display */}
         <div style={{ textAlign: "center", marginBottom: 20, minHeight: 80, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
@@ -2549,10 +2494,10 @@ function DiceModal({ onClose, playerName, onRoll }) {
               <div style={{ fontSize: 52, fontWeight: 900, color: result.color, transition: "all 0.1s", opacity: result.rolling ? 0.6 : 1 }}>
                 {result.value}
               </div>
-              <div style={{ fontSize: 12, color: "#8888aa" }}>d{result.die}{!result.rolling && result.value === result.die ? " — ¡Máximo! 🎉" : result.value === 1 ? " — Falla crítica 💀" : ""}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>d{result.die}{!result.rolling && result.value === result.die ? " — ¡Máximo! 🎉" : result.value === 1 ? " — Falla crítica 💀" : ""}</div>
             </>
           ) : (
-            <div style={{ fontSize: 13, color: "#555" }}>Elige un dado</div>
+            <div style={{ fontSize: 13, color: "var(--gray-dark)" }}>Elige un dado</div>
           )}
         </div>
 
@@ -2569,7 +2514,7 @@ function DiceModal({ onClose, playerName, onRoll }) {
           ))}
         </div>
 
-        <button onClick={onClose} style={{ marginTop: 16, width: "100%", padding: "8px 0", borderRadius: 8, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", fontSize: 12 }}>Cerrar</button>
+        <button onClick={onClose} style={{ marginTop: 16, width: "100%", padding: "8px 0", borderRadius: 8, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer", fontSize: 12 }}>Cerrar</button>
       </div>
     </div>
   );
@@ -2599,23 +2544,23 @@ function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
   ];
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700, fontFamily: "'Crimson Text',Georgia,serif" }} onClick={onClose}>
-      <div style={{ background: "#08080f", border: "1px solid #2a2a4a", borderRadius: 18, width: 560, maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, boxShadow: "0 20px 60px #000c" }} onClick={e => e.stopPropagation()}>
-        <div style={{ padding: "16px 20px 12px", background: "linear-gradient(180deg,#0f0f1e,#08080f)", borderBottom: "1px solid #2a2a4a", flexShrink: 0 }}>
+      <div style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", borderRadius: 18, width: 560, maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0, boxShadow: "0 20px 60px var(--scrim-80)" }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: "16px 20px 12px", background: "linear-gradient(180deg,#0f0f1e,var(--bg-input))", borderBottom: "1px solid var(--border-default)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: "#ffd700", letterSpacing: 1 }}>✨ Habilidades</div>
-              <div style={{ fontSize: 11, color: "#8888aa", marginTop: 2 }}>{ABILITIES.length} habilidades · click para asignar a un marcador</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "var(--gold)", letterSpacing: 1 }}>✨ Habilidades</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{ABILITIES.length} habilidades · click para asignar a un marcador</div>
             </div>
-            <button onClick={onClose} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20, lineHeight: 1 }}>✕</button>
+            <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-dark)", cursor: "pointer", fontSize: 20, lineHeight: 1 }}>✕</button>
           </div>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar habilidad..."
-            style={{ width: "100%", padding: "7px 12px", borderRadius: 8, border: "1px solid #2a2a4a", background: "#0d0d1e", color: "#e8e0d0", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+            style={{ width: "100%", padding: "7px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
         </div>
         {markers.length > 0 && (
-          <div style={{ padding: "8px 16px", background: "#0a0a18", borderBottom: "1px solid #1a1a2e", flexShrink: 0, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-            <span style={{ fontSize: 10, color: "#555", marginRight: 2 }}>Activos:</span>
+          <div style={{ padding: "8px 16px", background: "var(--bg-well)", borderBottom: "1px solid var(--bg-subtle)", flexShrink: 0, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ fontSize: 10, color: "var(--gray-dark)", marginRight: 2 }}>Activos:</span>
             {markers.map(m => {
-              const ab = ABILITIES.find(a => a.key === m.ability) || { icon: "?", name: m.ability, color: "#2a2a4a", text: "#fff" };
+              const ab = ABILITIES.find(a => a.key === m.ability) || { icon: "?", name: m.ability, color: "var(--border-default)", text: "var(--color-white)" };
               return (
                 <div key={m.id} onClick={() => onRemove(m.id)} title="Click para quitar"
                   style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 20, background: ab.color + "aa", border: `1px solid ${ab.text}66`, cursor: "pointer" }}>
@@ -2625,20 +2570,20 @@ function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
                 </div>
               );
             })}
-            <button onClick={() => onRemove("all")} style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 6, border: "1px solid #4a2a2a", background: "transparent", color: "#ff8888", cursor: "pointer", fontSize: 10 }}>Quitar todos</button>
+            <button onClick={() => onRemove("all")} style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 6, border: "1px solid var(--bg-damage)", background: "transparent", color: "var(--color-damage)", cursor: "pointer", fontSize: 10 }}>Quitar todos</button>
           </div>
         )}
         <div style={{ height: 320, overflowY: "auto", padding: "12px 16px" }}>
           {search ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {filtered.map(ab => <AbilityBtn key={ab.key} ab={ab} isActive={markers.some(m => m.ability === ab.key)} onAdd={onAdd} />)}
-              {!filtered.length && <div style={{ gridColumn: "span 3", textAlign: "center", color: "#555", padding: 20, fontSize: 13 }}>Sin resultados</div>}
+              {!filtered.length && <div style={{ gridColumn: "span 3", textAlign: "center", color: "var(--gray-dark)", padding: 20, fontSize: 13 }}>Sin resultados</div>}
             </div>
           ) : groups.map(group => {
             const groupAbs = ABILITIES.filter(ab => group.keys.includes(ab.key));
             return (
               <div key={group.label} style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, color: "#ffd70088", letterSpacing: 2, marginBottom: 8, fontWeight: 700 }}>{group.label}</div>
+                <div style={{ fontSize: 10, color: "var(--gold-53)", letterSpacing: 2, marginBottom: 8, fontWeight: 700 }}>{group.label}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {groupAbs.map(ab => <AbilityBtn key={ab.key} ab={ab} isActive={markers.some(m => m.ability === ab.key)} onAdd={onAdd} />)}
                 </div>
@@ -2671,7 +2616,7 @@ function AbilityBtn({ ab, isActive, onAdd }) {
 
 // ─── Ability Marker (rendered on battlefield) ─────────────────────────────────
 function AbilityMarker({ marker, onRemove }) {
-  const ab = ABILITIES.find(a => a.key === marker.ability) || { icon: "?", name: marker.ability, color: "#2a2a4a", text: "#fff" };
+  const ab = ABILITIES.find(a => a.key === marker.ability) || { icon: "?", name: marker.ability, color: "var(--border-default)", text: "var(--color-white)" };
   return (
     <div title={`${ab.name} — ${ab.en}`}
       onContextMenu={e => { e.preventDefault(); onRemove(marker.id); }}
@@ -2691,12 +2636,11 @@ function DiceResultOverlay({ result, onClose }) {
   const isCrit = result.value === 1;
   return (
     <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", zIndex: 800, pointerEvents: "none", textAlign: "center", animation: "fadeInUp 0.3s ease" }}>
-      <style>{`@keyframes fadeInUp{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}`}</style>
-      <div style={{ background: "#0d0d1e", border: `2px solid ${result.color}`, borderRadius: 16, padding: "14px 28px", boxShadow: `0 0 40px ${result.color}66, 0 8px 32px #000c`, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-        <div style={{ fontSize: 11, color: "#8888aa", letterSpacing: 2 }}>{result.playerName} — d{result.die}</div>
+      <div style={{ background: "var(--bg-elevated)", border: `2px solid ${result.color}`, borderRadius: 16, padding: "14px 28px", boxShadow: `0 0 40px ${result.color}66, 0 8px 32px var(--scrim-80)`, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+        <div style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: 2 }}>{result.playerName} — d{result.die}</div>
         <div style={{ fontSize: 60, fontWeight: 900, color: result.color, lineHeight: 1 }}>{result.value}</div>
-        {isMax && <div style={{ fontSize: 13, color: "#ffd700", fontWeight: 700 }}>¡Máximo! 🎉</div>}
-        {isCrit && <div style={{ fontSize: 13, color: "#ff4444", fontWeight: 700 }}>Falla crítica 💀</div>}
+        {isMax && <div style={{ fontSize: 13, color: "var(--gold)", fontWeight: 700 }}>¡Máximo! 🎉</div>}
+        {isCrit && <div style={{ fontSize: 13, color: "var(--color-red)", fontWeight: 700 }}>Falla crítica 💀</div>}
       </div>
     </div>
   );
@@ -2706,10 +2650,10 @@ function DiceResultOverlay({ result, onClose }) {
 // ─── Mana Tracker ─────────────────────────────────────────────────────────────
 function ManaTracker({ mana, onChange, onClose }) {
   return (
-    <div style={{ position: "fixed", bottom: 10, left: 90, background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 14, padding: 14, zIndex: 400, boxShadow: "0 8px 32px #000a" }}>
+    <div style={{ position: "fixed", bottom: 10, left: 90, background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 14, padding: 14, zIndex: 400, boxShadow: "0 8px 32px var(--scrim-67)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "#ffd700" }}>💎 Maná disponible</span>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 14 }}>✕</button>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gold)" }}>💎 Maná disponible</span>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 14 }}>✕</button>
       </div>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         {MANA_DEFS.map(m => (
@@ -2717,18 +2661,18 @@ function ManaTracker({ mana, onChange, onClose }) {
             <div style={{ fontSize: 16 }}>{m.symbol}</div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
               <button onClick={() => onChange({ ...mana, [m.key]: mana[m.key] + 1 })}
-                style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "#1a4a1a", color: "#88ff88", cursor: "pointer", fontSize: 14, fontWeight: 800, padding: 0 }}>+</button>
+                style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "var(--bg-life)", color: "var(--color-life)", cursor: "pointer", fontSize: 14, fontWeight: 800, padding: 0 }}>+</button>
               <div style={{ width: 32, height: 32, borderRadius: 6, background: m.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: m.text }}>
                 {mana[m.key]}
               </div>
               <button onClick={() => onChange({ ...mana, [m.key]: Math.max(0, mana[m.key] - 1) })}
-                style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "#4a1a1a", color: "#ff8888", cursor: "pointer", fontSize: 14, fontWeight: 800, padding: 0 }}>−</button>
+                style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: "var(--bg-damage)", color: "var(--color-damage)", cursor: "pointer", fontSize: 14, fontWeight: 800, padding: 0 }}>−</button>
             </div>
-            <div style={{ fontSize: 7, color: "#888" }}>{m.label}</div>
+            <div style={{ fontSize: 7, color: "var(--gray-mid)" }}>{m.label}</div>
           </div>
         ))}
         <button onClick={() => onChange({ W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 })}
-          style={{ padding: "6px 10px", borderRadius: 7, border: "1px solid #3a3a6a", background: "transparent", color: "#888", cursor: "pointer", fontSize: 10, alignSelf: "center" }}>
+          style={{ padding: "6px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer", fontSize: 10, alignSelf: "center" }}>
           Limpiar
         </button>
       </div>
@@ -2904,12 +2848,12 @@ function CmdDmgPanel({ myPid, players, playerOrder, avatarMap, onAdjust, onClose
   const myState = players[myPid];
 
   return (
-    <div style={{ position: "fixed", bottom: 60, left: 90, background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 14, padding: 14, zIndex: 400, boxShadow: "0 8px 32px #000a", minWidth: 220 }}>
+    <div style={{ position: "fixed", bottom: 60, left: 90, background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 14, padding: 14, zIndex: 400, boxShadow: "0 8px 32px var(--scrim-67)", minWidth: 220 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "#ffd700" }}>⚔ Daño de Comandante</span>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 14 }}>✕</button>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gold)" }}>⚔ Daño de Comandante</span>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 14 }}>✕</button>
       </div>
-      <div style={{ fontSize: 10, color: "#555", marginBottom: 8 }}>21+ daño = eliminado</div>
+      <div style={{ fontSize: 10, color: "var(--gray-dark)", marginBottom: 8 }}>21+ daño = eliminado</div>
       {opponents.map(pid => {
         const dmg = myState?.commanderDamage?.[pid] || 0;
         const pct = Math.min(100, (dmg / 21) * 100);
@@ -2917,16 +2861,16 @@ function CmdDmgPanel({ myPid, players, playerOrder, avatarMap, onAdjust, onClose
           <div key={pid} style={{ marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
               <span style={{ fontSize: 16 }}>{avatarMap?.[pid] || "🧙"}</span>
-              <span style={{ fontSize: 12, color: "#e8e0d0", flex: 1 }}>{players[pid]?.name}</span>
+              <span style={{ fontSize: 12, color: "var(--text-primary)", flex: 1 }}>{players[pid]?.name}</span>
               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <button onClick={() => onAdjust(pid, -1)} style={{ width: 22, height: 22, borderRadius: "50%", border: "none", background: "#4a1a1a", color: "#ff8888", cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0 }}>−</button>
-                <span style={{ fontSize: 16, fontWeight: 800, color: dmg >= 21 ? "#ff4444" : dmg >= 15 ? "#ff8844" : "#e8e0d0", minWidth: 28, textAlign: "center" }}>{dmg}</span>
-                <button onClick={() => onAdjust(pid, 1)} style={{ width: 22, height: 22, borderRadius: "50%", border: "none", background: "#1a4a1a", color: "#88ff88", cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0 }}>+</button>
+                <button onClick={() => onAdjust(pid, -1)} style={{ width: 22, height: 22, borderRadius: "50%", border: "none", background: "var(--bg-damage)", color: "var(--color-damage)", cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0 }}>−</button>
+                <span style={{ fontSize: 16, fontWeight: 800, color: dmg >= 21 ? "var(--color-red)" : dmg >= 15 ? "var(--color-orange)" : "var(--text-primary)", minWidth: 28, textAlign: "center" }}>{dmg}</span>
+                <button onClick={() => onAdjust(pid, 1)} style={{ width: 22, height: 22, borderRadius: "50%", border: "none", background: "var(--bg-life)", color: "var(--color-life)", cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0 }}>+</button>
               </div>
-              {dmg >= 21 && <span style={{ fontSize: 10, color: "#ff4444", fontWeight: 800 }}>☠</span>}
+              {dmg >= 21 && <span style={{ fontSize: 10, color: "var(--color-red)", fontWeight: 800 }}>☠</span>}
             </div>
-            <div style={{ height: 4, borderRadius: 2, background: "#1a1a2e", overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: 2, background: dmg >= 21 ? "#ff4444" : dmg >= 15 ? "#ff8844" : "#ffd700", width: `${pct}%`, transition: "width 0.3s" }} />
+            <div style={{ height: 4, borderRadius: 2, background: "var(--bg-subtle)", overflow: "hidden" }}>
+              <div style={{ height: "100%", borderRadius: 2, background: dmg >= 21 ? "var(--color-red)" : dmg >= 15 ? "var(--color-orange)" : "var(--gold)", width: `${pct}%`, transition: "width 0.3s" }} />
             </div>
           </div>
         );
@@ -2993,6 +2937,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [showZone, setShowZone] = useState(null);
   const [selCard, setSelCard] = useState(null);
   const [counterModal, setCounterModal] = useState(null); // instanceId of card
+  const [versionModal, setVersionModal] = useState(null); // card to change art version
   const [mulliganModal, setMulliganModal] = useState(false);
   const [mulliganCount, setMulliganCount] = useState(0); // how many mulligans taken
   const [hover, setHover] = useState(null);
@@ -3707,14 +3652,14 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       zone !== "exile" && { label: "✨ Exiliar", action: () => moveCard(card, zone, "exile") },
       { label: "📚 A biblioteca (arriba)", action: () => moveCard(card, zone, "library_top") },
       { label: "📚 A biblioteca (abajo)", action: () => moveCard(card, zone, "library_bottom") },
-      isCmd && { label: "⚔ A zona de mando", action: () => returnCmdToZone(card, zone, true), color: "#ffd700" },
+      isCmd && { label: "⚔ A zona de mando", action: () => returnCmdToZone(card, zone, true), color: "var(--gold)" },
       "---",
       zone === "battlefield" && { label: "🎯 Gestionar contadores...", action: () => { setCtxMenu(null); setCounterModal(card.instanceId); } },
       zone === "battlefield" && {
         label: "✨ Habilidades...",
         submenu: ABILITIES.map(ab => ({
           label: `${ab.icon} ${ab.name}${(card.abilities || []).includes(ab.key) ? " ✓" : ""}`,
-          color: (card.abilities || []).includes(ab.key) ? ab.text : "#e8e0d0",
+          color: (card.abilities || []).includes(ab.key) ? ab.text : "var(--text-primary)",
           action: () => {
             const hasIt = (card.abilities || []).includes(ab.key);
             updMe(p => ({
@@ -3735,7 +3680,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           addLog(`${players[myId]?.name}: ${n.has(card.instanceId) ? "declara atacante" : "retira del ataque"} ${getCardName(card)}.`);
           return n;
         }),
-        color: attackers.has(card.instanceId) ? "#ff8888" : "#ffaa44"
+        color: attackers.has(card.instanceId) ? "var(--color-damage)" : "var(--color-orange)"
       },
     ].filter(Boolean);
   };
@@ -3765,13 +3710,13 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     <div style={{ display: "flex", gap: 4, alignItems: "flex-start", overflowX: "auto", paddingBottom: 2 }}>
       {/* Fixed Commander slot — always visible */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, flexShrink: 0 }}>
-        <div style={{ fontSize: 8, color: "#ffd700", letterSpacing: 1, textAlign: "center" }}>COMANDANTE</div>
+        <div style={{ fontSize: 8, color: "var(--gold)", letterSpacing: 1, textAlign: "center" }}>COMANDANTE</div>
         {p.commandZone.length > 0
           ? p.commandZone.map(c => (
             <div key={c.instanceId} onContextMenu={e => openCardCtx(e, p.id, c, "commandZone", isMe)} style={{ position: "relative" }}>
               <CardTile card={c} small onClick={isMe ? playCommander : undefined} onHover={(card, x, y) => setHover({ card, x, y })} onHoverEnd={() => setHover(null)} />
               {p.commanderTax > 0 && (
-                <div style={{ position: "absolute", top: -6, right: -6, background: "#8b0000", color: "#ffcccc", borderRadius: "50%", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 800, border: "1px solid #ff4444" }}>
+                <div style={{ position: "absolute", top: -6, right: -6, background: "#8b0000", color: "#ffcccc", borderRadius: "50%", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 800, border: "1px solid var(--color-red)" }}>
                   +{p.commanderTax}
                 </div>
               )}
@@ -3779,12 +3724,12 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           ))
           : p.commanderCard
             ? <div onContextMenu={e => { if (!isMe) return; e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, title: "Comandante ausente", items: [{ label: "↩ Devolver a zona de mando", action: () => { /* can't — not on battlefield */ } }] }); }}
-              style={{ width: 52, height: 73, borderRadius: 5, border: "2px dashed #ffd70066", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 2 }}>
+              style={{ width: 52, height: 73, borderRadius: 5, border: "2px dashed var(--gold-40)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 2 }}>
               <div style={{ fontSize: 14 }}>⚔</div>
-              <div style={{ fontSize: 7, color: "#ffd70066", textAlign: "center", padding: "0 4px" }}>En juego</div>
-              {p.commanderTax > 0 && <div style={{ fontSize: 8, color: "#ff8844", fontWeight: 800 }}>+{p.commanderTax}</div>}
+              <div style={{ fontSize: 7, color: "var(--gold-40)", textAlign: "center", padding: "0 4px" }}>En juego</div>
+              {p.commanderTax > 0 && <div style={{ fontSize: 8, color: "var(--color-orange)", fontWeight: 800 }}>+{p.commanderTax}</div>}
             </div>
-            : <div style={{ width: 52, height: 73, borderRadius: 5, border: "2px dashed #2a2a4a", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 8, color: "#333" }}>—</div></div>
+            : <div style={{ width: 52, height: 73, borderRadius: 5, border: "2px dashed var(--border-default)", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 8, color: "var(--gray-deep)" }}>—</div></div>
         }
       </div>
 
@@ -3794,29 +3739,29 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           onClick={isMe ? () => libActions.draw(p.id, 1) : undefined}
           onContextMenu={e => { if (!isMe) return; e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, title: `Biblioteca (${p.library.length})`, items: libraryMenu(p, p.id, isMe, libActions) }); }}
           style={{ width: 52, height: 73, borderRadius: 5, overflow: "hidden", border: "2px solid #3a5a8a", cursor: isMe ? "pointer" : "default", position: "relative", flexShrink: 0 }}>
-          <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,#1a2a4a,#0d1a2e,#1a0a2a)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-            <div style={{ position: "absolute", inset: 3, border: "1px solid #3a4a6a", borderRadius: 3 }} />
+          <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,var(--bg-mana),var(--bg-mana),#1a0a2a)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+            <div style={{ position: "absolute", inset: 3, border: "1px solid var(--border-strong)", borderRadius: 3 }} />
             <div style={{ fontSize: 16, opacity: 0.5 }}>🌟</div>
           </div>
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", fontSize: 10, color: "#fff", fontWeight: 800, background: "#000b", padding: "2px 0" }}>{p.library.length}</div>
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", fontSize: 10, color: "var(--color-white)", fontWeight: 800, background: "#000b", padding: "2px 0" }}>{p.library.length}</div>
         </div>
-        {isMe && <div style={{ position: "absolute", bottom: -14, left: 0, right: 0, fontSize: 8, color: "#8888aa", textAlign: "center" }}>Biblioteca</div>}
+        {isMe && <div style={{ position: "absolute", bottom: -14, left: 0, right: 0, fontSize: 8, color: "var(--text-muted)", textAlign: "center" }}>Biblioteca</div>}
       </div>
 
       {/* Graveyard */}
       <div style={{ position: "relative" }} onClick={() => setShowZone({ pid: p.id, zone: "graveyard" })}>
         {p.graveyard.length > 0
           ? <CardTile card={p.graveyard[0]} small onClick={() => setShowZone({ pid: p.id, zone: "graveyard" })} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
-          : <div style={{ width: 52, height: 73, borderRadius: 5, border: "2px dashed #3a3a5a", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 2, cursor: "pointer" }}><div style={{ fontSize: 14 }}>🪦</div><div style={{ fontSize: 9, color: "#555" }}>0</div></div>}
-        <div style={{ position: "absolute", top: -10, left: 0, right: 0, textAlign: "center", fontSize: 8, color: "#8888aa" }}>🪦 {p.graveyard.length}</div>
+          : <div style={{ width: 52, height: 73, borderRadius: 5, border: "2px dashed var(--border-panel)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 2, cursor: "pointer" }}><div style={{ fontSize: 14 }}>🪦</div><div style={{ fontSize: 9, color: "var(--gray-dark)" }}>0</div></div>}
+        <div style={{ position: "absolute", top: -10, left: 0, right: 0, textAlign: "center", fontSize: 8, color: "var(--text-muted)" }}>🪦 {p.graveyard.length}</div>
       </div>
 
       {/* Exile */}
       <div style={{ position: "relative" }} onClick={() => setShowZone({ pid: p.id, zone: "exile" })}>
         {p.exile.length > 0
           ? <CardTile card={p.exile[0]} small onClick={() => setShowZone({ pid: p.id, zone: "exile" })} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
-          : <div style={{ width: 52, height: 73, borderRadius: 5, border: "2px dashed #3a3a5a", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 2, cursor: "pointer" }}><div style={{ fontSize: 14 }}>✨</div><div style={{ fontSize: 9, color: "#555" }}>0</div></div>}
-        <div style={{ position: "absolute", top: -10, left: 0, right: 0, textAlign: "center", fontSize: 8, color: "#8888aa" }}>✨ {p.exile.length}</div>
+          : <div style={{ width: 52, height: 73, borderRadius: 5, border: "2px dashed var(--border-panel)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 2, cursor: "pointer" }}><div style={{ fontSize: 14 }}>✨</div><div style={{ fontSize: 9, color: "var(--gray-dark)" }}>0</div></div>}
+        <div style={{ position: "absolute", top: -10, left: 0, right: 0, textAlign: "center", fontSize: 8, color: "var(--text-muted)" }}>✨ {p.exile.length}</div>
       </div>
     </div>
   );
@@ -3830,62 +3775,62 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     return (
       <div style={{
         display: "flex", flexDirection: "column", height: "100%",
-        border: isActive ? "1px solid #ffd700" : "1px solid #1a1a2e",
-        boxShadow: isActive ? "0 0 12px #ffd70066, inset 0 0 8px #ffd70011" : "none",
-        borderRadius: 10, overflow: "hidden", background: "#080810",
+        border: isActive ? "1px solid var(--gold)" : "1px solid var(--bg-subtle)",
+        boxShadow: isActive ? "0 0 12px var(--gold-40), inset 0 0 8px var(--gold-glow)" : "none",
+        borderRadius: 10, overflow: "hidden", background: "var(--bg-input)",
       }}>
         {/* Header bar */}
-        <div style={{ padding: "2px 6px", display: "flex", alignItems: "center", gap: 4, background: isActive ? "#1a140a" : "#0d0d18", borderBottom: "1px solid #2a2a4a", flexShrink: 0, flexWrap: "nowrap", minHeight: 24 }}>
-          <div style={{ width: 5, height: 5, borderRadius: "50%", background: isActive ? "#ffd700" : "#333", flexShrink: 0 }} />
+        <div style={{ padding: "2px 6px", display: "flex", alignItems: "center", gap: 4, background: isActive ? "var(--bg-gold)" : "#0d0d18", borderBottom: "1px solid var(--border-default)", flexShrink: 0, flexWrap: "nowrap", minHeight: 24 }}>
+          <div style={{ width: 5, height: 5, borderRadius: "50%", background: isActive ? "var(--gold)" : "var(--gray-deep)", flexShrink: 0 }} />
           <span title={p.name} style={{ fontSize: 13, flexShrink: 0 }}>{avatarMap[pid] || "🧙"}</span>
-          <span title={p.name} style={{ fontWeight: 700, fontSize: 10, color: isActive ? "#ffd700" : "#e8e0d0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 70 }}>{p.name}{isMe ? " (tú)" : ""}</span>
+          <span title={p.name} style={{ fontWeight: 700, fontSize: 10, color: isActive ? "var(--gold)" : "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 70 }}>{p.name}{isMe ? " (tú)" : ""}</span>
 
           {/* Life */}
           <div title="Vida" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, background: "#0d0a0a", borderRadius: 4, padding: "0 3px" }}>
-            {isMe && <button title="Reducir vida" onClick={() => adjLife(pid, -1)} style={mbtn("#4a1a1a", "#ff8888")}>−</button>}
+            {isMe && <button title="Reducir vida" onClick={() => adjLife(pid, -1)} style={mbtn("var(--bg-damage)", "var(--color-damage)")}>−</button>}
             <span style={{ fontSize: 7, color: "#ff6666", lineHeight: 1 }}>❤</span>
-            <span title={`Vida: ${p.life}`} style={{ fontSize: 12, fontWeight: 800, color: p.life <= 10 ? "#ff4444" : p.life >= 50 ? "#44ff88" : "#ffd700", textShadow: p.life <= 10 ? "0 0 12px #ff4444" : "none", minWidth: 20, textAlign: "center" }}>{p.life}</span>
-            {isMe && <button title="Aumentar vida" onClick={() => adjLife(pid, 1)} style={mbtn("#1a4a1a", "#88ff88")}>+</button>}
+            <span title={`Vida: ${p.life}`} style={{ fontSize: 12, fontWeight: 800, color: p.life <= 10 ? "var(--color-red)" : p.life >= 50 ? "var(--color-life-bright)" : "var(--gold)", textShadow: p.life <= 10 ? "0 0 12px var(--color-red)" : "none", minWidth: 20, textAlign: "center" }}>{p.life}</span>
+            {isMe && <button title="Aumentar vida" onClick={() => adjLife(pid, 1)} style={mbtn("var(--bg-life)", "var(--color-life)")}>+</button>}
           </div>
 
           {/* Poison */}
           {(isMe || p.poison > 0) && (
             <div title="Veneno (10 = eliminado)" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, background: "#0d0a14", borderRadius: 4, padding: "0 3px" }}>
               {isMe && <button title="Reducir veneno" onClick={() => adjPoison(pid, -1)} style={mbtn("#3a1a3a", "#ff88ff")}>−</button>}
-              <span style={{ fontSize: 7, color: "#cc88ff", lineHeight: 1 }}>☠</span>
-              <span title={`Veneno: ${p.poison}`} style={{ fontSize: 9, fontWeight: 700, color: p.poison >= 10 ? "#ff44ff" : p.poison > 0 ? "#cc88ff" : "#888", minWidth: 12, textAlign: "center" }}>{p.poison}</span>
-              {isMe && <button title="Agregar veneno" onClick={() => adjPoison(pid, 1)} style={mbtn("#1a1a4a", "#88aaff")}>+</button>}
+              <span style={{ fontSize: 7, color: "var(--color-poison)", lineHeight: 1 }}>☠</span>
+              <span title={`Veneno: ${p.poison}`} style={{ fontSize: 9, fontWeight: 700, color: p.poison >= 10 ? "#ff44ff" : p.poison > 0 ? "var(--color-poison)" : "var(--gray-mid)", minWidth: 12, textAlign: "center" }}>{p.poison}</span>
+              {isMe && <button title="Agregar veneno" onClick={() => adjPoison(pid, 1)} style={mbtn("#1a1a4a", "var(--color-info)")}>+</button>}
             </div>
           )}
           {/* Energy */}
           {(isMe || (p.energy || 0) > 0) && (
             <div title="Energía" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, background: "#0a1a20", borderRadius: 4, padding: "0 3px" }}>
-              {isMe && <button title="Reducir energía" onClick={() => adjEnergy(pid, -1)} style={mbtn("#0a2030", "#44ccff")}>−</button>}
-              <span style={{ fontSize: 7, color: "#44ccff", lineHeight: 1 }}>⚡</span>
-              <span title={`Energía: ${p.energy || 0}`} style={{ fontSize: 9, fontWeight: 700, color: (p.energy || 0) > 0 ? "#44ccff" : "#888", minWidth: 12, textAlign: "center" }}>{p.energy || 0}</span>
-              {isMe && <button title="Agregar energía" onClick={() => adjEnergy(pid, 1)} style={mbtn("#0a2030", "#44ccff")}>+</button>}
+              {isMe && <button title="Reducir energía" onClick={() => adjEnergy(pid, -1)} style={mbtn("#0a2030", "var(--color-info-bright)")}>−</button>}
+              <span style={{ fontSize: 7, color: "var(--color-info-bright)", lineHeight: 1 }}>⚡</span>
+              <span title={`Energía: ${p.energy || 0}`} style={{ fontSize: 9, fontWeight: 700, color: (p.energy || 0) > 0 ? "var(--color-info-bright)" : "var(--gray-mid)", minWidth: 12, textAlign: "center" }}>{p.energy || 0}</span>
+              {isMe && <button title="Agregar energía" onClick={() => adjEnergy(pid, 1)} style={mbtn("#0a2030", "var(--color-info-bright)")}>+</button>}
             </div>
           )}
           {/* Experience */}
           {(isMe || (p.experience || 0) > 0) && (
             <div title="Experiencia" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, background: "#140a20", borderRadius: 4, padding: "0 3px" }}>
-              {isMe && <button title="Reducir experiencia" onClick={() => adjExperience(pid, -1)} style={mbtn("#1a0a30", "#cc88ff")}>−</button>}
-              <span style={{ fontSize: 7, color: "#cc88ff", lineHeight: 1 }}>✨</span>
-              <span title={`Experiencia: ${p.experience || 0}`} style={{ fontSize: 9, fontWeight: 700, color: (p.experience || 0) > 0 ? "#cc88ff" : "#888", minWidth: 12, textAlign: "center" }}>{p.experience || 0}</span>
-              {isMe && <button title="Agregar experiencia" onClick={() => adjExperience(pid, 1)} style={mbtn("#1a0a30", "#cc88ff")}>+</button>}
+              {isMe && <button title="Reducir experiencia" onClick={() => adjExperience(pid, -1)} style={mbtn("#1a0a30", "var(--color-poison)")}>−</button>}
+              <span style={{ fontSize: 7, color: "var(--color-poison)", lineHeight: 1 }}>✨</span>
+              <span title={`Experiencia: ${p.experience || 0}`} style={{ fontSize: 9, fontWeight: 700, color: (p.experience || 0) > 0 ? "var(--color-poison)" : "var(--gray-mid)", minWidth: 12, textAlign: "center" }}>{p.experience || 0}</span>
+              {isMe && <button title="Agregar experiencia" onClick={() => adjExperience(pid, 1)} style={mbtn("#1a0a30", "var(--color-poison)")}>+</button>}
             </div>
           )}
 
           {/* Commander damage */}
           {Object.entries(p.commanderDamage).filter(([, v]) => v > 0).map(([fromPid, dmg]) => (
-            <span key={fromPid} title={`Daño de comandante de ${players[fromPid]?.name || "oponente"}: ${dmg}`} style={{ fontSize: 8, color: "#ff8844", background: "#2a1a0a", borderRadius: 3, padding: "0 3px", flexShrink: 0 }}>
+            <span key={fromPid} title={`Daño de comandante de ${players[fromPid]?.name || "oponente"}: ${dmg}`} style={{ fontSize: 8, color: "var(--color-orange)", background: "#2a1a0a", borderRadius: 3, padding: "0 3px", flexShrink: 0 }}>
               ⚔{dmg}
             </span>
           ))}
 
-          {speaking[pid] && <span title="Hablando por voz" style={{ fontSize: 10, color: "#44ff88", animation: "pulse 0.5s infinite", flexShrink: 0, textShadow: "0 0 8px #44ff88" }}>🎙</span>}
+          {speaking[pid] && <span title="Hablando por voz" style={{ fontSize: 10, color: "var(--color-life-bright)", animation: "pulse 0.5s infinite", flexShrink: 0, textShadow: "0 0 8px var(--color-life-bright)" }}>🎙</span>}
           {p.experience > 0 && <span style={{ fontSize: 9, color: "#ddaaff", background: "#1a0a3a", borderRadius: 4, padding: "0 4px", flexShrink: 0 }}>✨{p.experience}</span>}
-          <span style={{ fontSize: 9, color: "#8888aa", marginLeft: "auto", flexShrink: 0 }}>🤚{p.hand.length}</span>
+          <span style={{ fontSize: 9, color: "var(--text-muted)", marginLeft: "auto", flexShrink: 0 }}>🤚{p.hand.length}</span>
         </div>
 
         {/* Body: battlefield + bottom bar — reversed for opponents */}
@@ -3916,10 +3861,10 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     setDragCard(null); setDragOverId(null);
                   }}
                   onDragEnd={() => { setDragCard(null); setDragOverId(null); }}
-                  style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", opacity: isDragging ? 0.4 : 1, outline: isOver ? "2px dashed #ffd700" : "none", borderRadius: 6, cursor: isMe ? "grab" : "default", transition: "opacity 0.15s", overflow: "visible" }}
+                  style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", opacity: isDragging ? 0.4 : 1, outline: isOver ? "2px dashed var(--gold)" : "none", borderRadius: 6, cursor: isMe ? "grab" : "default", transition: "opacity 0.15s", overflow: "visible" }}
                   onContextMenu={e => openCardCtx(e, pid, card, "battlefield", isMe)}>
-                  {isAttacking && <div style={{ position: "absolute", inset: -2, borderRadius: 6, border: "2px solid #ff4444", zIndex: 3, pointerEvents: "none", boxShadow: "0 0 8px #ff4444aa" }} />}
-                  {isAttacking && <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#cc0000", color: "#fff", borderRadius: 3, fontSize: 7, padding: "1px 4px", zIndex: 4, whiteSpace: "nowrap", fontWeight: 800 }}>⚔ ATQ</div>}
+                  {isAttacking && <div style={{ position: "absolute", inset: -2, borderRadius: 6, border: "2px solid var(--color-red)", zIndex: 3, pointerEvents: "none", boxShadow: "0 0 8px var(--color-red-67)" }} />}
+                  {isAttacking && <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#cc0000", color: "var(--color-white)", borderRadius: 3, fontSize: 7, padding: "1px 4px", zIndex: 4, whiteSpace: "nowrap", fontWeight: 800 }}>⚔ ATQ</div>}
 
                   <CardTile card={card} tapped={card.tapped} small={!isMe || forceSmall}
                     selected={selCard?.instanceId === card.instanceId}
@@ -3940,7 +3885,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                               document.getElementById("ab-tip-" + key)?.remove();
                               const tip = document.createElement("div");
                               tip.id = "ab-tip-" + key;
-                              tip.style.cssText = "position:fixed;z-index:9999;background:#0d0d1e;border:1px solid " + ab2.text + "88;color:" + ab2.text + ";padding:5px 10px;border-radius:8px;font-size:12px;font-weight:700;pointer-events:none;white-space:nowrap;box-shadow:0 4px 20px #000c;font-family:'Crimson Text',Georgia,serif;opacity:0;transition:opacity 0.15s;";
+                              tip.style.cssText = "position:fixed;z-index:9999;background:var(--bg-elevated);border:1px solid " + ab2.text + "88;color:" + ab2.text + ";padding:5px 10px;border-radius:8px;font-size:12px;font-weight:700;pointer-events:none;white-space:nowrap;box-shadow:0 4px 20px var(--scrim-80);font-family:'Crimson Text',Georgia,serif;opacity:0;transition:opacity 0.15s;";
                               tip.textContent = ab2.name + (ab2.en ? " · " + ab2.en : "");
                               document.body.appendChild(tip);
                               requestAnimationFrame(() => {
@@ -3981,14 +3926,14 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     return (
                       <div style={{ position: "absolute", bottom: 1, left: 1, right: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
                         {hasPR && (
-                          <span style={{ fontSize: 9, background: netP > 0 && netT > 0 ? "#1a4a1a" : netP < 0 || netT < 0 ? "#4a1a1a" : "#2a2a2a", color: "#fff", borderRadius: 3, padding: "0 3px", fontWeight: 800 }}>
+                          <span style={{ fontSize: 9, background: netP > 0 && netT > 0 ? "var(--bg-life)" : netP < 0 || netT < 0 ? "var(--bg-damage)" : "#2a2a2a", color: "var(--color-white)", borderRadius: 3, padding: "0 3px", fontWeight: 800 }}>
                             {netP > 0 ? `+${netP}` : netP}/{netT > 0 ? `+${netT}` : netT}
                           </span>
                         )}
                         {others.map(type => {
                           const count = cnts.filter(x => x === type).length;
                           const def = COUNTER_TYPES.find(t => t.key === type);
-                          return <span key={type} style={{ fontSize: 8, background: def?.color || "#2a2a3a", color: def?.text || "#fff", borderRadius: 3, padding: "0 3px" }}>{type.length > 6 ? type.slice(0, 5) + "…" : type}×{count}</span>;
+                          return <span key={type} style={{ fontSize: 8, background: def?.color || "var(--bg-panel)", color: def?.text || "var(--color-white)", borderRadius: 3, padding: "0 3px" }}>{type.length > 6 ? type.slice(0, 5) + "…" : type}×{count}</span>;
                         })}
                       </div>
                     );
@@ -4001,7 +3946,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                 {/* Rows + Lands wrapper */}
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
                   {/* Row 1 — permanents with horizontal scroll */}
-                  <div style={{ position: "relative", flex: 1, minHeight: 141, overflow: "hidden", borderBottom: "1px solid #1a1a2e" }}>
+                  <div style={{ position: "relative", flex: 1, minHeight: 141, overflow: "hidden", borderBottom: "1px solid var(--bg-subtle)" }}>
                     {/* Scrollable cards area — stops before log */}
                     <div ref={isMe ? scrollRef1 : null}
                       onDragOver={e => e.preventDefault()}
@@ -4012,7 +3957,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       ))}
                       {permanents.filter(c => !row2Cards.has(c.instanceId)).map(c => renderCard(c))}
                       {!permanents.filter(c => !row2Cards.has(c.instanceId)).length && !abilityMarkers.length && (
-                        <div style={{ color: "#1a1a2e", fontSize: 10, flexShrink: 0, paddingTop: 10 }}>Campo vacío</div>
+                        <div style={{ color: "var(--bg-subtle)", fontSize: 10, flexShrink: 0, paddingTop: 10 }}>Campo vacío</div>
                       )}
                     </div>
 
@@ -4022,13 +3967,13 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   {/* Row 2 — always visible for isMe, drop target */}
                   {(isMe || permanents.some(c => row2Cards.has(c.instanceId))) && (
                     <div
-                      onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = "#0d0d20"; e.currentTarget.style.outline = "1px dashed #ffd70055"; }}
-                      onDragLeave={e => { e.currentTarget.style.background = isMe ? "#050508" : "transparent"; e.currentTarget.style.outline = "none"; }}
-                      onDrop={e => { e.preventDefault(); e.currentTarget.style.background = isMe ? "#050508" : "transparent"; e.currentTarget.style.outline = "none"; if (isMe && dragCard) setRow2Cards(s => new Set([...s, dragCard.instanceId])); setDragCard(null); setDragOverId(null); }}
-                      ref={isMe ? scrollRef2 : null} style={{ flex: isMe ? 1 : "0 0 0px", minHeight: isMe ? 141 : 0, overflowX: "auto", overflow: "hidden", padding: "4px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", borderTop: "1px solid #1a1a2e", borderBottom: lands.length > 0 ? "1px solid #1a1a2e" : "none", background: isMe ? "#050508" : "transparent" }}>
+                      onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = "var(--bg-elevated)"; e.currentTarget.style.outline = "1px dashed var(--gold-33)"; }}
+                      onDragLeave={e => { e.currentTarget.style.background = isMe ? "var(--bg-void)" : "transparent"; e.currentTarget.style.outline = "none"; }}
+                      onDrop={e => { e.preventDefault(); e.currentTarget.style.background = isMe ? "var(--bg-void)" : "transparent"; e.currentTarget.style.outline = "none"; if (isMe && dragCard) setRow2Cards(s => new Set([...s, dragCard.instanceId])); setDragCard(null); setDragOverId(null); }}
+                      ref={isMe ? scrollRef2 : null} style={{ flex: isMe ? 1 : "0 0 0px", minHeight: isMe ? 141 : 0, overflowX: "auto", overflow: "hidden", padding: "4px 8px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap", borderTop: "1px solid var(--bg-subtle)", borderBottom: lands.length > 0 ? "1px solid var(--bg-subtle)" : "none", background: isMe ? "var(--bg-void)" : "transparent" }}>
                       {permanents.filter(c => row2Cards.has(c.instanceId)).map(c => renderCard(c))}
                       {isMe && !permanents.some(c => row2Cards.has(c.instanceId)) && (
-                        <div style={{ color: "#1a1a2e", fontSize: 9, flexShrink: 0, paddingTop: 14, paddingLeft: 10, fontStyle: "italic", userSelect: "none" }}>↓ arrastra cartas a esta fila</div>
+                        <div style={{ color: "var(--bg-subtle)", fontSize: 9, flexShrink: 0, paddingTop: 14, paddingLeft: 10, fontStyle: "italic", userSelect: "none" }}>↓ arrastra cartas a esta fila</div>
                       )}
                     </div>
                   )}
@@ -4037,28 +3982,28 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   <div style={{ height: lands.length > 0 ? 116 : 22, flexShrink: 0, overflow: "hidden", overflowX: "auto", padding: "3px 6px", display: "flex", flexDirection: "row", gap: 4, alignItems: "center", background: "#060609", flexWrap: "nowrap", }}>
                     {lands.length > 0
                       ? <>
-                        <span style={{ fontSize: 8, color: "#44ff88", letterSpacing: 1, flexShrink: 0, writingMode: "vertical-rl", marginRight: 2, textShadow: "0 0 8px #44ff88" }}>TIERRAS</span>
+                        <span style={{ fontSize: 8, color: "var(--color-life-bright)", letterSpacing: 1, flexShrink: 0, writingMode: "vertical-rl", marginRight: 2, textShadow: "0 0 8px var(--color-life-bright)" }}>TIERRAS</span>
                         {lands.map(c => renderCard(c, "lands"))}
                       </>
-                      : <div style={{ fontSize: 9, color: "#2a2a3a", paddingLeft: 8 }}>Zona de tierras</div>}
+                      : <div style={{ fontSize: 9, color: "var(--bg-panel)", paddingLeft: 8 }}>Zona de tierras</div>}
                   </div>
                 </div>{/* end rows+lands col */}
 
                 {/* LOG column — fixed width, full battlefield height, no overlap */}
                 {isMe && (
-                  <div style={{ width: 165, flexShrink: 0, borderLeft: "1px solid #1a1a2e", background: "#06060e", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                    <div className="neon-text" style={{ fontSize: 8, color: "#ffd700", letterSpacing: 4, padding: "5px 0 4px", textAlign: "center", borderBottom: "1px solid #ffd70033", flexShrink: 0, fontFamily: "monospace" }}>LOG</div>
+                  <div style={{ width: 165, flexShrink: 0, borderLeft: "1px solid var(--bg-subtle)", background: "var(--bg-base)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                    <div className="neon-text" style={{ fontSize: 8, color: "var(--gold)", letterSpacing: 4, padding: "5px 0 4px", textAlign: "center", borderBottom: "1px solid var(--gold-glow)", flexShrink: 0, fontFamily: "monospace" }}>LOG</div>
                     <div style={{ flex: 1, padding: "4px 6px", overflowY: "auto" }}>
                       {[...turnLog].reverse().map((group, gi) => {
                         const isCollapsed = logCollapsed[group.turn] ?? (gi > 0);
                         return (
                           <div key={group.turn} style={{ marginBottom: 2 }}>
                             <div onClick={() => setLogCollapsed(c => ({ ...c, [group.turn]: !isCollapsed }))}
-                              style={{ fontSize: 8, fontWeight: 800, color: "#ffd700aa", padding: "2px 0", cursor: "pointer", display: "flex", justifyContent: "space-between" }}>
+                              style={{ fontSize: 8, fontWeight: 800, color: "var(--gold-67)", padding: "2px 0", cursor: "pointer", display: "flex", justifyContent: "space-between" }}>
                               <span>T{group.turn}</span><span>{isCollapsed ? "▶" : "▼"}</span>
                             </div>
                             {!isCollapsed && group.entries.slice().reverse().map((e, i) => (
-                              <div key={i} style={{ fontSize: 8, color: gi === 0 && i === 0 ? "#ddddee" : "#44445a", lineHeight: 1.4, padding: "1px 0", borderBottom: "1px solid #0a0a14", wordBreak: "break-word" }}>{e}</div>
+                              <div key={i} style={{ fontSize: 8, color: gi === 0 && i === 0 ? "#ddddee" : "#44445a", lineHeight: 1.4, padding: "1px 0", borderBottom: "1px solid var(--bg-well)", wordBreak: "break-word" }}>{e}</div>
                             ))}
                           </div>
                         );
@@ -4083,36 +4028,36 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
               gap: 2, flexShrink: 0
             });
             const labelStyle = {
-              fontSize: 7, color: "#8888aa", letterSpacing: 1,
+              fontSize: 7, color: "var(--text-muted)", letterSpacing: 1,
               textTransform: "uppercase", lineHeight: 1, textAlign: "center"
             };
             return (
-              <div style={{ borderTop: "1px solid #2a2a4a", background: "#050508", display: "flex", alignItems: "stretch", flexShrink: 0 }}>
+              <div style={{ borderTop: "1px solid var(--border-default)", background: "var(--bg-void)", display: "flex", alignItems: "stretch", flexShrink: 0 }}>
 
                 {/* LEFT ZONES — fixed width, never shrink */}
-                <div style={{ display: "flex", gap: 3, alignItems: "center", padding: "4px 5px", flexShrink: 0, borderRight: "1px solid #1a1a2e" }}>
+                <div style={{ display: "flex", gap: 3, alignItems: "center", padding: "4px 5px", flexShrink: 0, borderRight: "1px solid var(--bg-subtle)" }}>
 
                   {/* Commander */}
                   <div style={zoneSlotStyle()}>
-                    <div style={{ fontSize: 7, color: "#ffd700", letterSpacing: 1, textAlign: "center" }}>CMD</div>
+                    <div style={{ fontSize: 7, color: "var(--gold)", letterSpacing: 1, textAlign: "center" }}>CMD</div>
                     {p.commandZone.length > 0
                       ? p.commandZone.map(c => (
                         <div key={c.instanceId} onContextMenu={e => openCardCtx(e, p.id, c, "commandZone", isMe)} style={{ position: "relative" }}>
                           <CardTile card={c} small onClick={isMe ? playCommander : undefined} onHover={(card, x, y) => setHover({ card, x, y })} onHoverEnd={() => setHover(null)} />
                           {p.commanderTax > 0 && (
-                            <div style={{ position: "absolute", top: -5, right: -5, background: "#8b0000", color: "#ffcccc", borderRadius: "50%", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 800, border: "1px solid #ff4444" }}>
+                            <div style={{ position: "absolute", top: -5, right: -5, background: "#8b0000", color: "#ffcccc", borderRadius: "50%", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 800, border: "1px solid var(--color-red)" }}>
                               +{p.commanderTax}
                             </div>
                           )}
                         </div>
                       ))
                       : p.commanderCard
-                        ? <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed #ffd70044", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1 }}>
+                        ? <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed var(--gold-27)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1 }}>
                           <div style={{ fontSize: 12 }}>⚔</div>
-                          <div style={{ fontSize: 7, color: "#ffd70066" }}>En juego</div>
-                          {p.commanderTax > 0 && <div style={{ fontSize: 7, color: "#ff8844", fontWeight: 800 }}>+{p.commanderTax}</div>}
+                          <div style={{ fontSize: 7, color: "var(--gold-40)" }}>En juego</div>
+                          {p.commanderTax > 0 && <div style={{ fontSize: 7, color: "var(--color-orange)", fontWeight: 800 }}>+{p.commanderTax}</div>}
                         </div>
-                        : <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed #2a2a4a" }} />
+                        : <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed var(--border-default)" }} />
                     }
                   </div>
 
@@ -4122,11 +4067,11 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     <div onClick={isMe ? () => libActions.draw(p.id, 1) : undefined}
                       onContextMenu={e => { if (!isMe) return; e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, title: `Biblioteca (${p.library.length})`, items: libraryMenu(p, p.id, isMe, libActions) }); }}
                       style={{ width: cardW, height: cardH, borderRadius: 5, overflow: "hidden", border: "2px solid #3a5a8a", cursor: isMe ? "pointer" : "default", position: "relative" }}>
-                      <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,#1a2a4a 0%,#0d1a2e 40%,#1a0a2a 100%)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-                        <div style={{ position: "absolute", inset: 2, border: "1px solid #3a4a6a", borderRadius: 3 }} />
+                      <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,var(--bg-mana) 0%,var(--bg-mana) 40%,#1a0a2a 100%)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                        <div style={{ position: "absolute", inset: 2, border: "1px solid var(--border-strong)", borderRadius: 3 }} />
                         <span style={{ fontSize: 10, opacity: 0.5 }}>🌟</span>
                       </div>
-                      <div style={{ position: "absolute", bottom: 2, left: 0, right: 0, textAlign: "center", fontSize: 10, color: "#fff", fontWeight: 800, background: "#000a", borderRadius: "0 0 4px 4px", padding: "1px 0" }}>{p.library.length}</div>
+                      <div style={{ position: "absolute", bottom: 2, left: 0, right: 0, textAlign: "center", fontSize: 10, color: "var(--color-white)", fontWeight: 800, background: "#000a", borderRadius: "0 0 4px 4px", padding: "1px 0" }}>{p.library.length}</div>
                     </div>
                   </div>
 
@@ -4136,7 +4081,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     <div onClick={() => setShowZone({ pid: p.id, zone: "graveyard" })} style={{ cursor: "pointer" }}>
                       {p.graveyard.length > 0
                         ? <CardTile card={p.graveyard[0]} small onClick={() => setShowZone({ pid: p.id, zone: "graveyard" })} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
-                        : <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed #3a3a5a", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1 }}><div style={{ fontSize: 12 }}>🪦</div><div style={{ fontSize: 8, color: "#555" }}>{p.graveyard.length}</div></div>}
+                        : <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed var(--border-panel)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1 }}><div style={{ fontSize: 12 }}>🪦</div><div style={{ fontSize: 8, color: "var(--gray-dark)" }}>{p.graveyard.length}</div></div>}
                     </div>
                   </div>
 
@@ -4146,7 +4091,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     <div onClick={() => setShowZone({ pid: p.id, zone: "exile" })} style={{ cursor: "pointer" }}>
                       {p.exile.length > 0
                         ? <CardTile card={p.exile[0]} small onClick={() => setShowZone({ pid: p.id, zone: "exile" })} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
-                        : <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed #3a3a5a", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1 }}><div style={{ fontSize: 12 }}>✨</div><div style={{ fontSize: 8, color: "#555" }}>{p.exile.length}</div></div>}
+                        : <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed var(--border-panel)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1 }}><div style={{ fontSize: 12 }}>✨</div><div style={{ fontSize: 8, color: "var(--gray-dark)" }}>{p.exile.length}</div></div>}
                     </div>
                   </div>
 
@@ -4155,9 +4100,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     <div style={zoneSlotStyle()}>
                       <div style={labelStyle}>SB</div>
                       <div onClick={() => setShowZone({ pid: p.id, zone: "sideboard" })} style={{ cursor: "pointer" }}>
-                        <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px solid #3a4a6a", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1, background: "#1a1a3e", cursor: "pointer" }}>
+                        <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px solid var(--border-strong)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1, background: "var(--bg-panel)", cursor: "pointer" }}>
                           <div style={{ fontSize: 10 }}>↔</div>
-                          <div style={{ fontSize: 8, color: "#88aaff", fontWeight: 800 }}>{(p.sideboard || []).length}</div>
+                          <div style={{ fontSize: 8, color: "var(--color-info)", fontWeight: 800 }}>{(p.sideboard || []).length}</div>
                         </div>
                       </div>
                     </div>
@@ -4168,8 +4113,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                 <div style={{ flex: 1, minWidth: 8 }} />
 
                 {/* RIGHT: HAND */}
-                <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "4px 5px", overflowX: "auto", flexShrink: 0, borderLeft: "1px solid #1a1a2e", maxWidth: "55%" }}>
-                  <span style={{ fontSize: 7, color: "#555", writingMode: "vertical-rl", letterSpacing: 1, flexShrink: 0, textTransform: "uppercase" }}>Mano</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "4px 5px", overflowX: "auto", flexShrink: 0, borderLeft: "1px solid var(--bg-subtle)", maxWidth: "55%" }}>
+                  <span style={{ fontSize: 7, color: "var(--gray-dark)", writingMode: "vertical-rl", letterSpacing: 1, flexShrink: 0, textTransform: "uppercase" }}>Mano</span>
                   {isMe
                     ? p.hand.map(card => (
                       <div key={card.instanceId} onContextMenu={e => openCardCtx(e, pid, card, "hand", true)}>
@@ -4181,12 +4126,12 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       </div>
                     ))
                     : p.hand.map(card => (
-                      <div key={card.instanceId} style={{ width: 38, height: 52, borderRadius: 4, overflow: "hidden", flexShrink: 0, border: "2px solid #2a3a5a", background: "linear-gradient(160deg,#1a2a4a,#0d1a2e,#1a0a2a)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div key={card.instanceId} style={{ width: 38, height: 52, borderRadius: 4, overflow: "hidden", flexShrink: 0, border: "2px solid #2a3a5a", background: "linear-gradient(160deg,var(--bg-mana),var(--bg-mana),#1a0a2a)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <span style={{ fontSize: 12, opacity: 0.5 }}>🌟</span>
                       </div>
                     ))
                   }
-                  {p.hand.length === 0 && <span style={{ color: "#2a2a3a", fontSize: 9 }}>vacía</span>}
+                  {p.hand.length === 0 && <span style={{ color: "var(--bg-panel)", fontSize: 9 }}>vacía</span>}
                 </div>
 
               </div>
@@ -4204,7 +4149,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const opponentSlots = others.slice(0, 3);
 
   return (
-    <div className="scanline-overlay" style={{ height: "100vh", display: "flex", flexDirection: "column", background: "#020208", color: "#e8e0d0", fontFamily: "'Crimson Text',Georgia,serif", overflow: "hidden", userSelect: "none", position: "relative" }}
+    <div className="scanline-overlay" style={{ height: "100vh", display: "flex", flexDirection: "column", background: "var(--bg-deep)", color: "var(--text-primary)", fontFamily: "'Crimson Text',Georgia,serif", overflow: "hidden", userSelect: "none", position: "relative" }}
       onClick={() => { setCtxMenu(null); setSelCard(null); }}>
 
 
@@ -4247,46 +4192,46 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         </div>
 
         {/* RIGHT: Actions + Log panel */}
-        <div style={{ width: 68, flexShrink: 0, background: "#06060e", borderLeft: "1px solid #1a1a2e", display: "flex", flexDirection: "column", alignItems: "center", padding: "4px 4px", gap: 2, overflowY: "auto", flexShrink: 0 }}>
+        <div style={{ width: 68, flexShrink: 0, background: "var(--bg-base)", borderLeft: "1px solid var(--bg-subtle)", display: "flex", flexDirection: "column", alignItems: "center", padding: "4px 4px", gap: 2, overflowY: "auto", flexShrink: 0 }}>
           {/* PRIMARY buttons — always visible */}
           {[
-            { icon: "📚", label: "Robar", action: () => libActions.draw(myId, 1), color: "#7fc4ff" },
-            { icon: "⟲", label: "Destapar", action: untapAll, color: "#88ff88" },
-            { icon: "🪄", label: "Token", action: () => setTokenModal(true), color: "#cc88ff" },
-            { icon: "🎲", label: "Dado", action: () => setDiceModal(true), color: "#ffaa44" },
-            { icon: "💬", label: "Chat", action: () => setChatOpen(o => !o), color: chatOpen ? "#7fc4ff" : "#888" },
-            { icon: "🎙", label: voiceEnabled ? (muted ? "Silenc." : "Voz ON") : "Voz", action: toggleVoice, color: voiceEnabled ? (muted ? "#ff8888" : "#44ff88") : "#555" },
+            { icon: "📚", label: "Robar", action: () => libActions.draw(myId, 1), color: "var(--color-info)" },
+            { icon: "⟲", label: "Destapar", action: untapAll, color: "var(--color-life)" },
+            { icon: "🪄", label: "Token", action: () => setTokenModal(true), color: "var(--color-poison)" },
+            { icon: "🎲", label: "Dado", action: () => setDiceModal(true), color: "var(--color-orange)" },
+            { icon: "💬", label: "Chat", action: () => setChatOpen(o => !o), color: chatOpen ? "var(--color-info)" : "var(--gray-mid)" },
+            { icon: "🎙", label: voiceEnabled ? (muted ? "Silenc." : "Voz ON") : "Voz", action: toggleVoice, color: voiceEnabled ? (muted ? "var(--color-damage)" : "var(--color-life-bright)") : "var(--gray-dark)" },
           ].map(btn => (
             <button key={btn.label} onClick={btn.action} title={btn.label}
-              style={{ width: "100%", padding: "4px 2px", borderRadius: 6, border: "1px solid #1a1a2e", background: "#0a0a14", color: btn.color, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+              style={{ width: "100%", padding: "4px 2px", borderRadius: 6, border: "1px solid var(--bg-subtle)", background: "var(--bg-well)", color: btn.color, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
               <span style={{ fontSize: 14 }}>{btn.icon}</span>
               <span style={{ fontSize: 7, lineHeight: 1 }}>{btn.label}</span>
             </button>
           ))}
 
           {/* Separator */}
-          <div style={{ width: "80%", height: 1, background: "#1a1a2e", margin: "2px 0", flexShrink: 0 }} />
+          <div style={{ width: "80%", height: 1, background: "var(--bg-subtle)", margin: "2px 0", flexShrink: 0 }} />
 
           {/* SECONDARY buttons — smaller */}
           {[
-            { icon: "↩", label: "Deshacer", action: undo, color: history.length ? "#ffcc88" : "#333", disabled: !history.length },
+            { icon: "↩", label: "Deshacer", action: undo, color: history.length ? "var(--color-warn-dim)" : "var(--gray-deep)", disabled: !history.length },
             { icon: "✨", label: "Habil.", action: () => setAbilitiesModal(true), color: "#88eeff" },
-            { icon: "❤", label: "Vida", action: () => setLifeHistoryOpen(o => !o), color: "#ff8888" },
-            { icon: "💎", label: "Maná", action: () => setManaOpen(o => !o), color: manaOpen ? "#ffd700" : "#888" },
-            { icon: "⚔", label: "CmdDmg", action: () => setCmdDmgOpen(o => !o), color: cmdDmgOpen ? "#ff8844" : "#888" },
-            { icon: "📝", label: "Notas", action: () => setNotesOpen(o => !o), color: notesOpen ? "#88ff88" : "#888" },
-            { icon: "🔍", label: "Buscar", action: () => setCardSearch(s => ({ ...s, open: !s.open, query: "", results: [] })), color: cardSearch.open ? "#ffd700" : "#888" },
-            ...(voiceEnabled ? [{ icon: muted ? "🔇" : "🔊", label: muted ? "Unmute" : "Mute", action: toggleMute, color: muted ? "#ff4444" : "#88ff88" }] : []),
+            { icon: "❤", label: "Vida", action: () => setLifeHistoryOpen(o => !o), color: "var(--color-damage)" },
+            { icon: "💎", label: "Maná", action: () => setManaOpen(o => !o), color: manaOpen ? "var(--gold)" : "var(--gray-mid)" },
+            { icon: "⚔", label: "CmdDmg", action: () => setCmdDmgOpen(o => !o), color: cmdDmgOpen ? "var(--color-orange)" : "var(--gray-mid)" },
+            { icon: "📝", label: "Notas", action: () => setNotesOpen(o => !o), color: notesOpen ? "var(--color-life)" : "var(--gray-mid)" },
+            { icon: "🔍", label: "Buscar", action: () => setCardSearch(s => ({ ...s, open: !s.open, query: "", results: [] })), color: cardSearch.open ? "var(--gold)" : "var(--gray-mid)" },
+            ...(voiceEnabled ? [{ icon: muted ? "🔇" : "🔊", label: muted ? "Unmute" : "Mute", action: toggleMute, color: muted ? "var(--color-red)" : "var(--color-life)" }] : []),
           ].map(btn => (
             <button key={btn.label} onClick={btn.action} disabled={btn.disabled} title={btn.label}
-              style={{ width: "100%", padding: "3px 2px", borderRadius: 5, border: "1px solid #141420", background: "#080810", color: btn.color, cursor: btn.disabled ? "default" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 0, opacity: btn.disabled ? 0.3 : 1 }}>
+              style={{ width: "100%", padding: "3px 2px", borderRadius: 5, border: "1px solid #141420", background: "var(--bg-input)", color: btn.color, cursor: btn.disabled ? "default" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 0, opacity: btn.disabled ? 0.3 : 1 }}>
               <span style={{ fontSize: 12 }}>{btn.icon}</span>
               <span style={{ fontSize: 6, lineHeight: 1 }}>{btn.label}</span>
             </button>
           ))}
 
           {/* Separator */}
-          <div style={{ width: "80%", height: 1, background: "#1a1a2e", margin: "2px 0", flexShrink: 0 }} />
+          <div style={{ width: "80%", height: 1, background: "var(--bg-subtle)", margin: "2px 0", flexShrink: 0 }} />
 
           {/* UTILITY buttons — icon only, smallest */}
           {[
@@ -4296,7 +4241,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                 const blob = new Blob([txt], { type: "text/plain" });
                 const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
                 a.download = `partida-${roomCode}-T${turn}.txt`; a.click();
-              }, color: "#555"
+              }, color: "var(--gray-dark)"
             },
             {
               icon: "🔄", label: "Reiniciar", action: () => {
@@ -4311,7 +4256,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   setAttackers(new Set()); addLog("🔄 Partida reiniciada.");
                   rt.current?.broadcast("notification", { msg: "🔄 La partida fue reiniciada", from: myId });
                 }
-              }, color: "#555"
+              }, color: "var(--gray-dark)"
             },
             {
               icon: "✕", label: "Salir", action: () => {
@@ -4332,7 +4277,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   localStorage.setItem("commander_es_full_save", JSON.stringify(snapshot));
                 } catch { }
                 onExit();
-              }, color: "#444"
+              }, color: "var(--gray-darker)"
             },
           ].map(btn => (
             <button key={btn.label} onClick={btn.action} title={btn.label}
@@ -4343,7 +4288,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           ))}
           {/* Card Search Panel */}
           {cardSearch.open && (
-            <div style={{ width: "100%", borderTop: "1px solid #1a1a2e", paddingTop: 6, marginBottom: 4 }}>
+            <div style={{ width: "100%", borderTop: "1px solid var(--bg-subtle)", paddingTop: 6, marginBottom: 4 }}>
               <input value={cardSearch.query}
                 onChange={async e => {
                   const q = e.target.value;
@@ -4356,9 +4301,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   } catch { setCardSearch(s => ({ ...s, results: [], loading: false })); }
                 }}
                 placeholder="Buscar carta..."
-                style={{ width: "100%", padding: "5px 7px", borderRadius: 6, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 10, outline: "none", boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "5px 7px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 10, outline: "none", boxSizing: "border-box" }}
               />
-              {cardSearch.loading && <div style={{ fontSize: 8, color: "#888", textAlign: "center", padding: 4 }}>...</div>}
+              {cardSearch.loading && <div style={{ fontSize: 8, color: "var(--gray-mid)", textAlign: "center", padding: 4 }}>...</div>}
               <div style={{ maxHeight: 200, overflowY: "auto", marginTop: 4 }}>
                 {cardSearch.results.map(card => {
                   const img = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal;
@@ -4381,12 +4326,12 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       onMouseMove={e => setHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
                       onMouseLeave={() => setHover(null)}
                       style={{ padding: "4px 6px", borderRadius: 5, cursor: "context-menu", borderBottom: "1px solid #0d0d18", display: "flex", gap: 6, alignItems: "center" }}
-                      onMouseOver={e => e.currentTarget.style.background = "#1a1a2e"}
+                      onMouseOver={e => e.currentTarget.style.background = "var(--bg-subtle)"}
                       onMouseOut={e => e.currentTarget.style.background = "transparent"}>
                       {img && <img src={img} style={{ width: 24, height: 33, borderRadius: 2, objectFit: "cover", flexShrink: 0 }} />}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 8, color: "#e8e0d0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{card.printed_name || card.name}</div>
-                        <div style={{ fontSize: 7, color: "#555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{card.type_line?.split("—")[0]}</div>
+                        <div style={{ fontSize: 8, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{card.printed_name || card.name}</div>
+                        <div style={{ fontSize: 7, color: "var(--gray-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{card.type_line?.split("—")[0]}</div>
                       </div>
                     </div>
                   );
@@ -4405,12 +4350,12 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       {/* Zone modal */}
       {showZone && (
         <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 400 }} onClick={() => setShowZone(null)}>
-          <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 14, padding: 22, maxWidth: 680, maxHeight: "80vh", overflowY: "auto", minWidth: 360 }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 14, padding: 22, maxWidth: 680, maxHeight: "80vh", overflowY: "auto", minWidth: 360 }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#ffd700" }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)" }}>
                 {showZone.zone === "graveyard" ? "🪦 Cementerio" : "✨ Exilio"} — {players[showZone.pid]?.name}
               </span>
-              <button onClick={() => setShowZone(null)} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 17 }}>✕</button>
+              <button onClick={() => setShowZone(null)} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 17 }}>✕</button>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
               {(players[showZone.pid]?.[showZone.zone] || []).map(card => (
@@ -4418,7 +4363,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   <CardTile card={card} onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
                 </div>
               ))}
-              {!players[showZone.pid]?.[showZone.zone]?.length && <div style={{ color: "#555", padding: 18 }}>Vacío</div>}
+              {!players[showZone.pid]?.[showZone.zone]?.length && <div style={{ color: "var(--gray-dark)", padding: 18 }}>Vacío</div>}
             </div>
           </div>
         </div>
@@ -4427,12 +4372,12 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       {/* View top modal */}
       {viewTopModal && (
         <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }} onClick={() => setViewTopModal(null)}>
-          <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 14, padding: 22, maxWidth: 600 }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#ffd700", marginBottom: 14 }}>🔍 Tope de biblioteca — {players[viewTopModal.pid]?.name}</div>
+          <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 14, padding: 22, maxWidth: 600 }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gold)", marginBottom: 14 }}>🔍 Tope de biblioteca — {players[viewTopModal.pid]?.name}</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {viewTopModal.cards.map((card, i) => <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}><CardTile card={card} onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} /><span style={{ fontSize: 9, color: "#888" }}>#{i + 1}</span></div>)}
+              {viewTopModal.cards.map((card, i) => <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}><CardTile card={card} onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} /><span style={{ fontSize: 9, color: "var(--gray-mid)" }}>#{i + 1}</span></div>)}
             </div>
-            <button onClick={() => setViewTopModal(null)} style={{ marginTop: 16, padding: "8px 24px", borderRadius: 8, border: "none", background: "#1a1a3e", color: "#e8e0d0", cursor: "pointer" }}>Cerrar</button>
+            <button onClick={() => setViewTopModal(null)} style={{ marginTop: 16, padding: "8px 24px", borderRadius: 8, border: "none", background: "var(--bg-panel)", color: "var(--text-primary)", cursor: "pointer" }}>Cerrar</button>
           </div>
         </div>
       )}
@@ -4479,7 +4424,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       {/* Notifications */}
       <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 600, display: "flex", flexDirection: "column", gap: 6, alignItems: "center", pointerEvents: "none" }}>
         {notifications.map(n => (
-          <div key={n.id} style={{ background: "#1a1a2eee", border: "1px solid #3a3a6a", borderRadius: 10, padding: "8px 16px", fontSize: 12, color: "#e8e0d0", boxShadow: "0 4px 16px #000a", animation: "slideDown 0.3s ease" }}>
+          <div key={n.id} style={{ background: "var(--bg-panel)", border: "1px solid var(--border-strong)", borderRadius: 10, padding: "8px 16px", fontSize: 12, color: "var(--text-primary)", boxShadow: "0 4px 16px var(--scrim-67)", animation: "slideDown 0.3s ease" }}>
             {n.msg}
           </div>
         ))}
@@ -4487,7 +4432,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
       {/* Spectator banner */}
       {isSpectator && (
-        <div style={{ position: "fixed", top: 8, left: "50%", transform: "translateX(-50%)", background: "#0d0d1eee", border: "1px solid #3a3a6a", borderRadius: 20, padding: "6px 18px", fontSize: 12, color: "#8888aa", zIndex: 500, pointerEvents: "none" }}>
+        <div style={{ position: "fixed", top: 8, left: "50%", transform: "translateX(-50%)", background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 20, padding: "6px 18px", fontSize: 12, color: "var(--text-muted)", zIndex: 500, pointerEvents: "none" }}>
           👁 Modo Espectador — Solo lectura
         </div>
       )}
@@ -4544,10 +4489,16 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           cardName={versionModal.name || versionModal.printed_name}
           onSelect={(v) => {
             const img = v.image_uris?.normal || v.card_faces?.[0]?.image_uris?.normal || null;
-            setDeck(d => d.map(c => c.instanceId === versionModal.instanceId
+            const patch = (c) => c.instanceId === versionModal.instanceId
               ? { ...c, image_url: img, set: v.set, set_name: v.set_name, rarity: v.rarity, released_at: v.released_at }
-              : c
-            ));
+              : c;
+            updMe(p => ({
+              ...p,
+              battlefield: p.battlefield.map(patch),
+              hand:        p.hand.map(patch),
+              graveyard:   p.graveyard.map(patch),
+              exile:       p.exile.map(patch),
+            }));
             setVersionModal(null);
           }}
           onClose={() => setVersionModal(null)}
@@ -4593,26 +4544,26 @@ function DeckSelectorModal({ decks, cloudDecks, onSelect, onNew, onClose }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 900, fontFamily: "'Crimson Text',Georgia,serif" }} onClick={onClose}>
-      <div style={{ background: "#0a0a1a", border: "1px solid #3a3a6a", borderRadius: 18, padding: 0, width: 640, maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden" }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: "var(--bg-well)", border: "1px solid var(--border-strong)", borderRadius: 18, padding: 0, width: 640, maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden" }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div style={{ padding: "20px 24px 0", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: "#ffd700" }}>📚 Elige un mazo</div>
-              <div style={{ fontSize: 12, color: "#8888aa", marginTop: 3, display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "var(--gold)" }}>📚 Elige un mazo</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3, display: "flex", alignItems: "center", gap: 6 }}>
                 <span>{allDecks.length} mazo{allDecks.length !== 1 ? "s" : ""}</span>
-                {allDecks[0]?.format && <span style={{ color: "#ffd70088" }}>{allDecks[0].format.icon} {allDecks[0].format.label}</span>}
+                {allDecks[0]?.format && <span style={{ color: "var(--gold-53)" }}>{allDecks[0].format.icon} {allDecks[0].format.label}</span>}
               </div>
             </div>
             <button onClick={onNew}
-              style={{ padding: "10px 20px", borderRadius: 10, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+              style={{ padding: "10px 20px", borderRadius: 10, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
               + Nuevo Mazo
             </button>
           </div>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre o comandante..."
             autoFocus
-            style={{ width: "100%", padding: "9px 14px", borderRadius: 9, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 12 }} />
+            style={{ width: "100%", padding: "9px 14px", borderRadius: 9, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 12 }} />
         </div>
 
         {/* Deck grid */}
@@ -4625,32 +4576,32 @@ function DeckSelectorModal({ decks, cloudDecks, onSelect, onNew, onClose }) {
                 onMouseEnter={e => setHover({ d, x: e.clientX, y: e.clientY })}
                 onMouseMove={e => setHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
                 onMouseLeave={() => setHover(null)}
-                style={{ width: 180, borderRadius: 12, border: "1px solid #2a2a4a", background: "#0d0d1e", cursor: "pointer", overflow: "hidden", transition: "all 0.15s", flexShrink: 0 }}
-                onMouseOver={e => { e.currentTarget.style.border = "1px solid #ffd70066"; e.currentTarget.style.background = "#1a1a2e"; }}
-                onMouseOut={e => { e.currentTarget.style.border = "1px solid #2a2a4a"; e.currentTarget.style.background = "#0d0d1e"; }}>
+                style={{ width: 180, borderRadius: 12, border: "1px solid var(--border-default)", background: "var(--bg-elevated)", cursor: "pointer", overflow: "hidden", transition: "all 0.15s", flexShrink: 0 }}
+                onMouseOver={e => { e.currentTarget.style.border = "1px solid var(--gold-40)"; e.currentTarget.style.background = "var(--bg-subtle)"; }}
+                onMouseOut={e => { e.currentTarget.style.border = "1px solid var(--border-default)"; e.currentTarget.style.background = "var(--bg-elevated)"; }}>
                 {/* Commander image */}
-                <div style={{ height: 120, overflow: "hidden", position: "relative", background: "#1a1a3e" }}>
+                <div style={{ height: 120, overflow: "hidden", position: "relative", background: "var(--bg-panel)" }}>
                   {cmdImg
                     ? <img src={cmdImg} style={{ width: "100%", objectFit: "cover", objectPosition: "top" }} />
                     : <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40 }}>⚔️</div>}
-                  {d.isCloud && <div style={{ position: "absolute", top: 6, right: 6, background: "#000a", borderRadius: 4, padding: "2px 6px", fontSize: 9, color: "#44ff88" }}>☁ Nube</div>}
+                  {d.isCloud && <div style={{ position: "absolute", top: 6, right: 6, background: "#000a", borderRadius: 4, padding: "2px 6px", fontSize: 9, color: "var(--color-life-bright)" }}>☁ Nube</div>}
                 </div>
                 {/* Info */}
                 <div style={{ padding: "10px 12px" }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#e8e0d0", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.deckName}</div>
-                  <div style={{ fontSize: 10, color: "#8888aa", marginBottom: 6 }}>{getCardName(d.commander) || "Sin comandante"}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.deckName}</div>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 6 }}>{getCardName(d.commander) || "Sin comandante"}</div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {stats.creatures > 0 && <span style={{ fontSize: 9, color: "#ff8888", background: "#2a1a1a", borderRadius: 4, padding: "1px 5px" }}>⚔{stats.creatures}</span>}
+                    {stats.creatures > 0 && <span style={{ fontSize: 9, color: "var(--color-damage)", background: "#2a1a1a", borderRadius: 4, padding: "1px 5px" }}>⚔{stats.creatures}</span>}
                     {stats.lands > 0 && <span style={{ fontSize: 9, color: "#88cc88", background: "#1a2a1a", borderRadius: 4, padding: "1px 5px" }}>🌲{stats.lands}</span>}
-                    {stats.instants > 0 && <span style={{ fontSize: 9, color: "#88aaff", background: "#1a1a3a", borderRadius: 4, padding: "1px 5px" }}>⚡{stats.instants}</span>}
-                    {stats.sorceries > 0 && <span style={{ fontSize: 9, color: "#ffaa44", background: "#2a1a0a", borderRadius: 4, padding: "1px 5px" }}>📜{stats.sorceries}</span>}
+                    {stats.instants > 0 && <span style={{ fontSize: 9, color: "var(--color-info)", background: "#1a1a3a", borderRadius: 4, padding: "1px 5px" }}>⚡{stats.instants}</span>}
+                    {stats.sorceries > 0 && <span style={{ fontSize: 9, color: "var(--color-orange)", background: "#2a1a0a", borderRadius: 4, padding: "1px 5px" }}>📜{stats.sorceries}</span>}
                   </div>
                 </div>
               </div>
             );
           })}
           {filtered.length === 0 && (
-            <div style={{ width: "100%", textAlign: "center", color: "#444", fontSize: 13, padding: 30 }}>
+            <div style={{ width: "100%", textAlign: "center", color: "var(--gray-darker)", fontSize: 13, padding: 30 }}>
               No se encontraron mazos
             </div>
           )}
@@ -4669,10 +4620,10 @@ function PlayerNameModal({ user, onSave }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 950, fontFamily: "'Crimson Text',Georgia,serif" }}>
-      <div style={{ background: "#0d0d1e", border: "1px solid #ffd70066", borderRadius: 18, padding: 30, width: 360, display: "flex", flexDirection: "column", gap: 16, textAlign: "center" }}>
+      <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--gold-40)", borderRadius: 18, padding: 30, width: 360, display: "flex", flexDirection: "column", gap: 16, textAlign: "center" }}>
         <div style={{ fontSize: 36 }}>⚔️</div>
-        <div style={{ fontSize: 18, fontWeight: 800, color: "#ffd700" }}>¿Cómo quieres que te llamen?</div>
-        <div style={{ fontSize: 12, color: "#8888aa" }}>Este nombre aparecerá en el tablero durante las partidas</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--gold)" }}>¿Cómo quieres que te llamen?</div>
+        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Este nombre aparecerá en el tablero durante las partidas</div>
         <input
           value={name}
           onChange={e => setName(e.target.value)}
@@ -4680,12 +4631,12 @@ function PlayerNameModal({ user, onSave }) {
           placeholder="Tu nombre de jugador..."
           autoFocus
           maxLength={24}
-          style={{ padding: "12px 16px", borderRadius: 10, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 16, outline: "none", textAlign: "center", fontWeight: 700 }}
+          style={{ padding: "12px 16px", borderRadius: 10, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 16, outline: "none", textAlign: "center", fontWeight: 700 }}
         />
         <button
           onClick={() => name.trim() && onSave(name.trim())}
           disabled={!name.trim()}
-          style={{ padding: "13px 0", borderRadius: 10, border: "none", background: name.trim() ? "linear-gradient(90deg,#ffd700,#ff8c00)" : "#222", color: name.trim() ? "#000" : "#555", fontWeight: 800, fontSize: 15, cursor: name.trim() ? "pointer" : "default" }}>
+          style={{ padding: "13px 0", borderRadius: 10, border: "none", background: name.trim() ? "linear-gradient(90deg,var(--gold),var(--gold-dark))" : "var(--gray-222)", color: name.trim() ? "var(--color-black)" : "var(--gray-dark)", fontWeight: 800, fontSize: 15, cursor: name.trim() ? "pointer" : "default" }}>
           Confirmar →
         </button>
       </div>
@@ -4698,33 +4649,33 @@ function PlayerNameModal({ user, onSave }) {
 function FormatSelectorModal({ currentFormat, onSelect, onClose }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 950 }} onClick={onClose}>
-      <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 18, padding: 24, width: 520, maxHeight: "85vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 18, padding: 24, width: 520, maxHeight: "85vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "#ffd700" }}>📋 Seleccionar Formato</div>
-            <div style={{ fontSize: 11, color: "#8888aa", marginTop: 3 }}>Define las reglas de tu partida</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--gold)" }}>📋 Seleccionar Formato</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Define las reglas de tu partida</div>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: 18 }}>✕</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 18 }}>✕</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {FORMATS.map(f => (
             <button key={f.key} onClick={() => { onSelect(f); onClose(); }}
               style={{
-                padding: "14px 14px", borderRadius: 12, border: currentFormat?.key === f.key ? "2px solid #ffd700" : "1px solid #2a2a4a",
-                background: currentFormat?.key === f.key ? "#1a140a" : "#0a0a18", cursor: "pointer", textAlign: "left", transition: "all 0.15s"
+                padding: "14px 14px", borderRadius: 12, border: currentFormat?.key === f.key ? "2px solid var(--gold)" : "1px solid var(--border-default)",
+                background: currentFormat?.key === f.key ? "var(--bg-gold)" : "var(--bg-well)", cursor: "pointer", textAlign: "left", transition: "all 0.15s"
               }}
-              onMouseOver={e => { e.currentTarget.style.border = "1px solid #ffd70066"; e.currentTarget.style.background = "#1a1a2e"; }}
-              onMouseOut={e => { e.currentTarget.style.border = currentFormat?.key === f.key ? "2px solid #ffd700" : "1px solid #2a2a4a"; e.currentTarget.style.background = currentFormat?.key === f.key ? "#1a140a" : "#0a0a18"; }}>
+              onMouseOver={e => { e.currentTarget.style.border = "1px solid var(--gold-40)"; e.currentTarget.style.background = "var(--bg-subtle)"; }}
+              onMouseOut={e => { e.currentTarget.style.border = currentFormat?.key === f.key ? "2px solid var(--gold)" : "1px solid var(--border-default)"; e.currentTarget.style.background = currentFormat?.key === f.key ? "var(--bg-gold)" : "var(--bg-well)"; }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                 <span style={{ fontSize: 20 }}>{f.icon}</span>
-                <span style={{ fontSize: 13, fontWeight: 800, color: currentFormat?.key === f.key ? "#ffd700" : "#e8e0d0" }}>{f.label}</span>
-                {currentFormat?.key === f.key && <span style={{ marginLeft: "auto", fontSize: 10, color: "#ffd700" }}>✓ Activo</span>}
+                <span style={{ fontSize: 13, fontWeight: 800, color: currentFormat?.key === f.key ? "var(--gold)" : "var(--text-primary)" }}>{f.label}</span>
+                {currentFormat?.key === f.key && <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--gold)" }}>✓ Activo</span>}
               </div>
-              <div style={{ fontSize: 10, color: "#8888aa", lineHeight: 1.4 }}>{f.desc}</div>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", lineHeight: 1.4 }}>{f.desc}</div>
               <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                {f.deckSize > 0 && <span style={{ fontSize: 9, color: "#aaa", background: "#1a1a3e", borderRadius: 4, padding: "1px 6px" }}>{f.deckSize} cartas</span>}
-                <span style={{ fontSize: 9, color: "#aaa", background: "#1a1a3e", borderRadius: 4, padding: "1px 6px" }}>♥ {f.life}</span>
-                {f.singletons && <span style={{ fontSize: 9, color: "#88ff88", background: "#1a3a1a", borderRadius: 4, padding: "1px 6px" }}>1 copia</span>}
+                {f.deckSize > 0 && <span style={{ fontSize: 9, color: "var(--gray-light)", background: "var(--bg-panel)", borderRadius: 4, padding: "1px 6px" }}>{f.deckSize} cartas</span>}
+                <span style={{ fontSize: 9, color: "var(--gray-light)", background: "var(--bg-panel)", borderRadius: 4, padding: "1px 6px" }}>♥ {f.life}</span>
+                {f.singletons && <span style={{ fontSize: 9, color: "var(--color-life)", background: "#1a3a1a", borderRadius: 4, padding: "1px 6px" }}>1 copia</span>}
               </div>
             </button>
           ))}
@@ -4756,34 +4707,34 @@ function Tutorial({ onClose }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000c", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, fontFamily: "'Crimson Text',Georgia,serif" }}>
-      <div style={{ background: "#0d0d1e", border: "1px solid #ffd70066", borderRadius: 20, padding: 32, width: 420, display: "flex", flexDirection: "column", gap: 20, textAlign: "center", boxShadow: "0 20px 60px #000a" }}>
+      <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--gold-40)", borderRadius: 20, padding: 32, width: 420, display: "flex", flexDirection: "column", gap: 20, textAlign: "center", boxShadow: "0 20px 60px var(--scrim-67)" }}>
         {/* Step indicator */}
         <div style={{ display: "flex", justifyContent: "center", gap: 5 }}>
           {TUTORIAL_STEPS.map((_, i) => (
             <div key={i} onClick={() => setStep(i)}
-              style={{ width: i === step ? 20 : 6, height: 6, borderRadius: 3, background: i === step ? "#ffd700" : i < step ? "#ffd70066" : "#2a2a4a", cursor: "pointer", transition: "all 0.2s" }} />
+              style={{ width: i === step ? 20 : 6, height: 6, borderRadius: 3, background: i === step ? "var(--gold)" : i < step ? "var(--gold-40)" : "var(--border-default)", cursor: "pointer", transition: "all 0.2s" }} />
           ))}
         </div>
         {/* Content */}
         <div style={{ fontSize: 48 }}>{s.icon}</div>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#ffd700", marginBottom: 8 }}>{s.title}</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "var(--gold)", marginBottom: 8 }}>{s.title}</div>
           <div style={{ fontSize: 14, color: "#c0b090", lineHeight: 1.6 }}>{s.body}</div>
         </div>
         {/* Navigation */}
         <div style={{ display: "flex", gap: 10 }}>
           {step > 0 && (
             <button onClick={() => setStep(s => s - 1)}
-              style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "1px solid #3a3a6a", background: "transparent", color: "#888", cursor: "pointer", fontSize: 14 }}>
+              style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "1px solid var(--border-strong)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer", fontSize: 14 }}>
               ← Anterior
             </button>
           )}
           <button onClick={() => isLast ? onClose() : setStep(s => s + 1)}
-            style={{ flex: 2, padding: "10px 0", borderRadius: 10, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+            style={{ flex: 2, padding: "10px 0", borderRadius: 10, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
             {isLast ? "¡Empezar a jugar! ✦" : "Siguiente →"}
           </button>
         </div>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 12 }}>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-dark)", cursor: "pointer", fontSize: 12 }}>
           Saltar tutorial
         </button>
       </div>
@@ -4811,46 +4762,46 @@ function AuthModal({ onAuth, onClose }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 900, fontFamily: "'Crimson Text',Georgia,serif" }} onClick={onClose}>
-      <div style={{ background: "#0d0d1e", border: "1px solid #3a3a6a", borderRadius: 18, padding: 28, width: 380, display: "flex", flexDirection: "column", gap: 16 }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 18, padding: 28, width: 380, display: "flex", flexDirection: "column", gap: 16 }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 28, marginBottom: 6 }}>⚔️</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#ffd700" }}>MTG Arena ES</div>
-          <div style={{ fontSize: 12, color: "#8888aa", marginTop: 4 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "var(--gold)" }}>MTG Arena ES</div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
             {mode === "login" ? "Inicia sesión para guardar tus mazos en la nube" : "Crea una cuenta para guardar tus mazos"}
           </div>
         </div>
 
         {/* Google button */}
         <button onClick={signInWithGoogle}
-          style={{ padding: "12px 0", borderRadius: 10, border: "1px solid #3a3a6a", background: "#fff", color: "#333", fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          style={{ padding: "12px 0", borderRadius: 10, border: "1px solid var(--border-strong)", background: "var(--color-white)", color: "var(--gray-deep)", fontWeight: 700, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
           <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.8 2.5 30.2 0 24 0 14.6 0 6.6 5.4 2.6 13.3l7.8 6.1C12.4 13 17.8 9.5 24 9.5z" /><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17z" /><path fill="#FBBC05" d="M10.4 28.6A14.8 14.8 0 0 1 9.5 24c0-1.6.3-3.1.8-4.6l-7.8-6.1A23.9 23.9 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.8-6.1z" /><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.5-5.8c-2 1.4-4.6 2.2-7.7 2.2-6.2 0-11.5-4.2-13.4-9.9l-7.8 6.1C6.6 42.6 14.6 48 24 48z" /></svg>
           Continuar con Google
         </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ flex: 1, height: 1, background: "#2a2a4a" }} />
-          <span style={{ fontSize: 11, color: "#555" }}>o con email</span>
-          <div style={{ flex: 1, height: 1, background: "#2a2a4a" }} />
+          <div style={{ flex: 1, height: 1, background: "var(--border-default)" }} />
+          <span style={{ fontSize: 11, color: "var(--gray-dark)" }}>o con email</span>
+          <div style={{ flex: 1, height: 1, background: "var(--border-default)" }} />
         </div>
 
         {/* Email/password */}
         <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" type="email"
-          style={{ padding: "10px 14px", borderRadius: 9, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 14, outline: "none" }} />
+          style={{ padding: "10px 14px", borderRadius: 9, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 14, outline: "none" }} />
         <input value={password} onChange={e => setPassword(e.target.value)} placeholder="Contraseña" type="password"
           onKeyDown={e => e.key === "Enter" && handleSubmit()}
-          style={{ padding: "10px 14px", borderRadius: 9, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 14, outline: "none" }} />
+          style={{ padding: "10px 14px", borderRadius: 9, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 14, outline: "none" }} />
 
-        {error && <div style={{ fontSize: 11, color: "#ff8888", textAlign: "center" }}>{error}</div>}
+        {error && <div style={{ fontSize: 11, color: "var(--color-damage)", textAlign: "center" }}>{error}</div>}
 
         <button onClick={handleSubmit} disabled={loading}
-          style={{ padding: "12px 0", borderRadius: 10, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 15, cursor: loading ? "default" : "pointer" }}>
+          style={{ padding: "12px 0", borderRadius: 10, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, fontSize: 15, cursor: loading ? "default" : "pointer" }}>
           {loading ? "..." : mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
         </button>
 
         <button onClick={() => { setMode(m => m === "login" ? "signup" : "login"); setError(""); }}
-          style={{ background: "none", border: "none", color: "#8888aa", cursor: "pointer", fontSize: 12, textAlign: "center" }}>
+          style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 12, textAlign: "center" }}>
           {mode === "login" ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"}
         </button>
       </div>
@@ -4915,32 +4866,32 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "radial-gradient(ellipse at 50% 0%, #160a28 0%, #0a0a1e 45%, #060616 100%)", color: "#e8e0d0", fontFamily: "'Crimson Text',Georgia,serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: "24px 16px" }}>
+    <div style={{ minHeight: "100vh", background: "radial-gradient(ellipse at 50% 0%, #160a28 0%, #0a0a1e 45%, #060616 100%)", color: "var(--text-primary)", fontFamily: "'Crimson Text',Georgia,serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: "24px 16px" }}>
       {/* App name top-left */}
-      <div style={{ position: "absolute", top: 18, left: 20, fontSize: 13, fontWeight: 800, color: "#ffd70066", letterSpacing: 2, zIndex: 1 }}>MTG ES</div>
+      <div style={{ position: "absolute", top: 18, left: 20, fontSize: 13, fontWeight: 800, color: "var(--gold-40)", letterSpacing: 2, zIndex: 1 }}>MTG ES</div>
 
       {/* User bar */}
       <div style={{ position: "absolute", top: 16, right: 20, display: "flex", alignItems: "center", gap: 10, zIndex: 1 }}>
         {user ? (
           <>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 14px", borderRadius: 20, background: "#1a1a2e", border: "1px solid #2a2a4a" }}>
-              <div style={{ width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg,#ffd700,#ff8c00)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#000", flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 14px", borderRadius: 20, background: "var(--bg-subtle)", border: "1px solid var(--border-default)" }}>
+              <div style={{ width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg,var(--gold),var(--gold-dark))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "var(--color-black)", flexShrink: 0 }}>
                 {(user.email || "?")[0].toUpperCase()}
               </div>
-              <span style={{ fontSize: 12, color: "#e8e0d0", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</span>
+              <span style={{ fontSize: 12, color: "var(--text-primary)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.email}</span>
             </div>
             <button onClick={onChangeName}
               title="Cambiar nombre de jugador"
-              style={{ padding: "7px 12px", borderRadius: 10, border: "1px solid #3a3a6a", background: "#1a1a2e", color: "#aaaaff", cursor: "pointer", fontSize: 12 }}>
+              style={{ padding: "7px 12px", borderRadius: 10, border: "1px solid var(--border-strong)", background: "var(--bg-subtle)", color: "var(--color-info)", cursor: "pointer", fontSize: 12 }}>
               ✏ {getSavedPlayerName() || "Poner nombre"}
             </button>
             <button onClick={onSignOut}
-              style={{ padding: "7px 14px", borderRadius: 10, border: "1px solid #4a2a2a", background: "#1a0a0a", color: "#ff8888", cursor: "pointer", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}>
+              style={{ padding: "7px 14px", borderRadius: 10, border: "1px solid var(--bg-damage)", background: "var(--bg-damage)", color: "var(--color-damage)", cursor: "pointer", fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}>
               ↩ Cerrar sesión
             </button>
           </>
         ) : (
-          <button onClick={onSignIn} style={{ padding: "8px 18px", borderRadius: 10, border: "1px solid #ffd70044", background: "linear-gradient(135deg,#1a140a,#2a1f0a)", color: "#ffd700", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+          <button onClick={onSignIn} style={{ padding: "8px 18px", borderRadius: 10, border: "1px solid var(--gold-27)", background: "linear-gradient(135deg,var(--bg-gold),#2a1f0a)", color: "var(--gold)", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
             ✦ Iniciar sesión
           </button>
         )}
@@ -4951,20 +4902,20 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
         {/* Animated card suit icons */}
         <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 10, fontSize: 28 }}>
           <span style={{ opacity: 0.7 }}>♠</span>
-          <span style={{ opacity: 0.9, color: "#e8e0d0" }}>🃏</span>
+          <span style={{ opacity: 0.9, color: "var(--text-primary)" }}>🃏</span>
           <span style={{ opacity: 0.7, color: "#cc4444" }}>♥</span>
-          <span style={{ opacity: 0.9, color: "#e8e0d0" }}>🎴</span>
+          <span style={{ opacity: 0.9, color: "var(--text-primary)" }}>🎴</span>
           <span style={{ opacity: 0.7, color: "#cc4444" }}>♦</span>
         </div>
-        <h1 className="neon-text" style={{ margin: 0, fontSize: 38, fontWeight: 900, letterSpacing: 3, background: "linear-gradient(90deg,#c0a060,#ffd700,#ff8c00,#ffd700,#c0a060)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundSize: "200% auto", animation: "shimmer 4s linear infinite", letterSpacing: 6 }}>MTG ARENA ES</h1>
-        <div style={{ fontSize: 12, color: "#8888aa", marginTop: 5, letterSpacing: 3, textTransform: "uppercase" }}>Magic: The Gathering · Multijugador Online</div>
+        <h1 className="neon-text" style={{ margin: 0, fontSize: 38, fontWeight: 900, letterSpacing: 3, background: "linear-gradient(90deg,#c0a060,var(--gold),var(--gold-dark),var(--gold),#c0a060)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundSize: "200% auto", animation: "shimmer 4s linear infinite", letterSpacing: 6 }}>MTG ARENA ES</h1>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 5, letterSpacing: 3, textTransform: "uppercase" }}>Magic: The Gathering · Multijugador Online</div>
         <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
           {FORMATS.filter(f => ["commander", "standard", "legacy", "modern", "vintage", "pauper"].includes(f.key)).map(f => (
             <button key={f.key}
               onClick={() => user ? onQuickFormat(f) : onSignIn()}
-              style={{ fontSize: 11, color: "#aaa", background: "#0d0d1a", borderRadius: 20, padding: "4px 12px", border: "1px solid #2a2a3a", cursor: "pointer", transition: "all 0.15s", fontFamily: "inherit" }}
-              onMouseOver={e => { e.currentTarget.style.background = "#1a1a3e"; e.currentTarget.style.color = "#ffd700"; e.currentTarget.style.borderColor = "#ffd70044"; }}
-              onMouseOut={e => { e.currentTarget.style.background = "#0d0d1a"; e.currentTarget.style.color = "#aaa"; e.currentTarget.style.borderColor = "#2a2a3a"; }}>
+              style={{ fontSize: 11, color: "var(--gray-light)", background: "var(--bg-card)", borderRadius: 20, padding: "4px 12px", border: "1px solid var(--bg-panel)", cursor: "pointer", transition: "all 0.15s", fontFamily: "inherit" }}
+              onMouseOver={e => { e.currentTarget.style.background = "var(--bg-panel)"; e.currentTarget.style.color = "var(--gold)"; e.currentTarget.style.borderColor = "var(--gold-27)"; }}
+              onMouseOut={e => { e.currentTarget.style.background = "var(--bg-card)"; e.currentTarget.style.color = "var(--gray-light)"; e.currentTarget.style.borderColor = "var(--bg-panel)"; }}>
               {f.icon} {f.label}
             </button>
           ))}
@@ -4976,14 +4927,14 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
         {/* Resume session */}
         {savedSession && (
           <div style={{ background: "#1a2a1a", border: "1px solid #4a8a4a", borderRadius: 14, padding: "14px 18px" }}>
-            <div style={{ fontSize: 12, color: "#88ff88", marginBottom: 6, fontWeight: 700 }}>🔄 Partida en curso</div>
-            <div style={{ fontSize: 11, color: "#8888aa", marginBottom: 10 }}>
-              Sala: <strong style={{ color: "#ffd700" }}>{savedSession.roomCode}</strong>
-              <span style={{ color: "#555" }}> · hace {Math.round((Date.now() - (savedSession.savedAt || Date.now())) / 60000)} min</span>
+            <div style={{ fontSize: 12, color: "var(--color-life)", marginBottom: 6, fontWeight: 700 }}>🔄 Partida en curso</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10 }}>
+              Sala: <strong style={{ color: "var(--gold)" }}>{savedSession.roomCode}</strong>
+              <span style={{ color: "var(--gray-dark)" }}> · hace {Math.round((Date.now() - (savedSession.savedAt || Date.now())) / 60000)} min</span>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => onResumeSession(savedSession)} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#1a5a1a,#2a8a2a)", color: "#7fff7f", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>▶ Continuar</button>
-              <button onClick={onClearSession} style={{ padding: "9px 12px", borderRadius: 8, border: "1px solid #4a2a2a", background: "#1a0a0a", color: "#ff8888", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🗑</button>
+              <button onClick={() => onResumeSession(savedSession)} style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: "none", background: "linear-gradient(90deg,var(--bg-life),var(--bg-life))", color: "var(--color-life)", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>▶ Continuar</button>
+              <button onClick={onClearSession} style={{ padding: "9px 12px", borderRadius: 8, border: "1px solid var(--bg-damage)", background: "var(--bg-damage)", color: "var(--color-damage)", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🗑</button>
             </div>
           </div>
         )}
@@ -4991,10 +4942,10 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
         {/* Main actions */}
         {!user ? (
           /* Not logged in — show sign in prompt */
-          <div style={{ background: "#0d0d1e", border: "1px solid #ffd70033", borderRadius: 14, padding: "20px 18px", textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ fontSize: 14, color: "#ffd700", fontWeight: 700 }}>🃏 Para jugar necesitas una cuenta</div>
-            <div style={{ fontSize: 12, color: "#8888aa" }}>Inicia sesión para crear o unirte a una partida y guardar tus mazos en la nube</div>
-            <button onClick={onSignIn} style={{ padding: "14px 0", borderRadius: 10, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 15, cursor: "pointer" }}>
+          <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--gold-glow)", borderRadius: 14, padding: "20px 18px", textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ fontSize: 14, color: "var(--gold)", fontWeight: 700 }}>🃏 Para jugar necesitas una cuenta</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Inicia sesión para crear o unirte a una partida y guardar tus mazos en la nube</div>
+            <button onClick={onSignIn} style={{ padding: "14px 0", borderRadius: 10, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, fontSize: 15, cursor: "pointer" }}>
               ✦ Iniciar sesión / Crear cuenta
             </button>
           </div>
@@ -5002,31 +4953,31 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
           <>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => onNewGame(null)}
-                style={{ flex: 1, padding: "18px 0", borderRadius: 14, border: "none", background: "linear-gradient(135deg,#c0a030,#ffd700,#ff8c00)", color: "#0a0500", fontSize: 15, cursor: "pointer", fontWeight: 900, letterSpacing: 1, boxShadow: "0 4px 20px #ffd70033" }}>
+                style={{ flex: 1, padding: "18px 0", borderRadius: 14, border: "none", background: "linear-gradient(135deg,#c0a030,var(--gold),var(--gold-dark))", color: "#0a0500", fontSize: 15, cursor: "pointer", fontWeight: 900, letterSpacing: 1, boxShadow: "0 4px 20px var(--gold-glow)" }}>
                 ✦ Nueva Partida
               </button>
               <button onClick={() => { setShowJoin(v => !v); }}
-                style={{ flex: 1, padding: "18px 0", borderRadius: 14, border: "1px solid #3a6a9a66", background: showJoin ? "#0d2a4a" : "linear-gradient(135deg,#0a1a2a,#0d2040)", color: "#7fc4ff", fontSize: 15, cursor: "pointer", fontWeight: 800, letterSpacing: 1 }}>
+                style={{ flex: 1, padding: "18px 0", borderRadius: 14, border: "1px solid #3a6a9a66", background: showJoin ? "#0d2a4a" : "linear-gradient(135deg,#0a1a2a,#0d2040)", color: "var(--color-info)", fontSize: 15, cursor: "pointer", fontWeight: 800, letterSpacing: 1 }}>
                 🔗 Unirse
               </button>
             </div>
 
             {/* Join code input */}
             {showJoin && (
-              <div style={{ background: "#0d0d1e", border: "1px solid #2a3a5a", borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ fontSize: 12, color: "#8888aa" }}>Código de sala (4 letras)</div>
+              <div style={{ background: "var(--bg-elevated)", border: "1px solid #2a3a5a", borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Código de sala (4 letras)</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase().slice(0, 4))}
                     onKeyDown={e => e.key === "Enter" && joinCode.length === 4 && onJoinGame(joinCode)}
                     placeholder="XKJF" maxLength={4} autoFocus
-                    style={{ flex: 1, padding: "12px 14px", borderRadius: 9, border: "1px solid #3a3a6a", background: "#080810", color: "#e8e0d0", fontSize: 22, outline: "none", textAlign: "center", letterSpacing: 8, fontWeight: 800 }} />
+                    style={{ flex: 1, padding: "12px 14px", borderRadius: 9, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 22, outline: "none", textAlign: "center", letterSpacing: 8, fontWeight: 800 }} />
                   <button onClick={() => joinCode.length === 4 && onJoinGame(joinCode)} disabled={joinCode.length < 4}
-                    style={{ padding: "12px 18px", borderRadius: 9, border: "none", background: joinCode.length === 4 ? "#1a4a8a" : "#111", color: joinCode.length === 4 ? "#7fc4ff" : "#444", fontSize: 13, cursor: joinCode.length === 4 ? "pointer" : "default", fontWeight: 700 }}>
+                    style={{ padding: "12px 18px", borderRadius: 9, border: "none", background: joinCode.length === 4 ? "#1a4a8a" : "#111", color: joinCode.length === 4 ? "var(--color-info)" : "var(--gray-darker)", fontSize: 13, cursor: joinCode.length === 4 ? "pointer" : "default", fontWeight: 700 }}>
                     Unirse →
                   </button>
                 </div>
                 <button onClick={() => joinCode.length === 4 && onSpectate && onSpectate(joinCode)} disabled={joinCode.length < 4}
-                  style={{ width: "100%", padding: "8px 0", borderRadius: 8, border: "1px solid #2a3a4a", background: "transparent", color: joinCode.length === 4 ? "#8888aa" : "#333", cursor: joinCode.length === 4 ? "pointer" : "default", fontSize: 12 }}>
+                  style={{ width: "100%", padding: "8px 0", borderRadius: 8, border: "1px solid #2a3a4a", background: "transparent", color: joinCode.length === 4 ? "var(--text-muted)" : "var(--gray-deep)", cursor: joinCode.length === 4 ? "pointer" : "default", fontSize: 12 }}>
                   👁 Entrar como espectador
                 </button>
               </div>
@@ -5046,21 +4997,21 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
           }, {});
 
           return (
-            <div style={{ background: "#0d0d1e", border: "1px solid #2a4a2a", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-elevated)", border: "1px solid #2a4a2a", borderRadius: 12, overflow: "hidden" }}>
               {/* Header with filter */}
-              <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid #2a2a4a" }}>
+              <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid var(--border-default)" }}>
                 <button onClick={() => setExpandDecks(v => !v)}
-                  style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, flex: 1, color: "#e8e0d0", padding: 0 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#ffd700" }}>📚 Mis Mazos</span>
-                  <span style={{ fontSize: 11, color: "#8888aa" }}>({filtered.length})</span>
+                  style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, flex: 1, color: "var(--text-primary)", padding: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gold)" }}>📚 Mis Mazos</span>
+                  <span style={{ fontSize: 11, color: "var(--text-muted)" }}>({filtered.length})</span>
                   {loadingCloud
-                    ? <span style={{ fontSize: 10, color: "#555" }}>Cargando...</span>
-                    : <button onClick={e => { e.stopPropagation(); refreshCloudDecks(); }} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 12, padding: "0 4px" }}>↻</button>}
-                  <span style={{ marginLeft: "auto", fontSize: 11, color: "#555" }}>{expandDecks ? "▲" : "▼"}</span>
+                    ? <span style={{ fontSize: 10, color: "var(--gray-dark)" }}>Cargando...</span>
+                    : <button onClick={e => { e.stopPropagation(); refreshCloudDecks(); }} style={{ background: "none", border: "none", color: "var(--gray-dark)", cursor: "pointer", fontSize: 12, padding: "0 4px" }}>↻</button>}
+                  <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--gray-dark)" }}>{expandDecks ? "▲" : "▼"}</span>
                 </button>
                 {/* Format filter */}
                 <select value={filterFormat} onChange={e => setFilterFormat(e.target.value)}
-                  style={{ padding: "3px 7px", borderRadius: 6, border: "1px solid #2a2a4a", background: "#0a0a18", color: "#aaa", fontSize: 11, cursor: "pointer" }}>
+                  style={{ padding: "3px 7px", borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--bg-well)", color: "var(--gray-light)", fontSize: 11, cursor: "pointer" }}>
                   <option value="all">Todos los formatos</option>
                   {FORMATS.map(f => <option key={f.key} value={f.key}>{f.icon} {f.label}</option>)}
                 </select>
@@ -5070,36 +5021,36 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
               {expandDecks && (
                 <div style={{ maxHeight: 340, overflowY: "auto" }}>
                   {filtered.length === 0 && !loadingCloud && (
-                    <div style={{ padding: "16px", textAlign: "center", color: "#444", fontSize: 12 }}>
-                      {filterFormat === "all" ? <>Sin mazos guardados.<br /><span style={{ fontSize: 11, color: "#333" }}>Usa 💾 en el constructor para guardarlos.</span></>
+                    <div style={{ padding: "16px", textAlign: "center", color: "var(--gray-darker)", fontSize: 12 }}>
+                      {filterFormat === "all" ? <>Sin mazos guardados.<br /><span style={{ fontSize: 11, color: "var(--gray-deep)" }}>Usa 💾 en el constructor para guardarlos.</span></>
                         : `Sin mazos de ${FORMATS.find(f => f.key === filterFormat)?.label || filterFormat}.`}
                     </div>
                   )}
                   {Object.entries(byFormat).map(([fkey, group]) => (
                     <div key={fkey}>
                       {/* Format group header */}
-                      <div style={{ padding: "5px 14px", background: "#0a0a14", fontSize: 10, color: "#ffd70099", fontWeight: 700, letterSpacing: 1, display: "flex", alignItems: "center", gap: 5, borderBottom: "1px solid #1a1a2e" }}>
+                      <div style={{ padding: "5px 14px", background: "var(--bg-well)", fontSize: 10, color: "var(--gold-60)", fontWeight: 700, letterSpacing: 1, display: "flex", alignItems: "center", gap: 5, borderBottom: "1px solid var(--bg-subtle)" }}>
                         <span>{group.fmt.icon}</span>
                         <span>{group.fmt.label}</span>
-                        <span style={{ color: "#555" }}>({group.decks.length})</span>
+                        <span style={{ color: "var(--gray-dark)" }}>({group.decks.length})</span>
                       </div>
                       {group.decks.map(d => (
-                        <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", borderBottom: "1px solid #1a1a2e" }}>
+                        <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", borderBottom: "1px solid var(--bg-subtle)" }}>
                           {d.commander?.image_url
                             ? <img src={d.commander.image_url} style={{ width: 32, height: 44, borderRadius: 3, objectFit: "cover", flexShrink: 0 }} />
-                            : <div style={{ width: 32, height: 44, borderRadius: 3, background: "#1a1a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{group.fmt.icon}</div>}
+                            : <div style={{ width: 32, height: 44, borderRadius: 3, background: "var(--bg-panel)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{group.fmt.icon}</div>}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: "#e8e0d0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</div>
-                            <div style={{ fontSize: 10, color: "#8888aa" }}>{(d.deck || []).length + (d.commander ? 1 : 0)} cartas{d.commander ? ` · ${d.commander.printed_name || d.commander.name}` : ""}</div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</div>
+                            <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{(d.deck || []).length + (d.commander ? 1 : 0)} cartas{d.commander ? ` · ${d.commander.printed_name || d.commander.name}` : ""}</div>
                           </div>
                           <button onClick={() => onNewGame({ deck: d.deck, commander: d.commander, playerName: d.player_name, format: d.format })}
-                            title="Jugar" style={{ padding: "5px 10px", borderRadius: 6, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 11, cursor: "pointer" }}>▶</button>
+                            title="Jugar" style={{ padding: "5px 10px", borderRadius: 6, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, fontSize: 11, cursor: "pointer" }}>▶</button>
                           <button onClick={() => onEditDeck({ deck: d.deck, commander: d.commander, playerName: d.player_name, name: d.name, format: d.format, sideboard: d.sideboard })}
-                            title="Editar" style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #3a3a6a", background: "#1a1a3e", color: "#aaaaff", cursor: "pointer", fontSize: 11 }}>✏</button>
+                            title="Editar" style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "var(--bg-panel)", color: "var(--color-info)", cursor: "pointer", fontSize: 11 }}>✏</button>
                           <button onClick={async () => { await saveCloudDeck(d.name + " (copia)", d.deck, d.commander, d.player_name, d.format, d.sideboard); refreshCloudDecks(); }}
-                            title="Duplicar" style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #3a3a6a", background: "#1a1a3e", color: "#88ffcc", cursor: "pointer", fontSize: 11 }}>⧉</button>
+                            title="Duplicar" style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "var(--bg-panel)", color: "#88ffcc", cursor: "pointer", fontSize: 11 }}>⧉</button>
                           <button onClick={() => deleteCloudDeck(d.id).then(() => setCloudDecks(c => c.filter(x => x.id !== d.id)))}
-                            title="Eliminar" style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #4a2a2a", background: "#1a0a0a", color: "#ff8888", cursor: "pointer", fontSize: 11 }}>🗑</button>
+                            title="Eliminar" style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid var(--bg-damage)", background: "var(--bg-damage)", color: "var(--color-damage)", cursor: "pointer", fontSize: 11 }}>🗑</button>
                         </div>
                       ))}
                     </div>
@@ -5111,7 +5062,7 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
               {!expandDecks && filtered.length > 0 && (
                 <div style={{ padding: "8px 14px", display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {Object.entries(byFormat).map(([fkey, group]) => (
-                    <span key={fkey} style={{ fontSize: 11, color: "#8888aa", background: "#0a0a14", borderRadius: 20, padding: "2px 10px" }}>
+                    <span key={fkey} style={{ fontSize: 11, color: "var(--text-muted)", background: "var(--bg-well)", borderRadius: 20, padding: "2px 10px" }}>
                       {group.fmt.icon} {group.fmt.label} ({group.decks.length})
                     </span>
                   ))}
@@ -5122,40 +5073,40 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
         })()}
 
         {/* Saved decks panel — only when NOT logged in (logged-in users use cloud) */}
-        {!user && <div style={{ background: "#0d0d1e", border: "1px solid #2a2a4a", borderRadius: 12, overflow: "hidden" }}>
+        {!user && <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden" }}>
           {/* Header — always visible */}
           <div style={{ display: "flex", alignItems: "center", padding: "4px 6px 4px 16px" }}>
             <button onClick={() => setExpandDecks(v => !v)}
-              style={{ flex: 1, padding: "9px 0", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, color: "#e8e0d0" }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#ffd700" }}>📚 Mis Mazos</span>
-              <span style={{ fontSize: 11, color: "#8888aa" }}>({decks.length})</span>
-              <span style={{ marginLeft: "auto", fontSize: 11, color: "#888" }}>{expandDecks ? "▲ ocultar" : "▼ ver"}</span>
+              style={{ flex: 1, padding: "9px 0", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, color: "var(--text-primary)" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gold)" }}>📚 Mis Mazos</span>
+              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>({decks.length})</span>
+              <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--gray-mid)" }}>{expandDecks ? "▲ ocultar" : "▼ ver"}</span>
             </button>
             <button onClick={() => onNewGame(null)}
               title="Crear nuevo mazo"
-              style={{ marginLeft: 8, padding: "6px 12px", borderRadius: 8, border: "1px solid #ffd70044", background: "#1a140a", color: "#ffd700", cursor: "pointer", fontSize: 11, fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap" }}>
+              style={{ marginLeft: 8, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--gold-27)", background: "var(--bg-gold)", color: "var(--gold)", cursor: "pointer", fontSize: 11, fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap" }}>
               + Nuevo Mazo
             </button>
           </div>
 
           {expandDecks && (
-            <div style={{ borderTop: "1px solid #2a2a4a" }}>
+            <div style={{ borderTop: "1px solid var(--border-default)" }}>
               {decks.length === 0 && (
-                <div style={{ padding: "20px", textAlign: "center", color: "#444", fontSize: 13 }}>
+                <div style={{ padding: "20px", textAlign: "center", color: "var(--gray-darker)", fontSize: 13 }}>
                   No hay mazos guardados aún.<br />
-                  <button onClick={() => onNewGame(null)} style={{ marginTop: 10, padding: "7px 18px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
+                  <button onClick={() => onNewGame(null)} style={{ marginTop: 10, padding: "7px 18px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
                     + Crear primer mazo
                   </button>
                 </div>
               )}
               {[...decks].sort((a, b) => a.name === favoriteDeck ? -1 : b.name === favoriteDeck ? 1 : 0).map(d => (
-                <div key={d.name} style={{ borderBottom: "1px solid #1a1a2e" }}>
+                <div key={d.name} style={{ borderBottom: "1px solid var(--bg-subtle)" }}>
                   {/* Deck row */}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px" }}>
                     {/* Commander thumbnail */}
                     {d.commander?.image_url
                       ? <img src={d.commander.image_url} style={{ width: 36, height: 50, borderRadius: 4, objectFit: "cover", flexShrink: 0 }} />
-                      : <div style={{ width: 36, height: 50, borderRadius: 4, background: "#1a1a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>⚔</div>}
+                      : <div style={{ width: 36, height: 50, borderRadius: 4, background: "var(--bg-panel)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>⚔</div>}
 
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {/* Name — editable */}
@@ -5163,12 +5114,12 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
                         ? <div style={{ display: "flex", gap: 5, marginBottom: 3 }}>
                           <input value={renameValue} onChange={e => setRenameValue(e.target.value)}
                             onKeyDown={e => { if (e.key === "Enter") confirmRename(d); if (e.key === "Escape") setRenamingDeck(null); }}
-                            autoFocus style={{ flex: 1, padding: "3px 8px", borderRadius: 5, border: "1px solid #ffd70066", background: "#0d0d1e", color: "#ffd700", fontSize: 13, outline: "none" }} />
-                          <button onClick={() => confirmRename(d)} style={{ padding: "3px 8px", borderRadius: 5, border: "none", background: "#1a4a1a", color: "#7fff7f", cursor: "pointer", fontSize: 11 }}>✓</button>
-                          <button onClick={() => setRenamingDeck(null)} style={{ padding: "3px 8px", borderRadius: 5, border: "none", background: "#2a2a3a", color: "#888", cursor: "pointer", fontSize: 11 }}>✕</button>
+                            autoFocus style={{ flex: 1, padding: "3px 8px", borderRadius: 5, border: "1px solid var(--gold-40)", background: "var(--bg-elevated)", color: "var(--gold)", fontSize: 13, outline: "none" }} />
+                          <button onClick={() => confirmRename(d)} style={{ padding: "3px 8px", borderRadius: 5, border: "none", background: "var(--bg-life)", color: "var(--color-life)", cursor: "pointer", fontSize: 11 }}>✓</button>
+                          <button onClick={() => setRenamingDeck(null)} style={{ padding: "3px 8px", borderRadius: 5, border: "none", background: "var(--bg-panel)", color: "var(--gray-mid)", cursor: "pointer", fontSize: 11 }}>✕</button>
                         </div>
-                        : <div style={{ fontSize: 13, fontWeight: 700, color: "#e8e0d0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>}
-                      <div style={{ fontSize: 10, color: "#8888aa", marginTop: 1 }}>
+                        : <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>}
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>
                         {d.deck.length + (d.commander ? 1 : 0)} cartas · {d.commander ? getCardName(d.commander) : "Sin comandante"}
                       </div>
                     </div>
@@ -5178,25 +5129,25 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
                       {/* Play */}
                       <button onClick={() => onNewGame({ deck: d.deck, commander: d.commander, playerName: d.playerName })}
                         title="Jugar con este mazo"
-                        style={{ padding: "6px 10px", borderRadius: 6, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 11, cursor: "pointer" }}>
+                        style={{ padding: "6px 10px", borderRadius: 6, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, fontSize: 11, cursor: "pointer" }}>
                         ▶
                       </button>
                       {/* Edit */}
                       <button onClick={() => onEditDeck(d)}
                         title="Editar mazo"
-                        style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #3a3a6a", background: "#1a1a3e", color: "#aaaaff", cursor: "pointer", fontSize: 11 }}>
+                        style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "var(--bg-panel)", color: "var(--color-info)", cursor: "pointer", fontSize: 11 }}>
                         ✏
                       </button>
                       {/* Rename */}
                       <button onClick={() => startRename(d)}
                         title="Renombrar"
-                        style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #3a3a6a", background: "#1a1a3e", color: "#ffcc88", cursor: "pointer", fontSize: 11 }}>
+                        style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "var(--bg-panel)", color: "var(--color-warn-dim)", cursor: "pointer", fontSize: 11 }}>
                         🏷
                       </button>
                       {/* Delete */}
                       <button onClick={() => deleteDeck(d.name)}
                         title="Eliminar mazo"
-                        style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #4a2a2a", background: "#1a0a0a", color: "#ff8888", cursor: "pointer", fontSize: 11 }}>
+                        style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid var(--bg-damage)", background: "var(--bg-damage)", color: "var(--color-damage)", cursor: "pointer", fontSize: 11 }}>
                         🗑
                       </button>
                     </div>
@@ -5209,7 +5160,7 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
 
         {/* Tutorial button */}
         <button onClick={() => onShowTutorial && onShowTutorial()}
-          style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 12, textDecoration: "underline" }}>
+          style={{ background: "none", border: "none", color: "var(--gray-dark)", cursor: "pointer", fontSize: 12, textDecoration: "underline" }}>
           ❓ Ver tutorial
         </button>
       </div>
@@ -5224,12 +5175,12 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.error) {
       return (
-        <div style={{ minHeight: "100vh", background: "#0a0a1a", color: "#e8e0d0", fontFamily: "monospace", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 32 }}>
+        <div style={{ minHeight: "100vh", background: "var(--bg-well)", color: "var(--text-primary)", fontFamily: "monospace", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 32 }}>
           <div style={{ fontSize: 32 }}>⚠️</div>
-          <div style={{ fontSize: 18, color: "#ff8888", fontWeight: 700 }}>Error al cargar el tablero</div>
-          <div style={{ fontSize: 12, color: "#888", maxWidth: 600, textAlign: "center", lineHeight: 1.6 }}>{this.state.error?.message}</div>
+          <div style={{ fontSize: 18, color: "var(--color-damage)", fontWeight: 700 }}>Error al cargar el tablero</div>
+          <div style={{ fontSize: 12, color: "var(--gray-mid)", maxWidth: 600, textAlign: "center", lineHeight: 1.6 }}>{this.state.error?.message}</div>
           <button onClick={() => { this.setState({ error: null }); window.location.reload(); }}
-            style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, cursor: "pointer", fontSize: 14 }}>
+            style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, cursor: "pointer", fontSize: 14 }}>
             🏠 Volver al inicio
           </button>
         </div>
