@@ -2936,6 +2936,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [showZone, setShowZone] = useState(null);
   const [selCard, setSelCard] = useState(null);
   const [counterModal, setCounterModal] = useState(null); // instanceId of card
+  const [versionModal, setVersionModal] = useState(null); // card to change art version
   const [mulliganModal, setMulliganModal] = useState(false);
   const [mulliganCount, setMulliganCount] = useState(0); // how many mulligans taken
   const [hover, setHover] = useState(null);
@@ -4486,10 +4487,16 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           cardName={versionModal.name || versionModal.printed_name}
           onSelect={(v) => {
             const img = v.image_uris?.normal || v.card_faces?.[0]?.image_uris?.normal || null;
-            setDeck(d => d.map(c => c.instanceId === versionModal.instanceId
+            const patch = (c) => c.instanceId === versionModal.instanceId
               ? { ...c, image_url: img, set: v.set, set_name: v.set_name, rarity: v.rarity, released_at: v.released_at }
-              : c
-            ));
+              : c;
+            updMe(p => ({
+              ...p,
+              battlefield: p.battlefield.map(patch),
+              hand:        p.hand.map(patch),
+              graveyard:   p.graveyard.map(patch),
+              exile:       p.exile.map(patch),
+            }));
             setVersionModal(null);
           }}
           onClose={() => setVersionModal(null)}
