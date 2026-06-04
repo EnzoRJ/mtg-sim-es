@@ -2665,7 +2665,7 @@ function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
             <button onClick={() => onRemove("all")} style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 6, border: "1px solid var(--bg-damage)", background: "transparent", color: "var(--color-damage)", cursor: "pointer", fontSize: 10 }}>Quitar todos</button>
           </div>
         )}
-        <div style={{ height: 320, overflowY: "auto", padding: "12px 16px" }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 16px" }}>
           {search ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {filtered.map(ab => <AbilityBtn key={ab.key} ab={ab} isActive={markers.some(m => m.ability === ab.key)} onAdd={onAdd} />)}
@@ -4070,16 +4070,21 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
                   {/* Row 1 — permanents with horizontal scroll */}
                   <div style={{ position: "relative", flex: 1, minHeight: 141, overflow: "hidden", borderBottom: "1px solid var(--bg-subtle)" }}>
-                    {/* Scrollable cards area — stops before log */}
+                    {/* Ability markers — overlay separado, sin draggable, arriba a la izquierda */}
+                    {isMe && abilityMarkers.length > 0 && (
+                      <div style={{ position: "absolute", top: 4, left: 6, zIndex: 10, display: "flex", gap: 4, flexWrap: "wrap", maxWidth: 180, pointerEvents: "auto" }}>
+                        {abilityMarkers.map(m => (
+                          <AbilityMarker key={m.id} marker={m} onRemove={id => setAbilityMarkers(p => p.filter(x => x.id !== id))} />
+                        ))}
+                      </div>
+                    )}
+                    {/* Scrollable cards area */}
                     <div ref={isMe ? scrollRef1 : null}
                       onDragOver={e => e.preventDefault()}
                       onDrop={e => { e.preventDefault(); if (isMe && dragCard) setRow2Cards(s => { const n = new Set(s); n.delete(dragCard.instanceId); return n; }); setDragCard(null); setDragOverId(null); }}
-                      style={{ height: "100%", overflowX: "auto", overflowY: "hidden", padding: "4px 6px", display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap" }}>
-                      {isMe && abilityMarkers.map(m => (
-                        <AbilityMarker key={m.id} marker={m} onRemove={id => setAbilityMarkers(p => p.filter(x => x.id !== id))} />
-                      ))}
+                      style={{ height: "100%", overflowX: "auto", overflowY: "hidden", padding: "4px 6px", paddingLeft: isMe && abilityMarkers.length > 0 ? 194 : 6, display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap" }}>
                       {permanents.filter(c => !row2Cards.has(c.instanceId)).map(c => renderCard(c))}
-                      {!permanents.filter(c => !row2Cards.has(c.instanceId)).length && !abilityMarkers.length && (
+                      {!permanents.filter(c => !row2Cards.has(c.instanceId)).length && (
                         <div style={{ color: "var(--bg-subtle)", fontSize: 10, flexShrink: 0, paddingTop: 10 }}>Campo vacío</div>
                       )}
                     </div>
