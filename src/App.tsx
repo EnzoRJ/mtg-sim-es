@@ -1679,7 +1679,8 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
 
 // ─── LOBBY ────────────────────────────────────────────────────────────────────
 function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeCode, wasHost }) {
-  const googleName = getUserDisplayName(getCurrentUser());
+  const savedName = getSavedPlayerName();
+  const googleName = savedName || getUserDisplayName(getCurrentUser());
   const defaultName = initialName || googleName || "";
   const [name, setName] = useState(defaultName);
   const [avatar, setAvatar] = useState("🧙");
@@ -1691,9 +1692,8 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
   const [players, setPlayers] = useState([]);
   const [lobbyHover, setLobbyHover] = useState(null); // {card, x, y}
   const [lobbyDeckName, setLobbyDeckName] = useState(() => {
-    const user = getCurrentUser();
-    const name = user ? (user.user_metadata?.full_name || user.email?.split("@")[0]) : "";
-    return name ? `Mazo de ${name}` : "Mi Mazo";
+    const displayName = getSavedPlayerName() || getUserDisplayName(getCurrentUser());
+    return displayName ? `Mazo de ${displayName}` : "Mi Mazo";
   });
   const [myId] = useState(() => getOrCreatePlayerId(getCurrentUser()));
 
@@ -5320,7 +5320,7 @@ export default function App() {
           cloudDecks={cloudDecksForSelector}
           onSelect={(d) => {
             setShowDeckSelector(false);
-            setDeckData({ deck: d.deck, commander: d.commander, playerName: d.player_name || d.playerName || getUserDisplayName(user) || "Jugador", format: d.format || selectedFormat, isNewDeck: false });
+            setDeckData({ deck: d.deck, commander: d.commander, playerName: d.player_name || d.playerName || getSavedPlayerName() || getUserDisplayName(user) || "Jugador", format: d.format || selectedFormat, isNewDeck: false });
             setStage("lobby");
           }}
           onNew={() => { setShowDeckSelector(false); setStage("deck"); }}
@@ -5387,7 +5387,7 @@ export default function App() {
     <DeckBuilder
       initialDeck={stage === "deck-edit" ? deckData?.deck : []}
       initialCommander={stage === "deck-edit" ? deckData?.commander : null}
-      initialPlayerName={stage === "deck-edit" ? deckData?.playerName : (playerName || getUserDisplayName(user))}
+      initialPlayerName={stage === "deck-edit" ? deckData?.playerName : (playerName || getSavedPlayerName() || getUserDisplayName(user))}
       initialDeckName={stage === "deck-edit" ? deckData?.editingName : undefined}
       initialFormat={stage === "deck-edit" ? deckData?.format : selectedFormat}
       initialSideboard={stage === "deck-edit" ? deckData?.sideboard : []}
@@ -5402,7 +5402,7 @@ export default function App() {
 
   if (stage === "lobby" || stage === "lobby-resume" || stage === "lobby-join") return (
     <Lobby
-      playerName={deckData.playerName || playerName || getUserDisplayName(user) || "Jugador"}
+      playerName={deckData.playerName || playerName || getSavedPlayerName() || getUserDisplayName(user) || "Jugador"}
       deckData={deckData}
       resumeCode={stage === "lobby-resume" ? savedSession?.roomCode : stage === "lobby-join" ? deckData?.joinCode : null}
       wasHost={stage === "lobby-resume" ? savedSession?.isHost : false}
