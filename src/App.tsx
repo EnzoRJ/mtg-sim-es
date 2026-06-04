@@ -5352,12 +5352,10 @@ export default function App() {
       setTimeout(() => {
         const u = getCurrentUser();
         setUser(u);
-        // Migrate anonymous player ID to user-based ID
         if (u?.id) {
           const newId = "user_" + u.id.slice(0, 16);
           const sess = JSON.parse(localStorage.getItem("commander_es_session") || "{}");
           if (sess.myId && sess.myId !== newId) {
-            // Update session to use new stable ID
             localStorage.setItem("commander_es_session", JSON.stringify({ ...sess, myId: newId }));
           }
           localStorage.setItem("commander_es_player_id", newId);
@@ -5365,6 +5363,26 @@ export default function App() {
         if (u && !getSavedPlayerName()) setShowNameModal(true);
       }, 500);
     }
+  }, []);
+
+  // Sincronizar sesión entre pestañas: cuando otra pestaña hace login/logout,
+  // el evento "storage" se dispara aquí y actualizamos el estado React.
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === "sb_user" || e.key === "sb_access_token") {
+        const u = getCurrentUser();
+        setUser(u);
+        if (u) {
+          const saved = getSavedPlayerName();
+          setPlayerName(saved || getUserDisplayName(u) || "");
+          if (!saved) setShowNameModal(true);
+        } else {
+          setPlayerName("");
+        }
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   // Show name modal when user logs in for first time
