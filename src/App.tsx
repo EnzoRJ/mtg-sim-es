@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import ReactDOM from "react-dom";
 import {
   BookOpen, RotateCcw, Wand2, Dice6, MessageCircle, Mic, MicOff,
   Undo2, Sparkles, Heart, Gem, Swords, FileText, Search,
@@ -2665,7 +2666,7 @@ function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
             <button onClick={() => onRemove("all")} style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 6, border: "1px solid var(--bg-damage)", background: "transparent", color: "var(--color-damage)", cursor: "pointer", fontSize: 10 }}>Quitar todos</button>
           </div>
         )}
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 16px" }}>
+        <div style={{ overflowY: "auto", padding: "12px 16px", flex: "1 1 0px", minHeight: 0 }}>
           {search ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {filtered.map(ab => <AbilityBtn key={ab.key} ab={ab} isActive={markers.some(m => m.ability === ab.key)} onAdd={onAdd} />)}
@@ -2709,7 +2710,38 @@ function AbilityBtn({ ab, isActive, onAdd }) {
 // ─── Ability Marker (rendered on battlefield) ─────────────────────────────────
 function AbilityMarker({ marker, onRemove }) {
   const ab = ABILITIES.find(a => a.key === marker.ability) || { icon: "?", name: marker.ability, en: "", color: "var(--border-default)", text: "var(--color-white)", desc: "" };
-  const [pos, setPos] = React.useState(null); // {x, y} — null = tooltip oculto
+  const [pos, setPos] = React.useState(null);
+
+  const tooltip = pos && ReactDOM.createPortal(
+    <div style={{
+      position: "fixed",
+      left: Math.min(pos.x + 14, window.innerWidth - 220),
+      top: pos.y > 160 ? pos.y - 140 : pos.y + 60,
+      background: "#161630",
+      border: `1px solid ${ab.text}66`,
+      borderRadius: 10,
+      padding: "10px 14px",
+      zIndex: 99999,
+      minWidth: 160,
+      maxWidth: 210,
+      pointerEvents: "none",
+      boxShadow: "0 8px 32px rgba(0,0,0,0.8)",
+      fontFamily: "'Inter', system-ui, sans-serif",
+    }},
+      <>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+          <span style={{ fontSize: 20 }}>{ab.icon}</span>
+          <span style={{ fontSize: 13, fontWeight: 800, color: ab.text }}>{ab.name}</span>
+        </div>
+        {ab.en && <div style={{ fontSize: 10, color: "#8888aa", fontStyle: "italic", marginBottom: 4 }}>{ab.en}</div>}
+        {ab.desc && <div style={{ fontSize: 11, color: "#aaaacc", lineHeight: 1.5 }}>{ab.desc}</div>}
+        <div style={{ fontSize: 9, color: "#555577", marginTop: 6, borderTop: "1px solid #2a2a4a", paddingTop: 5 }}>
+          Clic derecho para quitar
+        </div>
+      </>
+    ,
+    document.body
+  );
 
   return (
     <>
@@ -2724,28 +2756,7 @@ function AbilityMarker({ marker, onRemove }) {
         <span style={{ fontSize: 22, pointerEvents: "none" }}>{ab.icon}</span>
         <span style={{ fontSize: 7, color: ab.text, fontWeight: 700, textAlign: "center", lineHeight: 1, pointerEvents: "none" }}>{ab.name}</span>
       </div>
-
-      {/* Tooltip en position:fixed para escapar del overflow:hidden del battlefield */}
-      {pos && (
-        <div style={{
-          position: "fixed",
-          left: pos.x + 14,
-          top: Math.max(8, pos.y - 110),
-          background: "var(--bg-raised)", border: `1px solid ${ab.text}66`,
-          borderRadius: 8, padding: "8px 12px", zIndex: 9999,
-          minWidth: 140, maxWidth: 200, pointerEvents: "none",
-          boxShadow: "0 4px 24px var(--scrim-80)",
-          animation: "slideDown 0.12s var(--ease-out)",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-            <span style={{ fontSize: 18 }}>{ab.icon}</span>
-            <span style={{ fontSize: 12, fontWeight: 800, color: ab.text, fontFamily: "var(--font-ui)" }}>{ab.name}</span>
-          </div>
-          {ab.en && <div style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic", marginBottom: 4 }}>{ab.en}</div>}
-          {ab.desc && <div style={{ fontSize: 10, color: "var(--text-secondary)", lineHeight: 1.4 }}>{ab.desc}</div>}
-          <div style={{ fontSize: 9, color: "var(--text-disabled)", marginTop: 5, borderTop: "1px solid var(--border-subtle)", paddingTop: 4 }}>Clic derecho para quitar</div>
-        </div>
-      )}
+      {tooltip}
     </>
   );
 }
