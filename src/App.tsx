@@ -2727,19 +2727,17 @@ function AbilityMarker({ marker, onRemove }) {
       pointerEvents: "none",
       boxShadow: "0 8px 32px rgba(0,0,0,0.8)",
       fontFamily: "'Inter', system-ui, sans-serif",
-    }},
-      <>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-          <span style={{ fontSize: 20 }}>{ab.icon}</span>
-          <span style={{ fontSize: 13, fontWeight: 800, color: ab.text }}>{ab.name}</span>
-        </div>
-        {ab.en && <div style={{ fontSize: 10, color: "#8888aa", fontStyle: "italic", marginBottom: 4 }}>{ab.en}</div>}
-        {ab.desc && <div style={{ fontSize: 11, color: "#aaaacc", lineHeight: 1.5 }}>{ab.desc}</div>}
-        <div style={{ fontSize: 9, color: "#555577", marginTop: 6, borderTop: "1px solid #2a2a4a", paddingTop: 5 }}>
-          Clic derecho para quitar
-        </div>
-      </>
-    ,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+        <span style={{ fontSize: 20 }}>{ab.icon}</span>
+        <span style={{ fontSize: 13, fontWeight: 800, color: ab.text }}>{ab.name}</span>
+      </div>
+      {ab.en && <div style={{ fontSize: 10, color: "#8888aa", fontStyle: "italic", marginBottom: 4 }}>{ab.en}</div>}
+      {ab.desc && <div style={{ fontSize: 11, color: "#aaaacc", lineHeight: 1.5 }}>{ab.desc}</div>}
+      <div style={{ fontSize: 9, color: "#555577", marginTop: 6, borderTop: "1px solid #2a2a4a", paddingTop: 5 }}>
+        Clic derecho para quitar
+      </div>
+    </div>,
     document.body
   );
 
