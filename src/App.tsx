@@ -719,27 +719,65 @@ function CtxMenu({ menu, onClose }) {
   return (
     <>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
         .has-sub:hover > .submenu-panel { display: block !important; }
-        .has-sub:hover > button { background: #2a2a5a !important; }
+        .has-sub:hover > button { background: #1a1a3e !important; }
+
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
         @keyframes slideDown { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
         @keyframes shimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
-        @keyframes glow { 0%,100%{box-shadow:0 0 8px #ffd70044} 50%{box-shadow:0 0 22px #ffd700aa,0 0 40px #ff8c0055} }
-        @keyframes floatUp { 0%{opacity:0;transform:translateY(8px)} 100%{opacity:1;transform:translateY(0)} }
-        @keyframes cardHover { 0%{transform:translateY(0) scale(1)} 100%{transform:translateY(-4px) scale(1.03)} }
-        @keyframes borderGlow { 0%,100%{border-color:#ffd70033} 50%{border-color:#ffd700aa} }
-        @keyframes scanline { 0%{transform:translateY(-100%)} 100%{transform:translateY(100vh)} }
-        @keyframes tapRipple { 0%{transform:scale(0);opacity:0.6} 100%{transform:scale(3);opacity:0} }
+        @keyframes neonPulse { 0%,100%{text-shadow:0 0 8px #ffd700,0 0 20px #ffd70088,0 0 40px #ff8c0044} 50%{text-shadow:0 0 16px #ffd700,0 0 40px #ffd700cc,0 0 80px #ff8c0088} }
+        @keyframes borderNeon { 0%,100%{box-shadow:0 0 6px #ffd70066,inset 0 0 6px #ffd70022} 50%{box-shadow:0 0 18px #ffd700cc,inset 0 0 12px #ffd70044} }
+        @keyframes scanline { 0%{transform:translateY(-100%)} 100%{transform:translateY(400%)} }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+        @keyframes flicker { 0%,19%,21%,23%,25%,54%,56%,100%{opacity:1} 20%,24%,55%{opacity:0.6} }
+        @keyframes blueGlow { 0%,100%{box-shadow:0 0 8px #4466ffaa,0 0 20px #4466ff44} 50%{box-shadow:0 0 20px #4466ffcc,0 0 40px #4466ff88} }
+        @keyframes typewriter { from{width:0} to{width:100%} }
+
         .mtg-btn { transition: all 0.18s cubic-bezier(0.34,1.56,0.64,1); }
-        .mtg-btn:hover { transform: translateY(-2px) scale(1.04); filter: brightness(1.15); }
+        .mtg-btn:hover { transform: translateY(-2px) scale(1.04); filter: brightness(1.2); }
         .mtg-btn:active { transform: translateY(1px) scale(0.97); }
+
+        .neon-text { animation: neonPulse 3s ease-in-out infinite; }
+        .neon-border { animation: borderNeon 2s ease-in-out infinite; }
+        .blue-glow { animation: blueGlow 2s ease-in-out infinite; }
+        .float-anim { animation: float 3s ease-in-out infinite; }
+
         .card-tile { transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s; }
-        .card-tile:hover { transform: translateY(-6px) scale(1.06) rotate(-1deg); box-shadow: 0 12px 32px #000c, 0 0 20px #ffd70033; z-index: 50; }
-        .zone-drop-active { outline: 2px dashed #ffd700 !important; background: #1a1a3e !important; }
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: #0a0a14; }
-        ::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #ffd70066; }
+        .card-tile:hover { transform: translateY(-8px) scale(1.07); box-shadow: 0 16px 40px #000e, 0 0 20px #ffd70077, 0 0 40px #ffd70033, 0 0 1px #ffd700; z-index: 50; }
+
+        .cyber-panel {
+          background: linear-gradient(135deg, #0a0a1a 0%, #0d0d20 100%);
+          border: 1px solid #ffd70044;
+          box-shadow: 0 0 10px #ffd70022, inset 0 0 20px #ffd70008;
+        }
+        .cyber-panel:hover { border-color: #ffd70099; box-shadow: 0 0 20px #ffd70044, inset 0 0 20px #ffd70011; }
+
+        .scanline-overlay::after {
+          content: '';
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          height: 3px;
+          background: linear-gradient(transparent, #ffffff08, transparent);
+          animation: scanline 4s linear infinite;
+          pointer-events: none;
+          z-index: 100;
+        }
+
+        ::-webkit-scrollbar { width: 3px; height: 3px; }
+        ::-webkit-scrollbar-track { background: #050510; }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(180deg,#ffd700,#ff8c00); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #ffd700; }
+
+        .corner-bracket::before, .corner-bracket::after {
+          content: '';
+          position: absolute;
+          width: 12px; height: 12px;
+          border-color: #ffd70088;
+          border-style: solid;
+        }
+        .corner-bracket::before { top: 0; left: 0; border-width: 1px 0 0 1px; }
+        .corner-bracket::after { top: 0; right: 0; border-width: 1px 1px 0 0; }
       `}</style>
       <div style={{ position: "fixed", inset: 0, zIndex: 500 }} onClick={onClose}>
         <div style={{ position: "absolute", left, top, background: "#161630", border: "1px solid #3a3a6a", borderRadius: 10, padding: 7, minWidth: W, boxShadow: "0 8px 40px #000c" }}
@@ -2312,7 +2350,7 @@ function PhasePanel({ playerOrder, players, activePlayer, turn, phase, isMyTurn,
       <div style={{ fontSize: 9, color: "#ffd700", fontWeight: 800, marginBottom: 2 }}>T{turn}</div>
       {/* Phase indicators */}
       {PHASE_SHORT.map((ph, i) => (
-        <div key={ph} style={{ width: "100%", padding: "5px 3px", borderRadius: 6, background: i === phase ? "#ffd70022" : "transparent", border: i === phase ? "1px solid #ffd70055" : "1px solid transparent", textAlign: "center", cursor: isMyTurn ? "pointer" : "default", transition: "all 0.15s" }}>
+        <div key={ph} style={{ width: "100%", padding: "5px 3px", borderRadius: 6, background: i === phase ? "#ffd70015" : "transparent", border: i === phase ? "1px solid #ffd700aa" : "1px solid transparent", boxShadow: i === phase ? "0 0 8px #ffd70066,inset 0 0 6px #ffd70011" : "none", textAlign: "center", cursor: isMyTurn ? "pointer" : "default", transition: "all 0.15s" }}>
           <div style={{ fontSize: 12 }}>{PHASE_ICONS[i]}</div>
           <div style={{ fontSize: 7, color: i === phase ? "#ffd700" : "#555", fontWeight: i === phase ? 800 : 400, lineHeight: 1.2 }}>{ph}</div>
         </div>
@@ -2320,7 +2358,7 @@ function PhasePanel({ playerOrder, players, activePlayer, turn, phase, isMyTurn,
       {/* Next phase + End turn buttons */}
       {isMyTurn && (
         <div style={{ position: "relative", marginTop: 4, display: "flex", flexDirection: "column", gap: 3 }}>
-          <button onClick={onNextPhase} className="mtg-btn" style={{ width: "100%", padding: "6px 2px", borderRadius: 6, border: "none", background: "linear-gradient(180deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 9, cursor: "pointer", lineHeight: 1.3, boxShadow: "0 2px 12px #ffd70055" }}>
+          <button onClick={onNextPhase} className="mtg-btn" style={{ width: "100%", padding: "6px 2px", borderRadius: 6, border: "none", background: "linear-gradient(180deg,#ffd700,#ff8c00)", color: "#000", fontWeight: 800, fontSize: 9, cursor: "pointer", lineHeight: 1.3, boxShadow: "0 0 12px #ffd70088, 0 0 24px #ffd70044" }}>
             {phase >= 5 ? "Pasar turno" : "Sig. fase"} ▶
           </button>
           {phase < 5 && (
@@ -3792,8 +3830,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     return (
       <div style={{
         display: "flex", flexDirection: "column", height: "100%",
-        border: isActive ? "2px solid #ffd700" : "1px solid #2a2a4a",
-        animation: isActive ? "glow 2s ease-in-out infinite" : "none",
+        border: isActive ? "1px solid #ffd700" : "1px solid #1a1a2e",
+        boxShadow: isActive ? "0 0 12px #ffd70066, inset 0 0 8px #ffd70011" : "none",
         borderRadius: 10, overflow: "hidden", background: "#080810",
       }}>
         {/* Header bar */}
@@ -3806,7 +3844,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           <div title="Vida" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, background: "#0d0a0a", borderRadius: 4, padding: "0 3px" }}>
             {isMe && <button title="Reducir vida" onClick={() => adjLife(pid, -1)} style={mbtn("#4a1a1a", "#ff8888")}>−</button>}
             <span style={{ fontSize: 7, color: "#ff6666", lineHeight: 1 }}>❤</span>
-            <span title={`Vida: ${p.life}`} style={{ fontSize: 12, fontWeight: 800, color: p.life <= 10 ? "#ff4444" : p.life >= 50 ? "#44ff88" : "#e8e0d0", minWidth: 20, textAlign: "center" }}>{p.life}</span>
+            <span title={`Vida: ${p.life}`} style={{ fontSize: 12, fontWeight: 800, color: p.life <= 10 ? "#ff4444" : p.life >= 50 ? "#44ff88" : "#ffd700", textShadow: p.life <= 10 ? "0 0 12px #ff4444" : "none", minWidth: 20, textAlign: "center" }}>{p.life}</span>
             {isMe && <button title="Aumentar vida" onClick={() => adjLife(pid, 1)} style={mbtn("#1a4a1a", "#88ff88")}>+</button>}
           </div>
 
@@ -3845,7 +3883,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             </span>
           ))}
 
-          {speaking[pid] && <span title="Hablando por voz" style={{ fontSize: 10, color: "#44ff88", animation: "pulse 0.5s infinite", flexShrink: 0 }}>🎙</span>}
+          {speaking[pid] && <span title="Hablando por voz" style={{ fontSize: 10, color: "#44ff88", animation: "pulse 0.5s infinite", flexShrink: 0, textShadow: "0 0 8px #44ff88" }}>🎙</span>}
           {p.experience > 0 && <span style={{ fontSize: 9, color: "#ddaaff", background: "#1a0a3a", borderRadius: 4, padding: "0 4px", flexShrink: 0 }}>✨{p.experience}</span>}
           <span style={{ fontSize: 9, color: "#8888aa", marginLeft: "auto", flexShrink: 0 }}>🤚{p.hand.length}</span>
         </div>
@@ -3999,7 +4037,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   <div style={{ height: lands.length > 0 ? 116 : 22, flexShrink: 0, overflow: "hidden", overflowX: "auto", padding: "3px 6px", display: "flex", flexDirection: "row", gap: 4, alignItems: "center", background: "#060609", flexWrap: "nowrap", }}>
                     {lands.length > 0
                       ? <>
-                        <span style={{ fontSize: 8, color: "#4a6a3a", letterSpacing: 1, flexShrink: 0, writingMode: "vertical-rl", marginRight: 2 }}>TIERRAS</span>
+                        <span style={{ fontSize: 8, color: "#44ff88", letterSpacing: 1, flexShrink: 0, writingMode: "vertical-rl", marginRight: 2, textShadow: "0 0 8px #44ff88" }}>TIERRAS</span>
                         {lands.map(c => renderCard(c, "lands"))}
                       </>
                       : <div style={{ fontSize: 9, color: "#2a2a3a", paddingLeft: 8 }}>Zona de tierras</div>}
@@ -4009,7 +4047,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                 {/* LOG column — fixed width, full battlefield height, no overlap */}
                 {isMe && (
                   <div style={{ width: 165, flexShrink: 0, borderLeft: "1px solid #1a1a2e", background: "#06060e", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                    <div style={{ fontSize: 8, color: "#ffd700", letterSpacing: 2, padding: "5px 0 4px", textAlign: "center", borderBottom: "1px solid #1a1a2e", flexShrink: 0 }}>LOG</div>
+                    <div className="neon-text" style={{ fontSize: 8, color: "#ffd700", letterSpacing: 4, padding: "5px 0 4px", textAlign: "center", borderBottom: "1px solid #ffd70033", flexShrink: 0, fontFamily: "monospace" }}>LOG</div>
                     <div style={{ flex: 1, padding: "4px 6px", overflowY: "auto" }}>
                       {[...turnLog].reverse().map((group, gi) => {
                         const isCollapsed = logCollapsed[group.turn] ?? (gi > 0);
@@ -4166,7 +4204,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const opponentSlots = others.slice(0, 3);
 
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "#04040c", color: "#e8e0d0", fontFamily: "'Crimson Text',Georgia,serif", overflow: "hidden", userSelect: "none" }}
+    <div className="scanline-overlay" style={{ height: "100vh", display: "flex", flexDirection: "column", background: "#020208", color: "#e8e0d0", fontFamily: "'Crimson Text',Georgia,serif", overflow: "hidden", userSelect: "none", position: "relative" }}
       onClick={() => { setCtxMenu(null); setSelCard(null); }}>
 
 
@@ -4918,7 +4956,7 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
           <span style={{ opacity: 0.9, color: "#e8e0d0" }}>🎴</span>
           <span style={{ opacity: 0.7, color: "#cc4444" }}>♦</span>
         </div>
-        <h1 style={{ margin: 0, fontSize: 38, fontWeight: 900, letterSpacing: 3, background: "linear-gradient(90deg,#c0a060,#ffd700,#ff8c00,#ffd700,#c0a060)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundSize: "200% auto", animation: "shimmer 4s linear infinite" }}>MTG ARENA ES</h1>
+        <h1 className="neon-text" style={{ margin: 0, fontSize: 38, fontWeight: 900, letterSpacing: 3, background: "linear-gradient(90deg,#c0a060,#ffd700,#ff8c00,#ffd700,#c0a060)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundSize: "200% auto", animation: "shimmer 4s linear infinite", letterSpacing: 6 }}>MTG ARENA ES</h1>
         <div style={{ fontSize: 12, color: "#8888aa", marginTop: 5, letterSpacing: 3, textTransform: "uppercase" }}>Magic: The Gathering · Multijugador Online</div>
         <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
           {FORMATS.filter(f => ["commander", "standard", "legacy", "modern", "vintage", "pauper"].includes(f.key)).map(f => (
