@@ -278,7 +278,7 @@ async function authFetch(path, opts = {}) {
 
 // Sign in with Google OAuth
 async function signInWithGoogle() {
-  const redirectTo = encodeURIComponent("https://v0-vite-react-setup-sand.vercel.app");
+  const redirectTo = encodeURIComponent("https://mtg-sim-es.vercel.app");
   window.location.href = `${SB_AUTH}/authorize?provider=google&redirect_to=${redirectTo}`;
 }
 
