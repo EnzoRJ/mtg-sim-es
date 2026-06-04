@@ -2666,7 +2666,7 @@ function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
             <button onClick={() => onRemove("all")} style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 6, border: "1px solid var(--bg-damage)", background: "transparent", color: "var(--color-damage)", cursor: "pointer", fontSize: 10 }}>Quitar todos</button>
           </div>
         )}
-        <div style={{ overflowY: "auto", padding: "12px 16px", flex: "1 1 0px", minHeight: 0 }}>
+        <div style={{ overflowY: "scroll", padding: "12px 16px", height: 440 }}>
           {search ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {filtered.map(ab => <AbilityBtn key={ab.key} ab={ab} isActive={markers.some(m => m.ability === ab.key)} onAdd={onAdd} />)}
@@ -2710,51 +2710,58 @@ function AbilityBtn({ ab, isActive, onAdd }) {
 // ─── Ability Marker (rendered on battlefield) ─────────────────────────────────
 function AbilityMarker({ marker, onRemove }) {
   const ab = ABILITIES.find(a => a.key === marker.ability) || { icon: "?", name: marker.ability, en: "", color: "var(--border-default)", text: "var(--color-white)", desc: "" };
-  const [pos, setPos] = React.useState(null);
+  const [visible, setVisible] = React.useState(false);
+  const ref = React.useRef(null);
 
-  const tooltip = pos && ReactDOM.createPortal(
-    <div style={{
-      position: "fixed",
-      left: Math.min(pos.x + 14, window.innerWidth - 220),
-      top: pos.y > 160 ? pos.y - 140 : pos.y + 60,
-      background: "#161630",
-      border: `1px solid ${ab.text}66`,
-      borderRadius: 10,
-      padding: "10px 14px",
-      zIndex: 99999,
-      minWidth: 160,
-      maxWidth: 210,
-      pointerEvents: "none",
-      boxShadow: "0 8px 32px rgba(0,0,0,0.8)",
-      fontFamily: "'Inter', system-ui, sans-serif",
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-        <span style={{ fontSize: 20 }}>{ab.icon}</span>
-        <span style={{ fontSize: 13, fontWeight: 800, color: ab.text }}>{ab.name}</span>
-      </div>
-      {ab.en && <div style={{ fontSize: 10, color: "#8888aa", fontStyle: "italic", marginBottom: 4 }}>{ab.en}</div>}
-      {ab.desc && <div style={{ fontSize: 11, color: "#aaaacc", lineHeight: 1.5 }}>{ab.desc}</div>}
-      <div style={{ fontSize: 9, color: "#555577", marginTop: 6, borderTop: "1px solid #2a2a4a", paddingTop: 5 }}>
-        Clic derecho para quitar
-      </div>
-    </div>,
-    document.body
-  );
+  const showTooltip = () => setVisible(true);
+  const hideTooltip = () => setVisible(false);
+
+  const rect = ref.current ? ref.current.getBoundingClientRect() : null;
+  const tipLeft  = rect ? Math.min(rect.right + 10, window.innerWidth - 220) : 0;
+  const tipTop   = rect ? Math.max(8, rect.top + rect.height / 2 - 60) : 0;
 
   return (
     <>
       <div
+        ref={ref}
         draggable={false}
         onDragStart={e => e.stopPropagation()}
         onContextMenu={e => { e.preventDefault(); e.stopPropagation(); onRemove(marker.id); }}
-        onMouseEnter={e => setPos({ x: e.clientX, y: e.clientY })}
-        onMouseMove={e => setPos({ x: e.clientX, y: e.clientY })}
-        onMouseLeave={() => setPos(null)}
+        onMouseEnter={showTooltip}
+        onMouseLeave={hideTooltip}
         style={{ width: 52, height: 52, borderRadius: 8, background: `linear-gradient(135deg,${ab.color},${ab.color}88)`, border: `2px solid ${ab.text}66`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, cursor: "default", flexShrink: 0, userSelect: "none" }}>
         <span style={{ fontSize: 22, pointerEvents: "none" }}>{ab.icon}</span>
         <span style={{ fontSize: 7, color: ab.text, fontWeight: 700, textAlign: "center", lineHeight: 1, pointerEvents: "none" }}>{ab.name}</span>
       </div>
-      {tooltip}
+
+      {visible && rect && ReactDOM.createPortal(
+        <div style={{
+          position: "fixed",
+          left: tipLeft,
+          top: tipTop,
+          background: "#161630",
+          border: `1px solid ${ab.text}66`,
+          borderRadius: 10,
+          padding: "10px 14px",
+          zIndex: 99999,
+          minWidth: 160,
+          maxWidth: 210,
+          pointerEvents: "none",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.85)",
+          fontFamily: "'Inter', system-ui, sans-serif",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+            <span style={{ fontSize: 20 }}>{ab.icon}</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: ab.text }}>{ab.name}</span>
+          </div>
+          {ab.en && <div style={{ fontSize: 10, color: "#8888aa", fontStyle: "italic", marginBottom: 4 }}>{ab.en}</div>}
+          {ab.desc && <div style={{ fontSize: 11, color: "#aaaacc", lineHeight: 1.5 }}>{ab.desc}</div>}
+          <div style={{ fontSize: 9, color: "#555577", marginTop: 6, borderTop: "1px solid #2a2a4a", paddingTop: 5 }}>
+            Clic derecho para quitar
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }
