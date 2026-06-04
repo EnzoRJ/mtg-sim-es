@@ -2709,37 +2709,44 @@ function AbilityBtn({ ab, isActive, onAdd }) {
 // ─── Ability Marker (rendered on battlefield) ─────────────────────────────────
 function AbilityMarker({ marker, onRemove }) {
   const ab = ABILITIES.find(a => a.key === marker.ability) || { icon: "?", name: marker.ability, en: "", color: "var(--border-default)", text: "var(--color-white)", desc: "" };
-  const [tip, setTip] = React.useState(false);
-  return (
-    <div
-      onContextMenu={e => { e.preventDefault(); onRemove(marker.id); }}
-      onMouseEnter={() => setTip(true)}
-      onMouseLeave={() => setTip(false)}
-      style={{ position: "relative", width: 52, height: 52, borderRadius: 8, background: `linear-gradient(135deg,${ab.color},${ab.color}88)`, border: `2px solid ${ab.text}66`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, cursor: "context-menu", flexShrink: 0, userSelect: "none" }}>
-      <span style={{ fontSize: 22 }}>{ab.icon}</span>
-      <span style={{ fontSize: 7, color: ab.text, fontWeight: 700, textAlign: "center", lineHeight: 1 }}>{ab.name}</span>
+  const [pos, setPos] = React.useState(null); // {x, y} — null = tooltip oculto
 
-      {tip && (
+  return (
+    <>
+      <div
+        draggable={false}
+        onDragStart={e => e.stopPropagation()}
+        onContextMenu={e => { e.preventDefault(); e.stopPropagation(); onRemove(marker.id); }}
+        onMouseEnter={e => setPos({ x: e.clientX, y: e.clientY })}
+        onMouseMove={e => setPos({ x: e.clientX, y: e.clientY })}
+        onMouseLeave={() => setPos(null)}
+        style={{ width: 52, height: 52, borderRadius: 8, background: `linear-gradient(135deg,${ab.color},${ab.color}88)`, border: `2px solid ${ab.text}66`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, cursor: "default", flexShrink: 0, userSelect: "none" }}>
+        <span style={{ fontSize: 22, pointerEvents: "none" }}>{ab.icon}</span>
+        <span style={{ fontSize: 7, color: ab.text, fontWeight: 700, textAlign: "center", lineHeight: 1, pointerEvents: "none" }}>{ab.name}</span>
+      </div>
+
+      {/* Tooltip en position:fixed para escapar del overflow:hidden del battlefield */}
+      {pos && (
         <div style={{
-          position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+          position: "fixed",
+          left: pos.x + 14,
+          top: Math.max(8, pos.y - 110),
           background: "var(--bg-raised)", border: `1px solid ${ab.text}66`,
-          borderRadius: 8, padding: "7px 10px", zIndex: 999,
-          minWidth: 130, maxWidth: 180, pointerEvents: "none",
-          boxShadow: "0 4px 20px var(--scrim-80)",
-          animation: "slideDown 0.15s var(--ease-out)",
+          borderRadius: 8, padding: "8px 12px", zIndex: 9999,
+          minWidth: 140, maxWidth: 200, pointerEvents: "none",
+          boxShadow: "0 4px 24px var(--scrim-80)",
+          animation: "slideDown 0.12s var(--ease-out)",
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-            <span style={{ fontSize: 16 }}>{ab.icon}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <span style={{ fontSize: 18 }}>{ab.icon}</span>
             <span style={{ fontSize: 12, fontWeight: 800, color: ab.text, fontFamily: "var(--font-ui)" }}>{ab.name}</span>
           </div>
-          {ab.en && <div style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic", marginBottom: 3 }}>{ab.en}</div>}
+          {ab.en && <div style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic", marginBottom: 4 }}>{ab.en}</div>}
           {ab.desc && <div style={{ fontSize: 10, color: "var(--text-secondary)", lineHeight: 1.4 }}>{ab.desc}</div>}
-          <div style={{ fontSize: 9, color: "var(--text-disabled)", marginTop: 4 }}>Clic derecho para quitar</div>
-          {/* Arrow */}
-          <div style={{ position: "absolute", bottom: -5, left: "50%", transform: "translateX(-50%)", width: 8, height: 8, background: "var(--bg-raised)", border: `1px solid ${ab.text}66`, borderTop: "none", borderLeft: "none", rotate: "45deg" }} />
+          <div style={{ fontSize: 9, color: "var(--text-disabled)", marginTop: 5, borderTop: "1px solid var(--border-subtle)", paddingTop: 4 }}>Clic derecho para quitar</div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
