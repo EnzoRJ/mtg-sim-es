@@ -4095,7 +4095,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   )}
 
                   {/* Lands zone — horizontal scroll */}
-                  <div style={{ height: lands.length > 0 ? 116 : 22, flexShrink: 0, overflow: "hidden", overflowX: "auto", padding: "3px 6px", display: "flex", flexDirection: "row", gap: 4, alignItems: "center", background: "#060609", flexWrap: "nowrap", }}>
+                  <div style={{ height: lands.length > 0 ? 145 : 22, flexShrink: 0, overflow: "hidden", overflowX: "auto", padding: "6px 6px 8px", display: "flex", flexDirection: "row", gap: 4, alignItems: "flex-start", background: "#060609", flexWrap: "nowrap", }}>
                     {lands.length > 0
                       ? <>
                         <span style={{ fontSize: 8, color: "var(--color-life-bright)", letterSpacing: 1, flexShrink: 0, writingMode: "vertical-rl", marginRight: 2, textShadow: "0 0 8px var(--color-life-bright)" }}>TIERRAS</span>
