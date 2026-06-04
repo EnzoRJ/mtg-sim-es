@@ -2637,7 +2637,7 @@ function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
   ];
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700, fontFamily: "'Crimson Text',Georgia,serif" }} onClick={onClose}>
-      <div style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", borderRadius: 18, width: 560, height: 600, maxHeight: "82vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 20px 60px var(--scrim-80)" }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", borderRadius: 18, width: 560, maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px var(--scrim-80)", overflow: "hidden" }} onClick={e => e.stopPropagation()}>
         <div style={{ padding: "16px 20px 12px", background: "linear-gradient(180deg,#0f0f1e,var(--bg-input))", borderBottom: "1px solid var(--border-default)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div>
@@ -2666,7 +2666,7 @@ function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
             <button onClick={() => onRemove("all")} style={{ marginLeft: "auto", padding: "2px 8px", borderRadius: 6, border: "1px solid var(--bg-damage)", background: "transparent", color: "var(--color-damage)", cursor: "pointer", fontSize: 10 }}>Quitar todos</button>
           </div>
         )}
-        <div style={{ overflowY: "scroll", padding: "12px 16px", height: 440 }}>
+        <div style={{ overflowY: "auto", padding: "12px 16px", flex: 1, minHeight: 0 }}>
           {search ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {filtered.map(ab => <AbilityBtn key={ab.key} ab={ab} isActive={markers.some(m => m.ability === ab.key)} onAdd={onAdd} />)}
@@ -2697,8 +2697,11 @@ function AbilityBtn({ ab, isActive, onAdd }) {
       onMouseLeave={e => { e.currentTarget.style.background = isActive ? ab.color + "cc" : ab.color + "22"; e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = ""; }}>
       <span style={{ fontSize: 18, flexShrink: 0 }}>{ab.icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: ab.text, lineHeight: 1.2 }}>{ab.name}</div>
-        <div style={{ fontSize: 9, color: ab.text, opacity: 0.6, fontStyle: "italic" }}>{ab.en}</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: ab.text, lineHeight: 1.3 }}>
+          {ab.name}
+          {ab.en && <span style={{ fontWeight: 400, color: ab.text, opacity: 0.6, marginLeft: 4 }}>/ {ab.en}</span>}
+        </div>
+        {ab.desc && <div style={{ fontSize: 9, color: ab.text, opacity: 0.5, lineHeight: 1.3, marginTop: 1 }}>{ab.desc}</div>}
       </div>
       {isActive && <div style={{ width: 7, height: 7, borderRadius: "50%", background: ab.text, boxShadow: `0 0 6px ${ab.text}`, flexShrink: 0 }} />}
     </button>
@@ -2708,61 +2711,20 @@ function AbilityBtn({ ab, isActive, onAdd }) {
 
 
 // ─── Ability Marker (rendered on battlefield) ─────────────────────────────────
-function AbilityMarker({ marker, onRemove }) {
+function AbilityMarker({ marker, onRemove, onHover, onHoverEnd }) {
   const ab = ABILITIES.find(a => a.key === marker.ability) || { icon: "?", name: marker.ability, en: "", color: "var(--border-default)", text: "var(--color-white)", desc: "" };
-  const [visible, setVisible] = React.useState(false);
-  const ref = React.useRef(null);
-
-  const showTooltip = () => setVisible(true);
-  const hideTooltip = () => setVisible(false);
-
-  const rect = ref.current ? ref.current.getBoundingClientRect() : null;
-  const tipLeft  = rect ? Math.min(rect.right + 10, window.innerWidth - 220) : 0;
-  const tipTop   = rect ? Math.max(8, rect.top + rect.height / 2 - 60) : 0;
-
   return (
-    <>
-      <div
-        ref={ref}
-        draggable={false}
-        onDragStart={e => e.stopPropagation()}
-        onContextMenu={e => { e.preventDefault(); e.stopPropagation(); onRemove(marker.id); }}
-        onMouseEnter={showTooltip}
-        onMouseLeave={hideTooltip}
-        style={{ width: 52, height: 52, borderRadius: 8, background: `linear-gradient(135deg,${ab.color},${ab.color}88)`, border: `2px solid ${ab.text}66`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, cursor: "default", flexShrink: 0, userSelect: "none" }}>
-        <span style={{ fontSize: 22, pointerEvents: "none" }}>{ab.icon}</span>
-        <span style={{ fontSize: 7, color: ab.text, fontWeight: 700, textAlign: "center", lineHeight: 1, pointerEvents: "none" }}>{ab.name}</span>
-      </div>
-
-      {visible && rect && ReactDOM.createPortal(
-        <div style={{
-          position: "fixed",
-          left: tipLeft,
-          top: tipTop,
-          background: "#161630",
-          border: `1px solid ${ab.text}66`,
-          borderRadius: 10,
-          padding: "10px 14px",
-          zIndex: 99999,
-          minWidth: 160,
-          maxWidth: 210,
-          pointerEvents: "none",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.85)",
-          fontFamily: "'Inter', system-ui, sans-serif",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-            <span style={{ fontSize: 20 }}>{ab.icon}</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: ab.text }}>{ab.name}</span>
-          </div>
-          {ab.en && <div style={{ fontSize: 10, color: "#8888aa", fontStyle: "italic", marginBottom: 4 }}>{ab.en}</div>}
-          {ab.desc && <div style={{ fontSize: 11, color: "#aaaacc", lineHeight: 1.5 }}>{ab.desc}</div>}
-          <div style={{ fontSize: 9, color: "#555577", marginTop: 6, borderTop: "1px solid #2a2a4a", paddingTop: 5 }}>
-            Clic derecho para quitar
-          </div>
-        </div>,
-        document.body
-      )}
-    </>
+    <div
+      draggable={false}
+      onDragStart={e => e.stopPropagation()}
+      onContextMenu={e => { e.preventDefault(); e.stopPropagation(); onRemove(marker.id); }}
+      onMouseEnter={e => onHover?.(ab, e.clientX, e.clientY)}
+      onMouseMove={e => onHover?.(ab, e.clientX, e.clientY)}
+      onMouseLeave={() => onHoverEnd?.()}
+      style={{ width: 52, height: 52, borderRadius: 8, background: `linear-gradient(135deg,${ab.color},${ab.color}88)`, border: `2px solid ${ab.text}66`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, cursor: "default", flexShrink: 0, userSelect: "none" }}>
+      <span style={{ fontSize: 22, pointerEvents: "none" }}>{ab.icon}</span>
+      <span style={{ fontSize: 7, color: ab.text, fontWeight: 700, textAlign: "center", lineHeight: 1, pointerEvents: "none" }}>{ab.name}</span>
+    </div>
   );
 }
 
@@ -3112,6 +3074,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [combatModal, setCombatModal] = useState(false);
   // Active ability markers on the board: [{id, ability, color, icon}]
   const [abilityMarkers, setAbilityMarkers] = useState([]);
+  const [abilityTooltip, setAbilityTooltip] = useState(null); // {ab, x, y}
   const [lifeHistoryOpen, setLifeHistoryOpen] = useState(false);
   const [mana, setMana] = useState({ W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 });
   const [manaOpen, setManaOpen] = useState(false);
@@ -4090,7 +4053,11 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     {isMe && abilityMarkers.length > 0 && (
                       <div className="ability-marker-zone" style={{ position: "absolute", top: 4, left: 6, zIndex: 10, display: "flex", gap: 4, flexWrap: "wrap", maxWidth: 180, pointerEvents: "auto" }}>
                         {abilityMarkers.map(m => (
-                          <AbilityMarker key={m.id} marker={m} onRemove={id => setAbilityMarkers(p => p.filter(x => x.id !== id))} />
+                          <AbilityMarker key={m.id} marker={m}
+                            onRemove={id => setAbilityMarkers(p => p.filter(x => x.id !== id))}
+                            onHover={(ab, x, y) => setAbilityTooltip({ ab, x, y })}
+                            onHoverEnd={() => setAbilityTooltip(null)}
+                          />
                         ))}
                       </div>
                     )}
@@ -4653,6 +4620,33 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
       {/* Hover Zoom */}
       {hover && <HoverZoom card={hover.card} x={hover.x} y={hover.y} />}
+
+      {/* Ability marker tooltip — rendered at root level like HoverZoom */}
+      {abilityTooltip && (() => {
+        const { ab, x, y } = abilityTooltip;
+        const left = Math.min(x + 14, window.innerWidth - 230);
+        const top  = Math.max(8, y - 120);
+        return (
+          <div style={{
+            position: "fixed", left, top, zIndex: 9999, pointerEvents: "none",
+            background: "#161630", border: `1px solid ${ab.text}66`,
+            borderRadius: 10, padding: "10px 14px",
+            minWidth: 160, maxWidth: 210,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.85)",
+            fontFamily: "var(--font-ui)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+              <span style={{ fontSize: 20 }}>{ab.icon}</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: ab.text }}>{ab.name}</span>
+            </div>
+            {ab.en && <div style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic", marginBottom: 4 }}>{ab.en}</div>}
+            {ab.desc && <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.5 }}>{ab.desc}</div>}
+            <div style={{ fontSize: 9, color: "var(--text-disabled)", marginTop: 6, borderTop: "1px solid var(--border-subtle)", paddingTop: 4 }}>
+              Clic derecho para quitar
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
