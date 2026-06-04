@@ -2616,13 +2616,37 @@ function AbilityBtn({ ab, isActive, onAdd }) {
 
 // ─── Ability Marker (rendered on battlefield) ─────────────────────────────────
 function AbilityMarker({ marker, onRemove }) {
-  const ab = ABILITIES.find(a => a.key === marker.ability) || { icon: "?", name: marker.ability, color: "var(--border-default)", text: "var(--color-white)" };
+  const ab = ABILITIES.find(a => a.key === marker.ability) || { icon: "?", name: marker.ability, en: "", color: "var(--border-default)", text: "var(--color-white)", desc: "" };
+  const [tip, setTip] = React.useState(false);
   return (
-    <div title={`${ab.name} — ${ab.en}`}
+    <div
       onContextMenu={e => { e.preventDefault(); onRemove(marker.id); }}
-      style={{ width: 52, height: 52, borderRadius: 8, background: `linear-gradient(135deg,${ab.color},${ab.color}88)`, border: `2px solid ${ab.text}66`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, cursor: "context-menu", flexShrink: 0, userSelect: "none" }}>
+      onMouseEnter={() => setTip(true)}
+      onMouseLeave={() => setTip(false)}
+      style={{ position: "relative", width: 52, height: 52, borderRadius: 8, background: `linear-gradient(135deg,${ab.color},${ab.color}88)`, border: `2px solid ${ab.text}66`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, cursor: "context-menu", flexShrink: 0, userSelect: "none" }}>
       <span style={{ fontSize: 22 }}>{ab.icon}</span>
       <span style={{ fontSize: 7, color: ab.text, fontWeight: 700, textAlign: "center", lineHeight: 1 }}>{ab.name}</span>
+
+      {tip && (
+        <div style={{
+          position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+          background: "var(--bg-raised)", border: `1px solid ${ab.text}66`,
+          borderRadius: 8, padding: "7px 10px", zIndex: 999,
+          minWidth: 130, maxWidth: 180, pointerEvents: "none",
+          boxShadow: "0 4px 20px var(--scrim-80)",
+          animation: "slideDown 0.15s var(--ease-out)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+            <span style={{ fontSize: 16 }}>{ab.icon}</span>
+            <span style={{ fontSize: 12, fontWeight: 800, color: ab.text, fontFamily: "var(--font-ui)" }}>{ab.name}</span>
+          </div>
+          {ab.en && <div style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic", marginBottom: 3 }}>{ab.en}</div>}
+          {ab.desc && <div style={{ fontSize: 10, color: "var(--text-secondary)", lineHeight: 1.4 }}>{ab.desc}</div>}
+          <div style={{ fontSize: 9, color: "var(--text-disabled)", marginTop: 4 }}>Clic derecho para quitar</div>
+          {/* Arrow */}
+          <div style={{ position: "absolute", bottom: -5, left: "50%", transform: "translateX(-50%)", width: 8, height: 8, background: "var(--bg-raised)", border: `1px solid ${ab.text}66`, borderTop: "none", borderLeft: "none", rotate: "45deg" }} />
+        </div>
+      )}
     </div>
   );
 }
