@@ -706,39 +706,33 @@ function CardTile({ card, onClick, onDoubleClick, onRightClick, onHover, onHover
 // Uses pure CSS :hover via injected <style> — no timer races, no state flicker.
 function CtxMenu({ menu, onClose }) {
   if (!menu) return null;
-  const W = 215;
+  const W = 180;
   const left = menu.x + W > window.innerWidth ? menu.x - W : menu.x;
-  const top = Math.min(menu.y, window.innerHeight - Math.min(menu.items.length * 32 + 60, 500));
+  const top = Math.min(menu.y, window.innerHeight - Math.min(menu.items.length * 26 + 50, 450));
 
   const renderItems = (items, depth = 0) => items.map((item, i) => {
     const key = depth + "-" + i;
-    if (item === "---") return <div key={key} style={{ borderTop: "1px solid var(--border-default)", margin: "3px 0" }} />;
+    if (item === "---") return <div key={key} style={{ borderTop: "1px solid var(--border-default)", margin: "2px 0" }} />;
 
     if (item.submenu) {
-      // Submenu shown via CSS :hover on the parent .has-sub div
-      // The submenu panel is absolutely positioned and only visible on hover
-      const subLeft = depth === 0 ? W - 4 : W - 4;
+      const subLeft = W - 4;
       return (
         <div key={key} className="has-sub" style={{ position: "relative" }}>
           <button style={{
             display: "flex", justifyContent: "space-between", alignItems: "center",
-            width: "100%", padding: "7px 10px", border: "none", background: "none",
+            width: "100%", padding: "5px 8px", border: "none", background: "none",
             color: item.color || "var(--text-primary)", cursor: "pointer", textAlign: "left",
-            fontSize: 12, borderRadius: 5, boxSizing: "border-box"
+            fontSize: 11, borderRadius: 4, boxSizing: "border-box"
           }}>
             <span>{item.label}</span>
-            <span style={{ color: "var(--gray-mid)", fontSize: 9, marginLeft: 8 }}>▶</span>
+            <span style={{ color: "var(--gray-mid)", fontSize: 8, marginLeft: 6 }}>▶</span>
           </button>
-          {/* Invisible bridge: fills the gap between button and submenu */}
+          <div style={{ position: "absolute", top: 0, left: W - 8, width: 12, height: "100%", background: "transparent" }} />
           <div style={{
-            position: "absolute", top: 0, left: W - 8, width: 12, height: "100%",
-            background: "transparent"
-          }} />
-          <div style={{
-            position: "absolute", top: -8, left: subLeft,
-            background: "var(--bg-raised)", border: "1px solid var(--border-strong)", borderRadius: 10,
-            padding: 7, minWidth: W, boxShadow: "0 8px 40px var(--scrim-80)", zIndex: 20,
-            display: "none"  // toggled by CSS .has-sub:hover > .submenu-panel
+            position: "absolute", top: -6, left: subLeft,
+            background: "var(--bg-raised)", border: "1px solid var(--border-strong)", borderRadius: 8,
+            padding: 5, minWidth: W, boxShadow: "0 8px 40px var(--scrim-80)", zIndex: 20,
+            display: "none"
           }} className="submenu-panel">
             {renderItems(item.submenu, depth + 1)}
           </div>
@@ -750,9 +744,9 @@ function CtxMenu({ menu, onClose }) {
       <button key={key}
         onClick={e => { e.stopPropagation(); item.action(); onClose(); }}
         style={{
-          display: "block", width: "100%", padding: "7px 10px", border: "none",
+          display: "block", width: "100%", padding: "5px 8px", border: "none",
           background: "none", color: item.color || "var(--text-primary)",
-          cursor: "pointer", textAlign: "left", fontSize: 12, borderRadius: 5
+          cursor: "pointer", textAlign: "left", fontSize: 11, borderRadius: 4
         }}
         onMouseEnter={e => e.currentTarget.style.background = "var(--border-panel)"}
         onMouseLeave={e => e.currentTarget.style.background = "none"}>
@@ -764,10 +758,10 @@ function CtxMenu({ menu, onClose }) {
   return (
     <>
       <div style={{ position: "fixed", inset: 0, zIndex: 500 }} onClick={onClose}>
-        <div style={{ position: "absolute", left, top, background: "var(--bg-raised)", border: "1px solid var(--border-strong)", borderRadius: 10, padding: 7, minWidth: W, boxShadow: "0 8px 40px var(--scrim-80)" }}
+        <div style={{ position: "absolute", left, top, background: "var(--bg-raised)", border: "1px solid var(--border-strong)", borderRadius: 8, padding: 5, minWidth: W, boxShadow: "0 8px 40px var(--scrim-80)" }}
           onClick={e => e.stopPropagation()}>
           {menu.title && (
-            <div style={{ fontSize: 10, color: "var(--gold)", padding: "3px 10px 6px", borderBottom: "1px solid var(--border-default)", marginBottom: 3, fontWeight: 700 }}>
+            <div style={{ fontSize: 9, color: "var(--gold)", padding: "2px 8px 5px", borderBottom: "1px solid var(--border-default)", marginBottom: 2, fontWeight: 700 }}>
               {menu.title}
             </div>
           )}
@@ -2638,16 +2632,33 @@ function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700, fontFamily: "'Crimson Text',Georgia,serif" }} onClick={onClose}>
       <div style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)", borderRadius: 18, width: 560, maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px var(--scrim-80)", overflow: "hidden" }} onClick={e => e.stopPropagation()}>
-        <div style={{ padding: "16px 20px 12px", background: "linear-gradient(180deg,#0f0f1e,var(--bg-input))", borderBottom: "1px solid var(--border-default)", flexShrink: 0 }}>
+        <div style={{ padding: "14px 20px 10px", background: "linear-gradient(180deg,#0f0f1e,var(--bg-input))", borderBottom: "1px solid var(--border-default)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: "var(--gold)", letterSpacing: 1 }}>✨ Habilidades</div>
-              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{ABILITIES.length} habilidades · click para asignar a un marcador</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "var(--gold)", letterSpacing: 1 }}>✨ Habilidades</div>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>Click para asignar · clic derecho sobre el marcador para quitar</div>
             </div>
-            <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-dark)", cursor: "pointer", fontSize: 20, lineHeight: 1 }}>✕</button>
+            <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-dark)", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>✕</button>
           </div>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar habilidad..."
-            style={{ width: "100%", padding: "7px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+          {/* Campo de búsqueda con sugerencias */}
+          <div style={{ position: "relative" }}>
+            <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", pointerEvents: "none" }} />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Filtrar habilidades... (ej: flying, trample)"
+              autoFocus
+              style={{ width: "100%", padding: "8px 12px 8px 30px", borderRadius: 8, border: `1px solid ${search ? "var(--gold-33)" : "var(--border-default)"}`, background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 12, outline: "none", boxSizing: "border-box", transition: "border-color 0.15s" }}
+            />
+            {search && (
+              <button onClick={() => setSearch("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 12, padding: 2 }}>✕</button>
+            )}
+          </div>
+          {search && (
+            <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>
+              {filtered.length} resultado{filtered.length !== 1 ? "s" : ""} para "{search}"
+            </div>
+          )}
         </div>
         {markers.length > 0 && (
           <div style={{ padding: "8px 16px", background: "var(--bg-well)", borderBottom: "1px solid var(--bg-subtle)", flexShrink: 0, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
