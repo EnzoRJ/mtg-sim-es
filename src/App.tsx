@@ -396,10 +396,48 @@ async function saveCloudDeck(name, deck, commander, playerName, format, sideboar
     });
     if (!r.ok) {
       const errText = await r.text();
-      console.error("saveCloudDeck error:", r.status, errText);
       return { ok: false, error: `Error ${r.status}: ${errText}` };
     }
     return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+// Upsert: si existe un mazo con el mismo nombre lo reemplaza, si no lo crea
+async function upsertCloudDeck(name, deck, commander, playerName, format, sideboard) {
+  const user = getCurrentUser();
+  if (!user) return { ok: false, error: "No hay sesión activa" };
+  try {
+    // Buscar si ya existe uno con ese nombre
+    const r = await authFetch(`/rest/v1/user_decks?user_id=eq.${user.id}&name=eq.${encodeURIComponent(name)}&select=id`);
+    const existing = r.ok ? await r.json() : [];
+    const existingId = existing[0]?.id;
+
+    const body = JSON.stringify({
+      user_id: user.id,
+      name,
+      deck: { cards: deck, format: format || FORMATS[0], sideboard: sideboard || [] },
+      commander,
+      updated_at: new Date().toISOString()
+    });
+
+    if (existingId) {
+      // Actualizar el existente
+      const upd = await authFetch(`/rest/v1/user_decks?id=eq.${existingId}`, {
+        method: "PATCH",
+        headers: { "Prefer": "return=minimal" },
+        body,
+      });
+      return upd.ok ? { ok: true, replaced: true } : { ok: false, error: `Error ${upd.status}` };
+    }
+    // Crear nuevo
+    const ins = await authFetch("/rest/v1/user_decks", {
+      method: "POST",
+      headers: { "Prefer": "return=minimal" },
+      body,
+    });
+    return ins.ok ? { ok: true, replaced: false } : { ok: false, error: `Error ${ins.status}` };
   } catch (e) {
     return { ok: false, error: e.message };
   }
@@ -1225,6 +1263,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
   const [versionModal, setVersionModal] = useState(null); // card to change version
   const [savedDecks, setSavedDecks] = useState(getSavedDecks);
   const [deckName, setDeckName] = useState(initialDeckName || "Mi Mazo");
+  const [saveConfirm, setSaveConfirm] = useState(null); // null | "replace" — estado de confirmación
   const lang = "es"; // always Spanish, fallback to English if not found
   const deb = useRef(null);
 
@@ -1412,22 +1451,75 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
           <span style={{ fontSize: 12, color: "var(--gray-mid)" }}>Tu nombre:</span>
           <input value={playerName} onChange={e => setPlayerName(e.target.value)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 14, outline: "none", width: 120 }} />
           <input value={deckName} onChange={e => setDeckName(e.target.value)} placeholder="Nombre del mazo" style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 13, outline: "none", width: 140 }} />
-          <button onClick={async () => {
-            if (formatHasCommander(format) && !commander) return alert(`Selecciona un comandante para el formato ${format.label}.`);
-            const currentUser = getCurrentUser();
-            if (currentUser) {
-              const result = await saveCloudDeck(deckName, deck, commander, playerName, format, sideboard);
-              if (result.ok) alert(`✓ Mazo "${deckName}" guardado como ${format.label} ☁`);
-              else alert(`✗ Error: ${result.error}`);
-            } else {
-              saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard);
-              setSavedDecks(getSavedDecks());
-              alert(`✓ Mazo "${deckName}" guardado como ${format.label}`);
-            }
-          }}
-            style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,var(--bg-life),#2a6a2a)", color: "var(--color-life)", cursor: "pointer", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
-            💾 Guardar mazo
-          </button>
+          {/* Confirmación de reemplazo inline */}
+          {saveConfirm === "replace" ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-raised)", border: "1px solid var(--color-warning)", borderRadius: 8, padding: "5px 10px" }}>
+              <span style={{ fontSize: 11, color: "var(--color-warning)" }}>¿Reemplazar "{deckName}"?</span>
+              <button onClick={async () => {
+                setSaveConfirm(null);
+                const currentUser = getCurrentUser();
+                if (currentUser) {
+                  const result = await upsertCloudDeck(deckName, deck, commander, playerName, format, sideboard);
+                  if (result.ok) alert(`✓ Mazo "${deckName}" actualizado ☁`);
+                  else alert(`✗ Error: ${result.error}`);
+                } else {
+                  saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard);
+                  setSavedDecks(getSavedDecks());
+                  alert(`✓ Mazo "${deckName}" actualizado`);
+                }
+              }} style={{ padding: "3px 10px", borderRadius: 6, border: "none", background: "var(--color-warning)", color: "var(--color-black)", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>
+                Reemplazar
+              </button>
+              <button onClick={async () => {
+                setSaveConfirm(null);
+                const newName = `${deckName} (copia)`;
+                const currentUser = getCurrentUser();
+                if (currentUser) {
+                  const result = await saveCloudDeck(newName, deck, commander, playerName, format, sideboard);
+                  if (result.ok) { setDeckName(newName); alert(`✓ Guardado como "${newName}" ☁`); }
+                  else alert(`✗ Error: ${result.error}`);
+                } else {
+                  saveDeckToStorage(newName, deck, commander, playerName, format, sideboard);
+                  setDeckName(newName);
+                  setSavedDecks(getSavedDecks());
+                  alert(`✓ Guardado como "${newName}"`);
+                }
+              }} style={{ padding: "3px 10px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11 }}>
+                Guardar como nuevo
+              </button>
+              <button onClick={() => setSaveConfirm(null)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 14, padding: "0 2px" }}>✕</button>
+            </div>
+          ) : (
+            <button onClick={async () => {
+              if (formatHasCommander(format) && !commander) return alert(`Selecciona un comandante para el formato ${format.label}.`);
+              const currentUser = getCurrentUser();
+              // Verificar si ya existe un mazo con el mismo nombre
+              const existsLocal = getSavedDecks().some(d => d.name === deckName);
+              let existsCloud = false;
+              if (currentUser) {
+                const r = await authFetch(`/rest/v1/user_decks?user_id=eq.${currentUser.id}&name=eq.${encodeURIComponent(deckName)}&select=id`);
+                const rows = r.ok ? await r.json() : [];
+                existsCloud = rows.length > 0;
+              }
+              if (existsLocal || existsCloud) {
+                setSaveConfirm("replace");
+                return;
+              }
+              // Mazo nuevo — guardar directamente
+              if (currentUser) {
+                const result = await saveCloudDeck(deckName, deck, commander, playerName, format, sideboard);
+                if (result.ok) alert(`✓ Mazo "${deckName}" guardado como ${format.label} ☁`);
+                else alert(`✗ Error: ${result.error}`);
+              } else {
+                saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard);
+                setSavedDecks(getSavedDecks());
+                alert(`✓ Mazo "${deckName}" guardado como ${format.label}`);
+              }
+            }}
+              style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,var(--bg-life),#2a6a2a)", color: "var(--color-life)", cursor: "pointer", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
+              💾 Guardar mazo
+            </button>
+          )}
           {onHome && <button onClick={onHome} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer", fontSize: 12 }}>🏠</button>}
         </div>
       </div>
