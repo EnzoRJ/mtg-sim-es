@@ -731,7 +731,7 @@ function CtxMenu({ menu, onClose }) {
           </button>
           <div style={{ position: "absolute", top: 0, left: W - 8, width: 12, height: "100%", background: "transparent" }} />
           <div style={{
-            position: "absolute", top: -6, left: subLeft,
+            position: "absolute", bottom: 0, top: "auto", left: subLeft,
             background: "var(--bg-raised)", border: "1px solid var(--border-strong)", borderRadius: 8,
             padding: 5, minWidth: W, boxShadow: "0 8px 40px var(--scrim-80)", zIndex: 20,
             display: "none", maxHeight: "70vh", overflowY: "auto"
@@ -4224,7 +4224,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   {isAttacking && <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#cc0000", color: "var(--color-white)", borderRadius: 3, fontSize: 7, padding: "1px 4px", zIndex: 4, whiteSpace: "nowrap", fontWeight: 800 }}>⚔ ATQ</div>}
                   {/* [Feature 5] Card marker badge */}
                   {card.marker && (
-                    <div style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", background: card.marker.color, color: "#fff", borderRadius: 4, fontSize: 7, fontWeight: 800, padding: "1px 5px", zIndex: 5, whiteSpace: "nowrap", pointerEvents: "none", boxShadow: `0 0 6px ${card.marker.color}88` }}>
+                    <div style={{ position: "absolute", top: 3, left: "50%", transform: "translateX(-50%)", background: card.marker.color, color: "#fff", borderRadius: 4, fontSize: 7, fontWeight: 800, padding: "1px 5px", zIndex: 5, whiteSpace: "nowrap", pointerEvents: "none", boxShadow: `0 0 6px ${card.marker.color}88`, maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {card.marker.text || "●"}
                     </div>
                   )}
