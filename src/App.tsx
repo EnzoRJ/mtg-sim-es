@@ -732,7 +732,7 @@ function CtxMenu({ menu, onClose }) {
             position: "absolute", top: -6, left: subLeft,
             background: "var(--bg-raised)", border: "1px solid var(--border-strong)", borderRadius: 8,
             padding: 5, minWidth: W, boxShadow: "0 8px 40px var(--scrim-80)", zIndex: 20,
-            display: "none"
+            display: "none", maxHeight: "70vh", overflowY: "auto"
           }} className="submenu-panel">
             {renderItems(item.submenu, depth + 1)}
           </div>
@@ -4018,6 +4018,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                               border: `1px solid ${ab.text}44`,
                               flexShrink: 0,
                               cursor: "help",
+                              pointerEvents: "auto",
                             }}
                           >
                             {ab.icon}
