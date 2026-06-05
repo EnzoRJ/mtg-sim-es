@@ -2373,7 +2373,7 @@ function ZoomCardModal({ card, onClose }) {
 }
 
 // ─── Turn Order Panel ─────────────────────────────────────────────────────────
-function PhasePanel({ playerOrder, players, activePlayer, turn, phase, isMyTurn, onNextPhase, onEndTurn, onMulligan, onHome, avatars }) {
+function PhasePanel({ playerOrder, players, activePlayer, turn, phase, isMyTurn, onNextPhase, onEndTurn, onSkipDraw, onMulligan, onHome, avatars }) {
   const PHASE_ICONS = ["🌙", "📖", "⚡", "⚔️", "⚡", "🏁"];
   const PHASE_SHORT = ["Mant.", "Robo", "Prin 1", "Ataque", "Prin 2", "Fin"];
   return (
@@ -2395,6 +2395,12 @@ function PhasePanel({ playerOrder, players, activePlayer, turn, phase, isMyTurn,
           <button onClick={onNextPhase} className="mtg-btn" style={{ width: "100%", padding: "6px 2px", borderRadius: 6, border: "none", background: "linear-gradient(180deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, fontSize: 9, cursor: "pointer", lineHeight: 1.3, boxShadow: "0 0 12px var(--gold-53), 0 0 24px var(--gold-27)" }}>
             {phase >= 5 ? "Pasar turno" : "Sig. fase"} ▶
           </button>
+          {/* No robar: solo visible en Mantenimiento (fase 0), mi turno */}
+          {phase === 0 && (
+            <button onClick={onSkipDraw} title="Salta la fase de robo sin robar (ej: Narset, Leovold, skip draw)" style={{ width: "100%", padding: "5px 2px", borderRadius: 6, border: "1px solid #4a2a6a", background: "#1a0a2e", color: "#cc88ff", fontWeight: 700, fontSize: 8, cursor: "pointer", lineHeight: 1.3 }}>
+              🚫 No robar
+            </button>
+          )}
           {phase < 5 && (
             <button onClick={onEndTurn} style={{ width: "100%", padding: "5px 2px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-muted)", fontWeight: 700, fontSize: 8, cursor: "pointer", lineHeight: 1.3 }}>
               ⏭ Fin Turno
@@ -4354,6 +4360,13 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           playerOrder={playerOrder} players={players} activePlayer={activePlayer}
           turn={turn} phase={phase} isMyTurn={isMyTurn}
           onNextPhase={nextPhase} onEndTurn={advanceToNextPlayer}
+          onSkipDraw={() => {
+            const np = 2; // Principal 1, saltando Robo
+            setPhase(np);
+            const msg = `${players[myId]?.name} omite el robo.`;
+            addLog(msg);
+            rt.current?.broadcast("turn_change", { ap: activePlayer, ph: np, t: turn, log: msg });
+          }}
           onMulligan={startMulligan} onHome={onHome}
           avatars={avatarMap}
         />
