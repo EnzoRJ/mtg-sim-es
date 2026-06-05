@@ -5358,12 +5358,24 @@ export default function App() {
   const [playerName, setPlayerName] = useState(() => getSavedPlayerName());
   const [showNameModal, setShowNameModal] = useState(false);
 
-  // Handle OAuth callback on mount
+  // Restore session on mount: OAuth callback OR refresh token from a previous session
   useEffect(() => {
-    const token = handleAuthCallback();
-    if (token) {
-      setTimeout(() => {
-        const u = getCurrentUser();
+    const initSession = async () => {
+      const token = handleAuthCallback();
+      if (token) {
+        // OAuth redirect: sb_user is fetched async inside handleAuthCallback — wait for it
+        await new Promise(r => setTimeout(r, 1000));
+      }
+
+      let u = getCurrentUser();
+
+      // No user in localStorage but refresh token exists → restore session silently
+      if (!u && localStorage.getItem("sb_refresh_token")) {
+        const ok = await refreshAccessToken();
+        if (ok) u = getCurrentUser();
+      }
+
+      if (u) {
         setUser(u);
         if (u?.id) {
           const newId = "user_" + u.id.slice(0, 16);
@@ -5373,9 +5385,12 @@ export default function App() {
           }
           localStorage.setItem("commander_es_player_id", newId);
         }
-        if (u && !getSavedPlayerName()) setShowNameModal(true);
-      }, 500);
-    }
+        const saved = getSavedPlayerName();
+        if (saved) setPlayerName(saved);
+        else setShowNameModal(true);
+      }
+    };
+    initSession();
   }, []);
 
   // Sincronizar sesión entre pestañas: cuando otra pestaña hace login/logout,
