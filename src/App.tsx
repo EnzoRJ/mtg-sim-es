@@ -3192,6 +3192,68 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     setTimeout(() => setNotifications(n => n.filter(x => x.id !== id)), 4000);
   };
 
+  // ── [Feature 3] Pedir permiso de notificaciones al iniciar partida ──
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // ── [Feature 3] Notificación de navegador + título de pestaña al ser mi turno ──
+  useEffect(() => {
+    if (isMyTurn && phase === 0) {
+      document.title = `⚔️ TU TURNO (T${turn}) — Commander ES`;
+      if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+        new Notification("⚔️ ¡Tu turno!", {
+          body: `Turno ${turn} — es tu momento de jugar`,
+          icon: "/icon.svg",
+          tag: "my-turn",   // reemplaza notificaciones anteriores
+        });
+      }
+    } else {
+      document.title = "Commander ES";
+    }
+    return () => { document.title = "Commander ES"; };
+  }, [isMyTurn, phase, turn]);
+
+  // ── [Feature 1] Recordatorio de descarte al entrar en Fin Turno ──
+  useEffect(() => {
+    if (phase === 5 && isMyTurn) {
+      const handSize = players[myId]?.hand?.length ?? 0;
+      if (handSize > 7) {
+        const toDiscard = handSize - 7;
+        const msg = `🗑 Debes descartar ${toDiscard} carta${toDiscard > 1 ? "s" : ""} (mano: ${handSize}/7)`;
+        showNotification(msg, myId);
+        addLog(`⚠ ${players[myId]?.name}: ${handSize} cartas en mano — descarta ${toDiscard}.`);
+        SFX.graveyard();
+      }
+    }
+  }, [phase, activePlayer]);
+
+  // ── [Feature 2] Alerta de 21 de daño de comandante ──
+  const cmdDmgAlerted = useRef(new Set());
+  useEffect(() => {
+    playerOrder.forEach(pid => {
+      const p = players[pid];
+      if (!p) return;
+      Object.entries(p.commanderDamage || {}).forEach(([fromPid, dmg]) => {
+        const key = `${pid}-${fromPid}`;
+        if (dmg >= 21 && !cmdDmgAlerted.current.has(key)) {
+          cmdDmgAlerted.current.add(key);
+          const loserName = p.name;
+          const winnerName = players[fromPid]?.name || "?";
+          const msg = `💀 ¡${loserName} recibió 21 de daño del comandante de ${winnerName}!`;
+          showNotification(msg, fromPid);
+          addLog(`☠ ${msg}`);
+          SFX.graveyard();
+          if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+            new Notification("💀 ¡21 de daño de comandante!", { body: msg, icon: "/icon.svg", tag: "cmd-dmg-21" });
+          }
+        }
+      });
+    });
+  }, [players]);
+
   const syncState = (state, logMsg) => {
     // Always update localStorage immediately (cheap)
     try {
@@ -4008,12 +4070,28 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             </div>
           )}
 
-          {/* Commander damage */}
-          {Object.entries(p.commanderDamage).filter(([, v]) => v > 0).map(([fromPid, dmg]) => (
-            <span key={fromPid} title={`Daño de comandante de ${players[fromPid]?.name || "oponente"}: ${dmg}`} style={{ fontSize: 8, color: "var(--color-orange)", background: "#2a1a0a", borderRadius: 3, padding: "0 3px", flexShrink: 0 }}>
-              ⚔{dmg}
-            </span>
-          ))}
+          {/* Commander damage — color escalates: normal → warning (≥15) → lethal (≥21) */}
+          {Object.entries(p.commanderDamage).filter(([, v]) => v > 0).map(([fromPid, dmg]) => {
+            const lethal = dmg >= 21;
+            const warn   = dmg >= 15;
+            return (
+              <span key={fromPid}
+                title={`Daño de comandante de ${players[fromPid]?.name || "oponente"}: ${dmg}/21`}
+                style={{
+                  fontSize: lethal ? 10 : warn ? 9 : 8,
+                  fontWeight: warn ? 800 : 600,
+                  color: lethal ? "#ff4444" : warn ? "#ffaa44" : "var(--color-orange)",
+                  background: lethal ? "#3a0808" : warn ? "#2a1a08" : "#1a1008",
+                  border: lethal ? "1px solid #ff444488" : warn ? "1px solid #ffaa4444" : "none",
+                  borderRadius: 4,
+                  padding: "0 4px",
+                  flexShrink: 0,
+                  animation: lethal ? "pulse 0.8s infinite" : "none",
+                }}>
+                ⚔{dmg}{lethal ? "💀" : warn ? "!" : ""}
+              </span>
+            );
+          })}
 
           {speaking[pid] && <span title="Hablando por voz" style={{ fontSize: 10, color: "var(--color-life-bright)", animation: "pulse 0.5s infinite", flexShrink: 0, textShadow: "0 0 8px var(--color-life-bright)" }}>🎙</span>}
           {p.experience > 0 && <span style={{ fontSize: 9, color: "#ddaaff", background: "#1a0a3a", borderRadius: 4, padding: "0 4px", flexShrink: 0 }}>✨{p.experience}</span>}
