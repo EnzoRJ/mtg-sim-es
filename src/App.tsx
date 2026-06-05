@@ -3961,7 +3961,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       zone === "battlefield" && cardIsCreature && !card.faceDown && {
         label: "✨ Habilidades...",
         submenu: ABILITIES.map(ab => ({
-          label: `${ab.icon} ${ab.name}${(card.abilities || []).includes(ab.key) ? " ✓" : ""}`,
+          label: `${ab.icon} ${ab.name} / ${ab.en}${(card.abilities || []).includes(ab.key) ? " ✓" : ""}`,
           color: (card.abilities || []).includes(ab.key) ? ab.text : "var(--text-primary)",
           action: () => {
             const hasIt = (card.abilities || []).includes(ab.key);
