@@ -3658,10 +3658,14 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const untapAll = () => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => ({ ...c, tapped: false })) }), `${players[myId]?.name} destapa todo.`);
   const playCard = (card, from) => {
     const autoAbilities = cardAbilitiesFromKeywords(card);
+    // Store both face URLs for MDFC cards so they can be flipped in-game
+    const face_urls = card.card_faces?.length > 1
+      ? card.card_faces.map(f => f.image_uris?.normal).filter(Boolean)
+      : null;
     updMe(p => ({
       ...p,
       [from]: p[from].filter(c => c.instanceId !== card.instanceId),
-      battlefield: [...p.battlefield, { ...card, tapped: false, counters: [], abilities: autoAbilities }]
+      battlefield: [...p.battlefield, { ...card, tapped: false, counters: [], abilities: autoAbilities, faceDown: false, ...(face_urls?.length > 1 && { face_urls, faceIndex: 0 }) }]
     }), `${players[myId]?.name} juega ${getCardName(card)}.`);
     setSelCard(null); setCtxMenu(null);
   };
@@ -3761,9 +3765,31 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     const cardIsCreature = isCreature(card);
     const cardIsLand = isLand(card);
     const cardIsPW = isPlaneswalker(card);
+    const hasTwoFaces = (card.face_urls?.length > 1) || (card.card_faces?.length > 1);
     return [
-      zone !== "battlefield" && { label: "▶ Jugar en campo", action: () => playCard(card, zone) },
+      zone !== "battlefield" && !card.faceDown && { label: "▶ Jugar en campo", action: () => playCard(card, zone) },
+      // [1] MORPH: jugar boca abajo desde la mano
+      zone === "hand" && { label: "🎴 Jugar boca abajo", action: () => {
+        updMe(p => ({ ...p, hand: p.hand.filter(c => c.instanceId !== card.instanceId), battlefield: [...p.battlefield, { ...card, tapped: false, counters: [], abilities: [], faceDown: true }] }), `${players[myId]?.name} juega una carta boca abajo.`);
+        setCtxMenu(null);
+      }},
       zone === "battlefield" && { label: card.tapped ? "↺ Desgirar" : "↻ Girar", action: () => tapCard(card.instanceId) },
+      // [1] MORPH: voltear boca arriba desde campo
+      zone === "battlefield" && card.faceDown && { label: "🔼 Voltear boca arriba", action: () => {
+        updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === card.instanceId ? { ...c, faceDown: false } : c) }), `${players[myId]?.name} voltea boca arriba ${getCardName(card)}.`);
+        setCtxMenu(null);
+      }, color: "var(--gold)" },
+      // [2] MDFC: voltear cara para cartas de doble cara
+      zone === "battlefield" && hasTwoFaces && !card.faceDown && { label: "🔄 Voltear cara", action: () => {
+        updMe(p => ({ ...p, battlefield: p.battlefield.map(c => {
+          if (c.instanceId !== card.instanceId) return c;
+          const urls = c.face_urls || (c.card_faces?.map(f => f.image_uris?.normal).filter(Boolean));
+          if (!urls?.length) return c;
+          const next = ((c.faceIndex || 0) + 1) % urls.length;
+          return { ...c, faceIndex: next, image_url: urls[next], face_urls: urls };
+        }) }), `${players[myId]?.name}: voltea ${getCardName(card)}.`);
+        setCtxMenu(null);
+      }},
       { label: "🔍 Ver carta", action: () => { setCtxMenu(null); setZoomCard(card); } },
       "---",
       zone !== "hand" && { label: "🤚 A la mano", action: () => moveCard(card, zone, "hand") },
@@ -3773,10 +3799,10 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       { label: "📚 A biblioteca (abajo)", action: () => moveCard(card, zone, "library_bottom") },
       isCmd && { label: "⚔ A zona de mando", action: () => returnCmdToZone(card, zone, true), color: "var(--gold)" },
       "---",
-      // Contadores: solo para permanentes que no son tierras (o planeswalkers con lealtad)
-      zone === "battlefield" && !cardIsLand && { label: "🎯 Gestionar contadores...", action: () => { setCtxMenu(null); setCounterModal(card.instanceId); } },
+      // Contadores: solo para permanentes que no son tierras
+      zone === "battlefield" && !cardIsLand && !card.faceDown && { label: "🎯 Gestionar contadores...", action: () => { setCtxMenu(null); setCounterModal(card.instanceId); } },
       // Contador de lealtad rápido para planeswalkers
-      zone === "battlefield" && cardIsPW && {
+      zone === "battlefield" && cardIsPW && !card.faceDown && {
         label: "💜 Lealtad...",
         submenu: [
           { label: "+1 Lealtad", action: () => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === card.instanceId ? { ...c, counters: [...(c.counters||[]), "loyalty"] } : c) }), `${players[myId]?.name}: +1 lealtad a ${getCardName(card)}.`) },
@@ -3785,8 +3811,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           { label: "−2 Lealtad", action: () => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => { if (c.instanceId !== card.instanceId) return c; let ct = [...(c.counters||[])]; for (let x=0;x<2;x++) { const i = ct.lastIndexOf("loyalty"); if (i>=0) ct.splice(i,1); } return { ...c, counters: ct }; }) }), `${players[myId]?.name}: −2 lealtad a ${getCardName(card)}.`) },
         ]
       },
-      // Habilidades: solo para criaturas y tokens (no tierras, conjuros, planeswalkers)
-      zone === "battlefield" && cardIsCreature && {
+      // Habilidades: solo para criaturas y tokens visibles
+      zone === "battlefield" && cardIsCreature && !card.faceDown && {
         label: "✨ Habilidades...",
         submenu: ABILITIES.map(ab => ({
           label: `${ab.icon} ${ab.name}${(card.abilities || []).includes(ab.key) ? " ✓" : ""}`,
@@ -3802,7 +3828,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           }
         }))
       },
-      // Clonar token: duplicar un token existente en el campo
+      // Clonar token
       zone === "battlefield" && card.isToken && {
         label: "🎭 Clonar token",
         action: () => {
@@ -3810,8 +3836,18 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             `${players[myId]?.name}: crea copia de ${getCardName(card)}.`);
         }
       },
-      // Declarar atacante: solo criaturas, en combate, mi turno, no giradas
-      zone === "battlefield" && cardIsCreature && phase === 3 && isMyTurn && !card.tapped && {
+      "---",
+      // [3] TAP/UNTAP masivo
+      zone === "battlefield" && cardIsLand && {
+        label: "🌍 Girar todas las tierras",
+        action: () => { updMe(p => ({ ...p, battlefield: p.battlefield.map(c => isLand(c) ? { ...c, tapped: true } : c) }), `${players[myId]?.name}: gira todas las tierras.`); setCtxMenu(null); }
+      },
+      zone === "battlefield" && {
+        label: "✨ Desgirar todos",
+        action: () => { updMe(p => ({ ...p, battlefield: p.battlefield.map(c => ({ ...c, tapped: false })) }), `${players[myId]?.name}: destapa todos los permanentes.`); setCtxMenu(null); }
+      },
+      // Declarar atacante: solo criaturas en combate
+      zone === "battlefield" && cardIsCreature && !card.faceDown && phase === 3 && isMyTurn && !card.tapped && {
         label: attackers.has(card.instanceId) ? "❌ Quitar de ataque" : "⚔ Declarar atacante",
         action: () => setAttackers(a => {
           const n = new Set(a);
@@ -4007,12 +4043,13 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   {isAttacking && <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#cc0000", color: "var(--color-white)", borderRadius: 3, fontSize: 7, padding: "1px 4px", zIndex: 4, whiteSpace: "nowrap", fontWeight: 800 }}>⚔ ATQ</div>}
 
                   <CardTile card={card} tapped={card.tapped} small={!isMe || forceSmall}
+                    faceDown={!!card.faceDown}
                     selected={selCard?.instanceId === card.instanceId}
                     onClick={() => { if (isMe) setSelCard(s => s?.instanceId === card.instanceId ? null : card); }}
                     onDoubleClick={() => { if (isMe) { tapCard(card.instanceId); setSelCard(null); } else setZoomCard(card); }}
-                    onHover={(c, x, y) => setHover({ card, x, y })} onHoverEnd={() => setHover(null)} />
-                  {/* Ability icons — contained strictly within card width */}
-                  {(card.abilities || []).length > 0 && (
+                    onHover={(c, x, y) => setHover({ card: card.faceDown ? null : card, x, y })} onHoverEnd={() => setHover(null)} />
+                  {/* Ability icons — hidden for face-down cards */}
+                  {!card.faceDown && (card.abilities || []).length > 0 && (
                     <div style={{ display: "flex", gap: 2, justifyContent: "center", flexWrap: "wrap", marginTop: 3, pointerEvents: "none", width: isMe ? 90 : 52 }}>
                       {(card.abilities || []).map(key => {
                         const ab = ABILITIES.find(a => a.key === key);
@@ -4054,7 +4091,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       })}
                     </div>
                   )}
-                  {(card.counters || []).length > 0 && (() => {
+                  {!card.faceDown && (card.counters || []).length > 0 && (() => {
                     const cnts = card.counters || [];
                     const pp = cnts.filter(x => x === "+1/+1").length;
                     const mm = cnts.filter(x => x === "-1/-1").length;
