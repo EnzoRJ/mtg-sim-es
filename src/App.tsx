@@ -3099,6 +3099,11 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [manaOpen, setManaOpen] = useState(false);
   const [cmdDmgOpen, setCmdDmgOpen] = useState(false);
   const [lifeHistory, setLifeHistory] = useState(() => Object.fromEntries(initialPlayers.map(p => [p.id, [40]])));
+  // [Feature 3] Custom trigger reminders: [{id, text, color, active}]
+  const [triggers, setTriggers] = useState([]);
+  const [triggersOpen, setTriggersOpen] = useState(false);
+  // [Feature 5] Pending card marker: {instanceId, zone}
+  const [cardMarkerModal, setCardMarkerModal] = useState(null);
   const rt = useRef(rtInstance);
   const syncDebounce = useRef(null);
   const pendingSync = useRef(null);
@@ -3215,6 +3220,25 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     }
     return () => { document.title = "Commander ES"; };
   }, [isMyTurn, phase, turn]);
+
+  // ── [Feature 2] Atajos de teclado ──
+  useEffect(() => {
+    const onKey = (e) => {
+      // Ignore when user is typing in an input/textarea
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+      if (e.metaKey || e.ctrlKey) return;
+      switch (e.key.toLowerCase()) {
+        case " ":       e.preventDefault(); if (isMyTurn) nextPhase(); break;
+        case "e":       if (isMyTurn) advanceToNextPlayer(); break;
+        case "d":       if (isMyTurn) libActions.draw(myId, 1); break;
+        case "u":       if (isMyTurn) untapAll(); break;
+        case "t":       if (isMyTurn && selCard) tapCard(selCard.instanceId); break;
+        case "escape":  setCtxMenu(null); setSelCard(null); break;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isMyTurn, nextPhase, advanceToNextPlayer, selCard, untapAll]);
 
   // ── [Feature 1] Recordatorio de descarte al entrar en Fin Turno ──
   useEffect(() => {
@@ -3792,6 +3816,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       if (pid === myId) { syncState(next, `${ps[pid].name}: vida ${ps[pid].life}→${next.life}`); addLog(`${ps[pid].name}: vida ${ps[pid].life}→${next.life}`); }
       return { ...ps, [pid]: next };
     });
+    // [Feature 4] Record life change in history
+    setLifeHistory(h => ({ ...h, [pid]: [...(h[pid] || [40]), (players[pid]?.life ?? 40) + d] }));
   };
   const adjPoison = (pid, d) => { setPlayers(ps => { const next = { ...ps[pid], poison: Math.max(0, ps[pid].poison + d) }; if (pid === myId) syncState(next); return { ...ps, [pid]: next }; }); };
   const adjEnergy = (pid, d) => { setPlayers(ps => { const next = { ...ps[pid], energy: Math.max(0, (ps[pid].energy || 0) + d) }; if (pid === myId) syncState(next); return { ...ps, [pid]: next }; }); };
@@ -3864,6 +3890,22 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         setCtxMenu(null);
       }},
       { label: "🔍 Ver carta", action: () => { setCtxMenu(null); setZoomCard(card); } },
+      // [Feature 5] Marcador de carta
+      zone === "battlefield" && {
+        label: card.marker ? `🏷️ Cambiar marcador (${card.marker.text || "●"})` : "🏷️ Marcar carta...",
+        submenu: [
+          ...["🔴 Objetivo", "🟡 Atención", "🟢 Libre", "🔵 Respuesta", "⚪ Quitar marcador"].map(opt => ({
+            label: opt,
+            action: () => {
+              const color = opt.startsWith("🔴") ? "#cc2222" : opt.startsWith("🟡") ? "#cc9900" : opt.startsWith("🟢") ? "#227722" : opt.startsWith("🔵") ? "#2255cc" : null;
+              const text  = opt.startsWith("⚪") ? null : opt.split(" ").slice(1).join(" ");
+              updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === card.instanceId ? { ...c, marker: color ? { color, text } : null } : c) }));
+              setCtxMenu(null);
+            }
+          })),
+          { label: "✏️ Texto personalizado...", action: () => { setCtxMenu(null); setCardMarkerModal({ instanceId: card.instanceId }); } },
+        ]
+      },
       "---",
       zone !== "hand" && { label: "🤚 A la mano", action: () => moveCard(card, zone, "hand") },
       zone !== "graveyard" && { label: "🪦 Al cementerio", action: () => moveCard(card, zone, "graveyard") },
@@ -4034,12 +4076,31 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           <span title={p.name} style={{ fontSize: 13, flexShrink: 0 }}>{avatarMap[pid] || "🧙"}</span>
           <span title={p.name} style={{ fontWeight: 700, fontSize: 10, color: isActive ? "var(--gold)" : "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 70 }}>{p.name}{isMe ? " (tú)" : ""}</span>
 
-          {/* Life */}
+          {/* Life + sparkline */}
           <div title="Vida" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, background: "#0d0a0a", borderRadius: 4, padding: "0 3px" }}>
             {isMe && <button title="Reducir vida" onClick={() => adjLife(pid, -1)} style={mbtn("var(--bg-damage)", "var(--color-damage)")}>−</button>}
             <span style={{ fontSize: 7, color: "#ff6666", lineHeight: 1 }}>❤</span>
             <span title={`Vida: ${p.life}`} style={{ fontSize: 12, fontWeight: 800, color: p.life <= 10 ? "var(--color-red)" : p.life >= 50 ? "var(--color-life-bright)" : "var(--gold)", textShadow: p.life <= 10 ? "0 0 12px var(--color-red)" : "none", minWidth: 20, textAlign: "center" }}>{p.life}</span>
             {isMe && <button title="Aumentar vida" onClick={() => adjLife(pid, 1)} style={mbtn("var(--bg-life)", "var(--color-life)")}>+</button>}
+            {/* [Feature 4] Mini sparkline */}
+            {(() => {
+              const hist = lifeHistory[pid] || [p.life];
+              if (hist.length < 2) return null;
+              const W = 36, H = 14, pad = 1;
+              const min = Math.min(...hist), max = Math.max(...hist);
+              const range = max - min || 1;
+              const pts = hist.map((v, i) => {
+                const x = pad + (i / (hist.length - 1)) * (W - pad * 2);
+                const y = pad + (1 - (v - min) / range) * (H - pad * 2);
+                return `${x.toFixed(1)},${y.toFixed(1)}`;
+              }).join(" ");
+              const color = hist[hist.length - 1] < hist[0] ? "#ff6666" : "#44ff88";
+              return (
+                <svg width={W} height={H} style={{ flexShrink: 0, opacity: 0.8 }} title={`Historial: ${hist.join(" → ")}`}>
+                  <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+                </svg>
+              );
+            })()}
           </div>
 
           {/* Poison */}
@@ -4130,6 +4191,12 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   onContextMenu={e => openCardCtx(e, pid, card, "battlefield", isMe)}>
                   {isAttacking && <div style={{ position: "absolute", inset: -2, borderRadius: 6, border: "2px solid var(--color-red)", zIndex: 3, pointerEvents: "none", boxShadow: "0 0 8px var(--color-red-67)" }} />}
                   {isAttacking && <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#cc0000", color: "var(--color-white)", borderRadius: 3, fontSize: 7, padding: "1px 4px", zIndex: 4, whiteSpace: "nowrap", fontWeight: 800 }}>⚔ ATQ</div>}
+                  {/* [Feature 5] Card marker badge */}
+                  {card.marker && (
+                    <div style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", background: card.marker.color, color: "#fff", borderRadius: 4, fontSize: 7, fontWeight: 800, padding: "1px 5px", zIndex: 5, whiteSpace: "nowrap", pointerEvents: "none", boxShadow: `0 0 6px ${card.marker.color}88` }}>
+                      {card.marker.text || "●"}
+                    </div>
+                  )}
 
                   <CardTile card={card} tapped={card.tapped} small={!isMe || forceSmall}
                     faceDown={!!card.faceDown}
@@ -4497,6 +4564,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             { icon: "⚔", label: "CmdDmg", action: () => setCmdDmgOpen(o => !o), color: cmdDmgOpen ? "var(--color-orange)" : "var(--gray-mid)" },
             { icon: "📝", label: "Notas", action: () => setNotesOpen(o => !o), color: notesOpen ? "var(--color-life)" : "var(--gray-mid)" },
             { icon: "🔍", label: "Buscar", action: () => setCardSearch(s => ({ ...s, open: !s.open, query: "", results: [] })), color: cardSearch.open ? "var(--gold)" : "var(--gray-mid)" },
+            { icon: "🔔", label: "Triggers", action: () => setTriggersOpen(o => !o), color: triggers.some(t => t.active) ? "#ffaa44" : triggersOpen ? "var(--gold)" : "var(--gray-mid)" },
             ...(voiceEnabled ? [{ icon: muted ? "🔇" : "🔊", label: muted ? "Unmute" : "Mute", action: toggleMute, color: muted ? "var(--color-red)" : "var(--color-life)" }] : []),
           ].map(btn => (
             <button key={btn.label} onClick={btn.action} disabled={btn.disabled} title={btn.label}
@@ -4683,6 +4751,57 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
       {/* Life History */}
       {lifeHistoryOpen && <LifeHistoryPanel players={players} lifeHistory={lifeHistory} onClose={() => setLifeHistoryOpen(false)} />}
+
+      {/* [Feature 5] Card marker custom text modal */}
+      {cardMarkerModal && (
+        <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700 }} onClick={() => setCardMarkerModal(null)}>
+          <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 12, padding: 20, width: 300 }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)", marginBottom: 12 }}>🏷️ Marcador personalizado</div>
+            <input id="marker-text-input" autoFocus placeholder="Ej: No atacar, Objetivo, Equipo..." defaultValue=""
+              style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-well)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 10 }} />
+            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+              {["#cc2222","#cc9900","#227722","#2255cc","#882299","#888888"].map(col => (
+                <div key={col} onClick={() => { const inp = document.getElementById("marker-text-input"); const text = inp?.value?.trim() || "●"; updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === cardMarkerModal.instanceId ? { ...c, marker: { color: col, text } } : c) })); setCardMarkerModal(null); }} style={{ width: 22, height: 22, borderRadius: "50%", background: col, cursor: "pointer", border: "2px solid transparent", flexShrink: 0 }} title={col} />
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => { const text = (document.getElementById("marker-text-input"))?.value?.trim() || "●"; updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === cardMarkerModal.instanceId ? { ...c, marker: { color: "#cc2222", text } } : c) })); setCardMarkerModal(null); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: "var(--gold)", color: "#000", fontWeight: 800, cursor: "pointer", fontSize: 13 }}>Aplicar</button>
+              <button onClick={() => setCardMarkerModal(null)} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* [Feature 3] Trigger reminders panel */}
+      {triggersOpen && (
+        <div style={{ position: "fixed", bottom: 60, right: 16, width: 280, background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 12, padding: 14, zIndex: 500, boxShadow: "0 4px 24px #000c" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gold)" }}>🔔 Triggers</span>
+            <button onClick={() => setTriggersOpen(false)} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 16 }}>✕</button>
+          </div>
+          {triggers.map(t => (
+            <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px", borderRadius: 7, background: t.active ? t.color + "22" : "var(--bg-well)", border: `1px solid ${t.active ? t.color : "var(--border-default)"}`, marginBottom: 5 }}>
+              <div onClick={() => setTriggers(ts => ts.map(x => x.id === t.id ? { ...x, active: !x.active } : x))} style={{ width: 10, height: 10, borderRadius: "50%", background: t.active ? t.color : "var(--gray-dark)", cursor: "pointer", flexShrink: 0 }} />
+              <span style={{ flex: 1, fontSize: 12, color: t.active ? "var(--text-primary)" : "var(--gray-mid)" }}>{t.text}</span>
+              <button onClick={() => setTriggers(ts => ts.filter(x => x.id !== t.id))} style={{ background: "none", border: "none", color: "var(--gray-dark)", cursor: "pointer", fontSize: 12, padding: 0 }}>✕</button>
+            </div>
+          ))}
+          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+            <input id="trigger-input" placeholder="Rhystic Study, Smothering Tithe..." style={{ flex: 1, padding: "6px 8px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-well)", color: "var(--text-primary)", fontSize: 11, outline: "none" }} />
+            <button onClick={() => { const inp = document.getElementById("trigger-input"); const text = inp?.value?.trim(); if (!text) return; setTriggers(ts => [...ts, { id: uid(), text, color: "#ffaa44", active: true }]); if (inp) inp.value = ""; }} style={{ padding: "6px 10px", borderRadius: 7, border: "none", background: "var(--gold)", color: "#000", fontWeight: 800, cursor: "pointer", fontSize: 12 }}>+</button>
+          </div>
+        </div>
+      )}
+      {/* Trigger active reminders — shown on phase/turn change */}
+      {triggers.filter(t => t.active).length > 0 && (
+        <div style={{ position: "fixed", bottom: triggersOpen ? 320 : 60, right: 16, display: "flex", flexDirection: "column", gap: 4, zIndex: 490, pointerEvents: "none" }}>
+          {triggers.filter(t => t.active).map(t => (
+            <div key={t.id} style={{ background: t.color + "22", border: `1px solid ${t.color}88`, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "var(--text-primary)", animation: "pulse 2s infinite", whiteSpace: "nowrap" }}>
+              🔔 {t.text}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Chat */}
       {chatOpen && <ChatPanel messages={chatMessages} input={chatInput} onInput={setChatInput} onSend={sendChatMessage} onClose={() => setChatOpen(false)} playerName={players[myId]?.name} />}
