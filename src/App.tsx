@@ -503,6 +503,8 @@ function isLegendary(c) {
   return t.includes("legendary") || t.includes("legendaria") || t.includes("legendario");
 }
 function isLand(c) { const t = c?.type_line?.toLowerCase() || ""; return t.includes("land") || t.includes("tierra"); }
+function isCreature(c) { const t = c?.type_line?.toLowerCase() || ""; return c?.isToken || t.includes("creature") || t.includes("criatura"); }
+function isPlaneswalker(c) { const t = c?.type_line?.toLowerCase() || ""; return t.includes("planeswalker"); }
 
 function mkState(id, name, deck, commander, startLife = 40, sideboard = []) {
   // Ensure commander is not in the library (filter by name and id)
@@ -3756,9 +3758,13 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const cardCtxItems = (pid, card, zone, isMe) => {
     if (!isMe) return [];
     const isCmd = isLegendary(card) && zone !== "commandZone";
+    const cardIsCreature = isCreature(card);
+    const cardIsLand = isLand(card);
+    const cardIsPW = isPlaneswalker(card);
     return [
       zone !== "battlefield" && { label: "▶ Jugar en campo", action: () => playCard(card, zone) },
       zone === "battlefield" && { label: card.tapped ? "↺ Desgirar" : "↻ Girar", action: () => tapCard(card.instanceId) },
+      { label: "🔍 Ver carta", action: () => { setCtxMenu(null); setZoomCard(card); } },
       "---",
       zone !== "hand" && { label: "🤚 A la mano", action: () => moveCard(card, zone, "hand") },
       zone !== "graveyard" && { label: "🪦 Al cementerio", action: () => moveCard(card, zone, "graveyard") },
@@ -3767,8 +3773,20 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       { label: "📚 A biblioteca (abajo)", action: () => moveCard(card, zone, "library_bottom") },
       isCmd && { label: "⚔ A zona de mando", action: () => returnCmdToZone(card, zone, true), color: "var(--gold)" },
       "---",
-      zone === "battlefield" && { label: "🎯 Gestionar contadores...", action: () => { setCtxMenu(null); setCounterModal(card.instanceId); } },
-      zone === "battlefield" && {
+      // Contadores: solo para permanentes que no son tierras (o planeswalkers con lealtad)
+      zone === "battlefield" && !cardIsLand && { label: "🎯 Gestionar contadores...", action: () => { setCtxMenu(null); setCounterModal(card.instanceId); } },
+      // Contador de lealtad rápido para planeswalkers
+      zone === "battlefield" && cardIsPW && {
+        label: "💜 Lealtad...",
+        submenu: [
+          { label: "+1 Lealtad", action: () => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === card.instanceId ? { ...c, counters: [...(c.counters||[]), "loyalty"] } : c) }), `${players[myId]?.name}: +1 lealtad a ${getCardName(card)}.`) },
+          { label: "+2 Lealtad", action: () => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === card.instanceId ? { ...c, counters: [...(c.counters||[]), "loyalty", "loyalty"] } : c) }), `${players[myId]?.name}: +2 lealtad a ${getCardName(card)}.`) },
+          { label: "−1 Lealtad", action: () => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => { if (c.instanceId !== card.instanceId) return c; const ct = [...(c.counters||[])]; const i = ct.lastIndexOf("loyalty"); if (i>=0) ct.splice(i,1); return { ...c, counters: ct }; }) }), `${players[myId]?.name}: −1 lealtad a ${getCardName(card)}.`) },
+          { label: "−2 Lealtad", action: () => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => { if (c.instanceId !== card.instanceId) return c; let ct = [...(c.counters||[])]; for (let x=0;x<2;x++) { const i = ct.lastIndexOf("loyalty"); if (i>=0) ct.splice(i,1); } return { ...c, counters: ct }; }) }), `${players[myId]?.name}: −2 lealtad a ${getCardName(card)}.`) },
+        ]
+      },
+      // Habilidades: solo para criaturas y tokens (no tierras, conjuros, planeswalkers)
+      zone === "battlefield" && cardIsCreature && {
         label: "✨ Habilidades...",
         submenu: ABILITIES.map(ab => ({
           label: `${ab.icon} ${ab.name}${(card.abilities || []).includes(ab.key) ? " ✓" : ""}`,
@@ -3784,7 +3802,16 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           }
         }))
       },
-      zone === "battlefield" && phase === 3 && isMyTurn && !card.tapped && {
+      // Clonar token: duplicar un token existente en el campo
+      zone === "battlefield" && card.isToken && {
+        label: "🎭 Clonar token",
+        action: () => {
+          updMe(p => ({ ...p, battlefield: [...p.battlefield, { ...card, instanceId: uid(), tapped: false }] }),
+            `${players[myId]?.name}: crea copia de ${getCardName(card)}.`);
+        }
+      },
+      // Declarar atacante: solo criaturas, en combate, mi turno, no giradas
+      zone === "battlefield" && cardIsCreature && phase === 3 && isMyTurn && !card.tapped && {
         label: attackers.has(card.instanceId) ? "❌ Quitar de ataque" : "⚔ Declarar atacante",
         action: () => setAttackers(a => {
           const n = new Set(a);
@@ -4115,18 +4142,18 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                 {/* LOG column — fixed width, full battlefield height, no overlap */}
                 {isMe && (
                   <div style={{ width: 165, flexShrink: 0, borderLeft: "1px solid var(--bg-subtle)", background: "var(--bg-base)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                    <div className="neon-text" style={{ fontSize: 8, color: "var(--gold)", letterSpacing: 4, padding: "5px 0 4px", textAlign: "center", borderBottom: "1px solid var(--gold-glow)", flexShrink: 0, fontFamily: "monospace" }}>LOG</div>
+                    <div className="neon-text" style={{ fontSize: 9, color: "var(--gold)", letterSpacing: 4, padding: "5px 0 4px", textAlign: "center", borderBottom: "1px solid var(--gold-glow)", flexShrink: 0, fontFamily: "monospace" }}>LOG</div>
                     <div style={{ flex: 1, padding: "4px 6px", overflowY: "auto" }}>
                       {[...turnLog].reverse().map((group, gi) => {
                         const isCollapsed = logCollapsed[group.turn] ?? (gi > 0);
                         return (
-                          <div key={group.turn} style={{ marginBottom: 2 }}>
+                          <div key={group.turn} style={{ marginBottom: 3 }}>
                             <div onClick={() => setLogCollapsed(c => ({ ...c, [group.turn]: !isCollapsed }))}
-                              style={{ fontSize: 8, fontWeight: 800, color: "var(--gold-67)", padding: "2px 0", cursor: "pointer", display: "flex", justifyContent: "space-between" }}>
+                              style={{ fontSize: 10, fontWeight: 800, color: "var(--gold-67)", padding: "2px 0", cursor: "pointer", display: "flex", justifyContent: "space-between" }}>
                               <span>T{group.turn}</span><span>{isCollapsed ? "▶" : "▼"}</span>
                             </div>
                             {!isCollapsed && group.entries.slice().reverse().map((e, i) => (
-                              <div key={i} style={{ fontSize: 8, color: gi === 0 && i === 0 ? "#ddddee" : "#44445a", lineHeight: 1.4, padding: "1px 0", borderBottom: "1px solid var(--bg-well)", wordBreak: "break-word" }}>{e}</div>
+                              <div key={i} style={{ fontSize: 11, color: gi === 0 && i === 0 ? "#ddddee" : "#6666aa", lineHeight: 1.5, padding: "2px 0", borderBottom: "1px solid var(--bg-well)", wordBreak: "break-word" }}>{e}</div>
                             ))}
                           </div>
                         );
