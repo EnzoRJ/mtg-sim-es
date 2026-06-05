@@ -3736,19 +3736,24 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     });
   };
 
+  const advanceToNextPlayer = () => {
+    const idx = playerOrder.indexOf(activePlayer);
+    const nextId = playerOrder[(idx + 1) % playerOrder.length];
+    const newTurn = turn + 1;
+    const msg = `─── Turno ${newTurn}: ${players[nextId]?.name || nextId} ───`;
+    setActivePlayer(nextId); setPhase(0); setTurn(newTurn); setAttackers(new Set()); addLog(msg);
+    setTurnLog(tl => [...tl, { turn: newTurn, entries: [msg] }]);
+    rt.current?.broadcast("turn_change", { ap: nextId, ph: 0, t: newTurn, log: msg });
+    try {
+      const sess = JSON.parse(localStorage.getItem("commander_es_session") || "{}");
+      localStorage.setItem("commander_es_session", JSON.stringify({ ...sess, turn: newTurn, phase: 0, activePlayer: nextId, savedAt: Date.now() }));
+    } catch { }
+    if (nextId === myId) { untapAll(); }
+  };
+
   const nextPhase = () => {
     if (phase >= PHASES.length - 1) {
-      const idx = playerOrder.indexOf(activePlayer); const nextId = playerOrder[(idx + 1) % playerOrder.length]; const newTurn = turn + 1;
-      const msg = `─── Turno ${newTurn}: ${players[nextId]?.name || nextId} ───`;
-      setActivePlayer(nextId); setPhase(0); setTurn(newTurn); addLog(msg);
-      setTurnLog(tl => [...tl, { turn: newTurn, entries: [msg] }]);
-      rt.current?.broadcast("turn_change", { ap: nextId, ph: 0, t: newTurn, log: msg });
-      // Save turn change to localStorage
-      try {
-        const sess = JSON.parse(localStorage.getItem("commander_es_session") || "{}");
-        localStorage.setItem("commander_es_session", JSON.stringify({ ...sess, turn: newTurn, phase: 0, activePlayer: nextId, savedAt: Date.now() }));
-      } catch { }
-      if (nextId === myId) { untapAll(); }
+      advanceToNextPlayer();
     } else {
       const np = phase + 1; setPhase(np); const msg = `Fase: ${PHASES[np]}`; addLog(msg);
       if (phase === 3) { setAttackers(new Set()); } // clear attackers after combat
@@ -4348,14 +4353,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         <PhasePanel
           playerOrder={playerOrder} players={players} activePlayer={activePlayer}
           turn={turn} phase={phase} isMyTurn={isMyTurn}
-          onNextPhase={nextPhase} onEndTurn={() => {
-            const msg = `Fase: ${PHASES[5]}`;
-            addLog(msg);
-            setPhase(5);
-            setAttackers(new Set());
-            rt.current?.broadcast("turn_change", { ap: activePlayer, ph: 5, t: turn, log: msg });
-            setTimeout(nextPhase, 150);
-          }}
+          onNextPhase={nextPhase} onEndTurn={advanceToNextPlayer}
           onMulligan={startMulligan} onHome={onHome}
           avatars={avatarMap}
         />
