@@ -1643,18 +1643,46 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
             <span style={{ background: "var(--bg-panel)", borderRadius: 20, padding: "2px 9px", fontSize: 12, color: "var(--text-muted)" }}>
               {deck.length}{format.deckSize > 0 ? `/${formatHasCommander(format) ? format.deckSize - 1 : format.deckSize}` : ""}
             </span>
-            {Object.keys(formatWarnings).length > 0 && (
-              <span title="Hay cartas no legales en este formato" style={{ background: "#4a0a0a", borderRadius: 20, padding: "2px 9px", fontSize: 11, color: "var(--color-damage)", cursor: "default" }}>
-                🚫 {Object.values(formatWarnings).filter(v => v === "banned").length} ban
-              </span>
-            )}
+            {(() => {
+              const bannedCount = Object.values(formatWarnings).filter(v => v === "banned").length;
+              const illegalCount = Object.values(formatWarnings).filter(v => v === "not_legal").length;
+              return bannedCount + illegalCount > 0 ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {bannedCount > 0 && (
+                    <span title="Cartas baneadas en este formato" style={{ background: "#4a0a0a", borderRadius: 20, padding: "2px 9px", fontSize: 11, color: "var(--color-damage)" }}>
+                      🚫 {bannedCount} baneada{bannedCount > 1 ? "s" : ""}
+                    </span>
+                  )}
+                  {illegalCount > 0 && (
+                    <span title="Cartas no legales en este formato" style={{ background: "#3a2a0a", borderRadius: 20, padding: "2px 9px", fontSize: 11, color: "#ffaa44" }}>
+                      ✗ {illegalCount} no legal{illegalCount > 1 ? "es" : ""}
+                    </span>
+                  )}
+                  {bannedCount > 0 && (
+                    <button
+                      title="Eliminar todas las cartas baneadas del mazo"
+                      onClick={() => {
+                        const bannedNames = new Set(Object.entries(formatWarnings).filter(([,v]) => v === "banned").map(([n]) => n));
+                        setDeck(d => d.filter(c => !bannedNames.has(c.name)));
+                        setFormatWarnings(w => Object.fromEntries(Object.entries(w).filter(([,v]) => v !== "banned")));
+                      }}
+                      style={{ padding: "2px 8px", borderRadius: 6, border: "1px solid #cc0000", background: "#2a0808", color: "#ff8888", fontSize: 10, cursor: "pointer", fontWeight: 700, whiteSpace: "nowrap" }}>
+                      🗑 Eliminar baneadas
+                    </button>
+                  )}
+                </div>
+              ) : null;
+            })()}
             <div style={{ marginLeft: "auto" }}>
               <button onClick={() => {
                 if (formatHasCommander(format) && !commander) return alert(`Selecciona un Comandante para el formato ${format.label}.`);
                 if (deck.length < 5) return alert("Agrega más cartas.");
-                // Warn about format violations
+                // Hard block: no se puede jugar con cartas baneadas
                 const violations = Object.entries(formatWarnings).filter(([, v]) => v === "banned");
-                if (violations.length > 0 && !window.confirm(`Hay ${violations.length} carta(s) baneada(s) en ${format.label}:\n${violations.map(([n]) => n).join(", ")}\n\n¿Continuar de todas formas?`)) return;
+                if (violations.length > 0) {
+                  alert(`🚫 No puedes jugar: hay ${violations.length} carta(s) baneada(s) en ${format.label}:\n\n${violations.map(([n]) => `• ${n}`).join("\n")}\n\nElimínalas del mazo antes de continuar.`);
+                  return;
+                }
                 // Remove commander from deck by name/id (instanceId may differ if loaded from storage)
                 const deckWithoutCmd = !commander ? deck : deck.filter(c =>
                   c.instanceId !== commander.instanceId &&
@@ -1674,7 +1702,13 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
               onChange={e => {
                 const f = FORMATS.find(f => f.key === e.target.value) || FORMATS[0];
                 setFormat(f);
-                setFormatWarnings({});
+                // Re-validate entire deck with the new format
+                const newWarnings = {};
+                [...deck, ...(commander ? [commander] : [])].forEach(c => {
+                  const issue = checkLegality(c, f);
+                  if (issue) newWarnings[c.name] = issue;
+                });
+                setFormatWarnings(newWarnings);
                 if (!['commander', 'duel', 'brawl', 'oathbreaker'].includes(f.key)) setCommander(null);
               }}
               style={{ flex: 1, padding: "4px 8px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-well)", color: "var(--text-primary)", fontSize: 12, cursor: "pointer", outline: "none" }}>
