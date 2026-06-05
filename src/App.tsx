@@ -2373,9 +2373,19 @@ function ZoomCardModal({ card, onClose }) {
 }
 
 // ─── Turn Order Panel ─────────────────────────────────────────────────────────
+const KEYBOARD_SHORTCUTS = [
+  { key: "Espacio", desc: "Siguiente fase" },
+  { key: "E", desc: "Fin de turno" },
+  { key: "D", desc: "Robar carta" },
+  { key: "U", desc: "Desgirar todos" },
+  { key: "T", desc: "Girar carta seleccionada" },
+  { key: "Esc", desc: "Cerrar / Deseleccionar" },
+];
+
 function PhasePanel({ playerOrder, players, activePlayer, turn, phase, isMyTurn, onNextPhase, onEndTurn, onSkipDraw, onMulligan, onHome, avatars }) {
   const PHASE_ICONS = ["🌙", "📖", "⚡", "⚔️", "⚡", "🏁"];
   const PHASE_SHORT = ["Mant.", "Robo", "Prin 1", "Ataque", "Prin 2", "Fin"];
+  const [showShortcuts, setShowShortcuts] = React.useState(false);
   return (
     <div style={{ width: 72, flexShrink: 0, background: "var(--bg-base)", borderRight: "1px solid var(--bg-subtle)", display: "flex", flexDirection: "column", alignItems: "center", padding: "6px 4px", gap: 3, overflowY: "auto" }}>
       {/* Logo/Home */}
@@ -2437,6 +2447,27 @@ function PhasePanel({ playerOrder, players, activePlayer, turn, phase, isMyTurn,
           🔄
         </button>
       )}
+      {/* Keyboard shortcuts help icon */}
+      <div style={{ marginTop: "auto", paddingTop: 6, width: "100%" }}>
+        <button
+          onClick={() => setShowShortcuts(s => !s)}
+          title="Atajos de teclado"
+          style={{ width: "100%", padding: "4px 0", borderRadius: 5, border: `1px solid ${showShortcuts ? "var(--gold-67)" : "var(--border-default)"}`, background: showShortcuts ? "var(--bg-gold)" : "transparent", color: showShortcuts ? "var(--gold)" : "var(--gray-mid)", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>
+          ⌨
+        </button>
+        {showShortcuts && (
+          <div style={{ position: "fixed", left: 78, bottom: 12, background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 10, padding: "10px 14px", zIndex: 600, boxShadow: "0 4px 24px #000c", minWidth: 200 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "var(--gold)", marginBottom: 8 }}>⌨ Atajos de teclado</div>
+            {KEYBOARD_SHORTCUTS.map(({ key, desc }) => (
+              <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 5 }}>
+                <kbd style={{ background: "var(--bg-well)", border: "1px solid var(--border-strong)", borderRadius: 4, padding: "2px 7px", fontSize: 10, fontFamily: "monospace", color: "var(--text-primary)", fontWeight: 700, whiteSpace: "nowrap" }}>{key}</kbd>
+                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{desc}</span>
+              </div>
+            ))}
+            <div style={{ marginTop: 8, fontSize: 9, color: "var(--gray-dark)", borderTop: "1px solid var(--border-default)", paddingTop: 6 }}>Solo activos fuera de inputs</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -3221,25 +3252,6 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     return () => { document.title = "Commander ES"; };
   }, [isMyTurn, phase, turn]);
 
-  // ── [Feature 2] Atajos de teclado ──
-  useEffect(() => {
-    const onKey = (e) => {
-      // Ignore when user is typing in an input/textarea
-      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
-      if (e.metaKey || e.ctrlKey) return;
-      switch (e.key.toLowerCase()) {
-        case " ":       e.preventDefault(); if (isMyTurn) nextPhase(); break;
-        case "e":       if (isMyTurn) advanceToNextPlayer(); break;
-        case "d":       if (isMyTurn) libActions.draw(myId, 1); break;
-        case "u":       if (isMyTurn) untapAll(); break;
-        case "t":       if (isMyTurn && selCard) tapCard(selCard.instanceId); break;
-        case "escape":  setCtxMenu(null); setSelCard(null); break;
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isMyTurn, nextPhase, advanceToNextPlayer, selCard, untapAll]);
-
   // ── [Feature 1] Recordatorio de descarte al entrar en Fin Turno ──
   useEffect(() => {
     if (phase === 5 && isMyTurn) {
@@ -3856,6 +3868,25 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       if (np === 1 && activePlayer === myId) { setTimeout(() => libActions.draw(myId, 1), 100); }
     }
   };
+
+  // ── [Feature 2] Atajos de teclado — declarado DESPUÉS de nextPhase y advanceToNextPlayer ──
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+      if (e.metaKey || e.ctrlKey) return;
+      switch (e.key.toLowerCase()) {
+        case " ":      e.preventDefault(); if (isMyTurn) nextPhase(); break;
+        case "e":      if (isMyTurn) advanceToNextPlayer(); break;
+        case "d":      if (isMyTurn) libActions.draw(myId, 1); break;
+        case "u":      if (isMyTurn) untapAll(); break;
+        case "t":      if (isMyTurn && selCard) tapCard(selCard.instanceId); break;
+        case "escape": setCtxMenu(null); setSelCard(null); break;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isMyTurn, selCard]);
 
   // ── Context menu for cards ──
   const cardCtxItems = (pid, card, zone, isMe) => {
