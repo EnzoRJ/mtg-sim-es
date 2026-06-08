@@ -3032,37 +3032,52 @@ class VoiceChat {
 
 
 // ─── Commander Damage Panel ───────────────────────────────────────────────────
-function CmdDmgPanel({ myPid, players, playerOrder, avatarMap, onAdjust, onClose }) {
+function CmdDmgPanel({ myPid, players, playerOrder, avatarMap, onAdjust, onAdjustInflicted, onClose }) {
   const opponents = playerOrder.filter(pid => pid !== myPid);
   const myState = players[myPid];
 
+  const renderRow = (pid, dmg, onMinus, onPlus) => {
+    const pct = Math.min(100, (dmg / 21) * 100);
+    const lethal = dmg >= 21;
+    const warn = dmg >= 15;
+    return (
+      <div key={pid} style={{ marginBottom: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <span style={{ fontSize: 16 }}>{avatarMap?.[pid] || "🧙"}</span>
+          <span style={{ fontSize: 12, color: "var(--text-primary)", flex: 1 }}>{players[pid]?.name}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <button onClick={onMinus} style={{ width: 22, height: 22, borderRadius: "50%", border: "none", background: "var(--bg-damage)", color: "var(--color-damage)", cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0 }}>−</button>
+            <span style={{ fontSize: 16, fontWeight: 800, color: lethal ? "var(--color-red)" : warn ? "var(--color-orange)" : "var(--text-primary)", minWidth: 28, textAlign: "center" }}>{dmg}</span>
+            <button onClick={onPlus} style={{ width: 22, height: 22, borderRadius: "50%", border: "none", background: "var(--bg-life)", color: "var(--color-life)", cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0 }}>+</button>
+          </div>
+          {lethal && <span style={{ fontSize: 10, color: "var(--color-red)", fontWeight: 800 }}>☠</span>}
+        </div>
+        <div style={{ height: 4, borderRadius: 2, background: "var(--bg-subtle)", overflow: "hidden" }}>
+          <div style={{ height: "100%", borderRadius: 2, background: lethal ? "var(--color-red)" : warn ? "var(--color-orange)" : "var(--gold)", width: `${pct}%`, transition: "width 0.3s" }} />
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div style={{ position: "fixed", bottom: 60, left: 90, background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 14, padding: 14, zIndex: 400, boxShadow: "0 8px 32px var(--scrim-67)", minWidth: 220 }}>
+    <div style={{ position: "fixed", bottom: 60, left: 90, background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 14, padding: 14, zIndex: 400, boxShadow: "0 8px 32px var(--scrim-67)", minWidth: 240 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gold)" }}>⚔ Daño de Comandante</span>
         <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 14 }}>✕</button>
       </div>
-      <div style={{ fontSize: 10, color: "var(--gray-dark)", marginBottom: 8 }}>21+ daño = eliminado</div>
+
+      {/* RECIBIDO */}
+      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--color-damage)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Recibido de</div>
       {opponents.map(pid => {
         const dmg = myState?.commanderDamage?.[pid] || 0;
-        const pct = Math.min(100, (dmg / 21) * 100);
-        return (
-          <div key={pid} style={{ marginBottom: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <span style={{ fontSize: 16 }}>{avatarMap?.[pid] || "🧙"}</span>
-              <span style={{ fontSize: 12, color: "var(--text-primary)", flex: 1 }}>{players[pid]?.name}</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <button onClick={() => onAdjust(pid, -1)} style={{ width: 22, height: 22, borderRadius: "50%", border: "none", background: "var(--bg-damage)", color: "var(--color-damage)", cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0 }}>−</button>
-                <span style={{ fontSize: 16, fontWeight: 800, color: dmg >= 21 ? "var(--color-red)" : dmg >= 15 ? "var(--color-orange)" : "var(--text-primary)", minWidth: 28, textAlign: "center" }}>{dmg}</span>
-                <button onClick={() => onAdjust(pid, 1)} style={{ width: 22, height: 22, borderRadius: "50%", border: "none", background: "var(--bg-life)", color: "var(--color-life)", cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0 }}>+</button>
-              </div>
-              {dmg >= 21 && <span style={{ fontSize: 10, color: "var(--color-red)", fontWeight: 800 }}>☠</span>}
-            </div>
-            <div style={{ height: 4, borderRadius: 2, background: "var(--bg-subtle)", overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: 2, background: dmg >= 21 ? "var(--color-red)" : dmg >= 15 ? "var(--color-orange)" : "var(--gold)", width: `${pct}%`, transition: "width 0.3s" }} />
-            </div>
-          </div>
-        );
+        return renderRow(pid, dmg, () => onAdjust(pid, -1), () => onAdjust(pid, 1));
+      })}
+
+      {/* INFLIGIDO */}
+      <div style={{ borderTop: "1px solid var(--bg-subtle)", marginTop: 6, paddingTop: 10, fontSize: 10, fontWeight: 700, color: "var(--color-life)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Infligido a</div>
+      {opponents.map(pid => {
+        const dmg = players[pid]?.commanderDamage?.[myPid] || 0;
+        return renderRow(pid, dmg, () => onAdjustInflicted(pid, -1), () => onAdjustInflicted(pid, 1));
       })}
     </div>
   );
@@ -4204,10 +4219,13 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           {Object.entries(p.commanderDamage).filter(([, v]) => v > 0).map(([fromPid, dmg]) => {
             const lethal = dmg >= 21;
             const warn   = dmg >= 15;
+            const attackerAvatar = avatarMap?.[fromPid] || players[fromPid]?.avatar || "🧙";
+            const attackerName = players[fromPid]?.name || "oponente";
             return (
               <span key={fromPid}
-                title={`Daño de comandante de ${players[fromPid]?.name || "oponente"}: ${dmg}/21`}
+                title={`Daño del comandante de ${attackerName}: ${dmg}/21`}
                 style={{
+                  display: "inline-flex", alignItems: "center", gap: 2,
                   fontSize: lethal ? 10 : warn ? 9 : 8,
                   fontWeight: warn ? 800 : 600,
                   color: lethal ? "#ff4444" : warn ? "#ffaa44" : "var(--color-orange)",
@@ -4218,7 +4236,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   flexShrink: 0,
                   animation: lethal ? "pulse 0.8s infinite" : "none",
                 }}>
-                ⚔{dmg}{lethal ? "💀" : warn ? "!" : ""}
+                <span style={{ fontSize: 9 }}>{attackerAvatar}</span>⚔{dmg}{lethal ? "💀" : warn ? "!" : ""}
               </span>
             );
           })}
@@ -4896,7 +4914,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
       {/* Mana Tracker */}
       {manaOpen && <ManaTracker mana={mana} onChange={setMana} onClose={() => setManaOpen(false)} />}
-      {cmdDmgOpen && <CmdDmgPanel myPid={myId} players={players} playerOrder={playerOrder} avatarMap={avatarMap} onAdjust={(fromPid, d) => adjCmdDmg(fromPid, myId, d)} onClose={() => setCmdDmgOpen(false)} />}
+      {cmdDmgOpen && <CmdDmgPanel myPid={myId} players={players} playerOrder={playerOrder} avatarMap={avatarMap} onAdjust={(fromPid, d) => adjCmdDmg(fromPid, myId, d)} onAdjustInflicted={(toPid, d) => adjCmdDmg(myId, toPid, d)} onClose={() => setCmdDmgOpen(false)} />}
 
 
 
