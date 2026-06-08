@@ -4106,24 +4106,29 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     }
   };
 
-  // ── [Feature 2] Atajos de teclado — declarado DESPUÉS de nextPhase y advanceToNextPlayer ──
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // ── Atajos de teclado ──
+  // Usamos un ref para que el handler siempre acceda al estado fresco
+  // sin necesitar re-registrar el listener en cada render.
+  const keyHandlers = useRef({});
+  keyHandlers.current = { nextPhase, advanceToNextPlayer, libActions, untapAll, tapCard, isMyTurn, selCard, myId };
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
       if (e.metaKey || e.ctrlKey) return;
-      switch (e.key.toLowerCase()) {
-        case " ":      e.preventDefault(); if (isMyTurn) nextPhase(); break;
-        case "e":      if (isMyTurn) advanceToNextPlayer(); break;
-        case "d":      if (isMyTurn) libActions.draw(myId, 1); break;
-        case "u":      if (isMyTurn) untapAll(); break;
-        case "t":      if (isMyTurn && selCard) tapCard(selCard.instanceId); break;
-        case "escape": setCtxMenu(null); setSelCard(null); break;
+      const h = keyHandlers.current;
+      switch (e.key) {
+        case " ":      e.preventDefault(); if (h.isMyTurn) h.nextPhase(); break;
+        case "e":      if (h.isMyTurn) h.advanceToNextPlayer(); break;
+        case "d":      if (h.isMyTurn) h.libActions.draw(h.myId, 1); break;
+        case "u":      if (h.isMyTurn) h.untapAll(); break;
+        case "t":      if (h.isMyTurn && h.selCard) h.tapCard(h.selCard.instanceId); break;
+        case "Escape": setCtxMenu(null); setSelCard(null); break;
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isMyTurn, selCard]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Context menu for cards ──
   const cardCtxItems = (pid, card, zone, isMe) => {
