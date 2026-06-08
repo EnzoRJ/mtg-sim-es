@@ -2208,18 +2208,30 @@ function TokenModal({ onCreate, onClose, cmdTokenSuggestions }) {
     setSelectedCard(null);
   };
 
-  // Search Scryfall for token cards
+  // Search Scryfall for token cards — bilingual: Spanish + English in parallel
   useEffect(() => {
     clearTimeout(debRef.current);
     if (!search.trim()) { setResults([]); return; }
     debRef.current = setTimeout(async () => {
       setSearching(true);
       try {
-        // Search specifically for token cards on Scryfall
-        const q = encodeURIComponent(`${search} type:token`);
-        const r = await fetch(`https://api.scryfall.com/cards/search?q=${q}&order=name`);
-        if (r.ok) { const d = await r.json(); setResults(d.data?.slice(0, 12) || []); }
-        else setResults([]);
+        const base = encodeURIComponent(`${search} type:token`);
+        const esQ  = encodeURIComponent(`${search} type:token lang:es`);
+        const [rEn, rEs] = await Promise.allSettled([
+          fetch(`https://api.scryfall.com/cards/search?q=${base}&order=name`),
+          fetch(`https://api.scryfall.com/cards/search?q=${esQ}&order=name`),
+        ]);
+        const enCards = rEn.status === "fulfilled" && rEn.value.ok ? (await rEn.value.json()).data || [] : [];
+        const esCards = rEs.status === "fulfilled" && rEs.value.ok ? (await rEs.value.json()).data || [] : [];
+        // Merge: Spanish prints first (have printed_name), then English; deduplicate by oracle_id
+        const seen = new Set();
+        const merged = [...esCards, ...enCards].filter(c => {
+          const key = c.oracle_id || c.id;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        setResults(merged.slice(0, 16));
       } catch { setResults([]); }
       setSearching(false);
     }, 400);
@@ -2274,7 +2286,7 @@ function TokenModal({ onCreate, onClose, cmdTokenSuggestions }) {
                       onClick={() => { onCreate([{ ...t, image_url: t.image_uris?.normal || null, instanceId: uid(), isToken: true, tapped: false, counters: [], abilities: [] }]); onClose(); }}
                       style={{ padding: "3px 8px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "var(--bg-panel)", color: "var(--text-primary)", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", gap: 5 }}>
                       {t.image_uris?.normal && <img src={t.image_uris.normal} style={{ width: 16, height: 22, borderRadius: 2, objectFit: "cover" }} />}
-                      <span>{t.name}</span>
+                      <span>{t.printed_name || t.name}</span>
                       {t.power && <span style={{ color: "var(--gray-mid)", fontSize: 9 }}>{t.power}/{t.toughness}</span>}
                     </button>
                   ))}
@@ -2291,13 +2303,13 @@ function TokenModal({ onCreate, onClose, cmdTokenSuggestions }) {
           {/* Tab: Buscar */}
           {tab === "buscar" && (
             <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", padding: "12px 20px" }}>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar token (ej: Soldado, Zombie, Tesoro...)" autoFocus
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar token en español o inglés (ej: Soldado, Zombie, Treasure...)" autoFocus
                 style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 10 }} />
 
               {/* Results grid */}
               <div style={{ flex: 1, overflowY: "auto", display: "flex", flexWrap: "wrap", gap: 8, alignContent: "flex-start" }}>
                 {searching && <div style={{ color: "var(--gray-mid)", fontSize: 12, width: "100%", textAlign: "center", padding: 20 }}>Buscando...</div>}
-                {!searching && results.length === 0 && search && <div style={{ color: "var(--gray-darker)", fontSize: 12, width: "100%", textAlign: "center", padding: 20 }}>Sin resultados — prueba "Soldier", "Zombie", "Treasure"</div>}
+                {!searching && results.length === 0 && search && <div style={{ color: "var(--gray-darker)", fontSize: 12, width: "100%", textAlign: "center", padding: 20 }}>Sin resultados — prueba en español ("Soldado", "Tesoro") o inglés ("Soldier", "Treasure")</div>}
                 {results.map(card => {
                   const img = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal;
                   const isSelected = selectedCard?.id === card.id;
