@@ -523,6 +523,7 @@ function mkState(id, name, deck, commander, startLife = 40, sideboard = []) {
     exile: [],
     commandZone: commander ? [{ ...commander, instanceId: uid() }] : [],
     commanderCard: commander ? { ...commander } : null,
+    emblems: [],
   };
 }
 
@@ -1538,6 +1539,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
           <div style={{ display: "flex", borderBottom: "1px solid var(--border-default)" }}>
             {tabBtn("buscar", "🔍 Buscar")}
             {tabBtn("importar", "📋 Importar")}
+            {tabBtn("stats", "📊 Stats")}
             {!formatHasCommander(format) && tabBtn("sideboard", `↔ SB (${sideboard.length}/15)`)}
           </div>
           {tab === "buscar" && (
@@ -1623,6 +1625,84 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
               </div>
             </div>
           )}
+          {tab === "stats" && (() => {
+            const nonLands = deck.filter(c => !isLand(c));
+            const lands = deck.filter(c => isLand(c));
+            const cmcBuckets = [0, 1, 2, 3, 4, 5, 6, 7].map(n => ({
+              cmc: n,
+              count: nonLands.filter(c => (n === 7 ? (c.cmc || 0) >= 7 : (c.cmc || 0) === n)).length,
+              label: n === 7 ? "7+" : String(n),
+            }));
+            const maxCount = Math.max(...cmcBuckets.map(b => b.count), 1);
+            const COLOR_MAP = { W: "#f8f8d0", U: "#4488cc", B: "#553366", R: "#cc4422", G: "#338844" };
+            const colorCounts = Object.entries(COLOR_MAP).map(([sym, col]) => ({
+              sym, col,
+              count: deck.filter(c => (c.color_identity || []).includes(sym)).length,
+            }));
+            const types = [
+              { label: "Criaturas", icon: "🐉", count: deck.filter(c => isCreature(c) && !isLand(c)).length },
+              { label: "Tierras", icon: "🌲", count: lands.length },
+              { label: "Instantáneos", icon: "⚡", count: deck.filter(c => c.type_line?.toLowerCase().includes("instant") || c.type_line?.toLowerCase().includes("instantáneo")).length },
+              { label: "Conjuros", icon: "📜", count: deck.filter(c => c.type_line?.toLowerCase().includes("sorcery") || c.type_line?.toLowerCase().includes("conjuro")).length },
+              { label: "Encantamientos", icon: "✨", count: deck.filter(c => c.type_line?.toLowerCase().includes("enchantment") || c.type_line?.toLowerCase().includes("encantamiento")).length },
+              { label: "Artefactos", icon: "⚙", count: deck.filter(c => c.type_line?.toLowerCase().includes("artifact") || c.type_line?.toLowerCase().includes("artefacto")).length },
+              { label: "Planeswalkers", icon: "👁", count: deck.filter(c => isPlaneswalker(c)).length },
+            ];
+            const avgCmc = nonLands.length ? (nonLands.reduce((s, c) => s + (c.cmc || 0), 0) / nonLands.length).toFixed(2) : "0.00";
+            return (
+              <div style={{ flex: 1, overflowY: "auto", padding: 14, display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" }}>
+                  <span>Total: {deck.length} cartas</span>
+                  <span>CMC promedio: {avgCmc}</span>
+                  <span>Tierras: {lands.length}</span>
+                </div>
+
+                {/* Mana Curve */}
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gold)", marginBottom: 8 }}>Curva de Maná</div>
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 5, height: 90 }}>
+                    {cmcBuckets.map(b => (
+                      <div key={b.cmc} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                        {b.count > 0 && <span style={{ fontSize: 9, color: "var(--text-muted)" }}>{b.count}</span>}
+                        <div style={{ width: "100%", borderRadius: "3px 3px 0 0", background: b.count > 0 ? "linear-gradient(180deg,var(--gold),#8b6914)" : "var(--bg-subtle)", height: `${Math.max(4, (b.count / maxCount) * 72)}px`, transition: "height 0.3s" }} />
+                        <span style={{ fontSize: 9, color: "var(--text-muted)" }}>{b.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Color Distribution */}
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gold)", marginBottom: 8 }}>Distribución de Colores</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {colorCounts.map(({ sym, col, count }) => (
+                      <div key={sym} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                        <div style={{ width: 22, height: 22, borderRadius: "50%", background: col, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: sym === "W" ? "#222" : "#fff", border: "2px solid #ffffff22" }}>{sym}</div>
+                        <span style={{ fontSize: 10, color: count > 0 ? "var(--text-primary)" : "var(--gray-deep)", fontWeight: count > 0 ? 700 : 400 }}>{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Type Breakdown */}
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gold)", marginBottom: 8 }}>Tipos de Cartas</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    {types.filter(t => t.count > 0).map(t => (
+                      <div key={t.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 12, width: 16 }}>{t.icon}</span>
+                        <span style={{ flex: 1, fontSize: 11, color: "var(--text-muted)" }}>{t.label}</span>
+                        <div style={{ width: 80, height: 6, borderRadius: 3, background: "var(--bg-subtle)", overflow: "hidden" }}>
+                          <div style={{ height: "100%", borderRadius: 3, background: "var(--gold)", width: `${(t.count / deck.length) * 100}%` }} />
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)", minWidth: 20, textAlign: "right" }}>{t.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
           {tab === "importar" && (
             <div style={{ flex: 1, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Una carta por línea. Ej: "4x Sol Ring"</div>
@@ -2626,6 +2706,8 @@ function ResolveModal({ modal, players, onResolve, onClose }) {
 function DiceModal({ onClose, playerName, onRoll }) {
   const [result, setResult] = useState(null);
   const [rolling, setRolling] = useState(false);
+  const [coinResult, setCoinResult] = useState(null);
+  const [coinFlipping, setCoinFlipping] = useState(false);
 
   const roll = (die) => {
     setRolling(true);
@@ -2640,8 +2722,24 @@ function DiceModal({ onClose, playerName, onRoll }) {
         const rollData = { playerName, die: die.sides, value: final, color: die.color };
         setResult({ ...rollData, rolling: false });
         setRolling(false);
-        // Broadcast to all players
         onRoll?.(rollData);
+      }
+    }, 80);
+  };
+
+  const flipCoin = () => {
+    setCoinFlipping(true);
+    setCoinResult(null);
+    let ticks = 0;
+    const interval = setInterval(() => {
+      setCoinResult(Math.random() < 0.5 ? "CARA" : "CRUZ");
+      ticks++;
+      if (ticks >= 8) {
+        clearInterval(interval);
+        const final = Math.random() < 0.5 ? "CARA" : "CRUZ";
+        setCoinResult(final);
+        setCoinFlipping(false);
+        onRoll?.({ playerName, die: "moneda", value: final, color: "#f0c040" });
       }
     }, 80);
   };
@@ -2660,17 +2758,32 @@ function DiceModal({ onClose, playerName, onRoll }) {
               </div>
               <div style={{ fontSize: 12, color: "var(--text-muted)" }}>d{result.die}{!result.rolling && result.value === result.die ? " — ¡Máximo! 🎉" : result.value === 1 ? " — Falla crítica 💀" : ""}</div>
             </>
+          ) : coinResult ? (
+            <>
+              <div style={{ fontSize: 42, fontWeight: 900, color: "#f0c040", opacity: coinFlipping ? 0.5 : 1, transition: "all 0.1s" }}>
+                {coinResult === "CARA" ? "👑" : "🌙"}
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#f0c040" }}>{coinResult}</div>
+            </>
           ) : (
-            <div style={{ fontSize: 13, color: "var(--gray-dark)" }}>Elige un dado</div>
+            <div style={{ fontSize: 13, color: "var(--gray-dark)" }}>Elige un dado o lanza la moneda</div>
           )}
         </div>
+
+        {/* Coin flip */}
+        <button onClick={() => !coinFlipping && !rolling && flipCoin()} disabled={coinFlipping || rolling}
+          style={{ width: "100%", padding: "12px 0", borderRadius: 10, border: "2px solid #f0c04044", background: "#f0c04011", color: "#f0c040", cursor: (coinFlipping || rolling) ? "default" : "pointer", fontWeight: 800, fontSize: 15, marginBottom: 12, opacity: (coinFlipping || rolling) ? 0.5 : 1, transition: "all 0.15s" }}
+          onMouseEnter={e => !(coinFlipping || rolling) && (e.currentTarget.style.background = "#f0c04022")}
+          onMouseLeave={e => (e.currentTarget.style.background = "#f0c04011")}>
+          🪙 Lanzar Moneda
+        </button>
 
         {/* Dice buttons */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
           {DICE.map(die => (
-            <button key={die.sides} onClick={() => !rolling && roll(die)} disabled={rolling}
-              style={{ padding: "14px 0", borderRadius: 10, border: `2px solid ${die.color}44`, background: `${die.color}11`, color: die.color, cursor: rolling ? "default" : "pointer", fontWeight: 800, fontSize: 18, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, transition: "all 0.15s", opacity: rolling ? 0.5 : 1 }}
-              onMouseEnter={e => !rolling && (e.currentTarget.style.background = `${die.color}22`)}
+            <button key={die.sides} onClick={() => !rolling && !coinFlipping && roll(die)} disabled={rolling || coinFlipping}
+              style={{ padding: "14px 0", borderRadius: 10, border: `2px solid ${die.color}44`, background: `${die.color}11`, color: die.color, cursor: (rolling || coinFlipping) ? "default" : "pointer", fontWeight: 800, fontSize: 18, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, transition: "all 0.15s", opacity: (rolling || coinFlipping) ? 0.5 : 1 }}
+              onMouseEnter={e => !(rolling || coinFlipping) && (e.currentTarget.style.background = `${die.color}22`)}
               onMouseLeave={e => (e.currentTarget.style.background = `${die.color}11`)}>
               <span style={{ fontSize: 22 }}>{die.icon}</span>
               <span style={{ fontSize: 13 }}>d{die.sides}</span>
@@ -3031,6 +3144,45 @@ class VoiceChat {
 }
 
 
+// ─── Mass Life Modal ─────────────────────────────────────────────────────────
+function MassLifeModal({ players, playerOrder, avatarMap, onApply, onClose }) {
+  const [amount, setAmount] = useState(0);
+  const [sign, setSign] = useState(-1); // -1 = todos pierden, +1 = todos ganan
+  const affected = playerOrder.filter(pid => players[pid]);
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 500 }} onClick={onClose}>
+      <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 14, padding: 20, minWidth: 280 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gold)" }}>💥 Daño/Vida Masiva</span>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 15 }}>✕</button>
+        </div>
+        <div style={{ fontSize: 10, color: "var(--gray-dark)", marginBottom: 12 }}>Aplica a todos los jugadores</div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center", justifyContent: "center" }}>
+          <button onClick={() => setSign(-1)} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: sign === -1 ? "var(--bg-damage)" : "var(--bg-well)", color: sign === -1 ? "var(--color-damage)" : "var(--gray-mid)", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>− Todos pierden</button>
+          <button onClick={() => setSign(1)} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: sign === 1 ? "var(--bg-life)" : "var(--bg-well)", color: sign === 1 ? "var(--color-life)" : "var(--gray-mid)", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>+ Todos ganan</button>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 16 }}>
+          <button onClick={() => setAmount(a => Math.max(0, a - 1))} style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "var(--bg-damage)", color: "var(--color-damage)", cursor: "pointer", fontSize: 18, fontWeight: 800 }}>−</button>
+          <span style={{ fontSize: 36, fontWeight: 900, color: sign === -1 ? "var(--color-damage)" : "var(--color-life)", minWidth: 50, textAlign: "center" }}>{amount}</span>
+          <button onClick={() => setAmount(a => a + 1)} style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "var(--bg-life)", color: "var(--color-life)", cursor: "pointer", fontSize: 18, fontWeight: 800 }}>+</button>
+        </div>
+        <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 16, flexWrap: "wrap" }}>
+          {[1, 2, 3, 5, 7, 10, 13, 20].map(n => (
+            <button key={n} onClick={() => setAmount(n)} style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid var(--bg-subtle)", background: amount === n ? "var(--bg-panel)" : "var(--bg-well)", color: amount === n ? "var(--gold)" : "var(--text-muted)", cursor: "pointer", fontSize: 12, fontWeight: amount === n ? 700 : 400 }}>{n}</button>
+          ))}
+        </div>
+        <div style={{ fontSize: 10, color: "var(--gray-dark)", marginBottom: 10, textAlign: "center" }}>
+          {affected.map(pid => `${avatarMap?.[pid] || "🧙"} ${players[pid]?.name}`).join(", ")}
+        </div>
+        <button onClick={() => { if (amount > 0) onApply(sign * amount); }} disabled={amount === 0}
+          style={{ width: "100%", padding: "10px 0", borderRadius: 8, border: "none", background: amount === 0 ? "var(--gray-222)" : sign === -1 ? "var(--bg-damage)" : "var(--bg-life)", color: amount === 0 ? "var(--gray-dark)" : sign === -1 ? "var(--color-damage)" : "var(--color-life)", fontWeight: 700, cursor: amount === 0 ? "default" : "pointer", fontSize: 14 }}>
+          {sign === -1 ? `Todos pierden ${amount} vida` : `Todos ganan ${amount} vida`}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Commander Damage Panel ───────────────────────────────────────────────────
 function CmdDmgPanel({ myPid, players, playerOrder, avatarMap, onAdjust, onAdjustInflicted, onClose }) {
   const opponents = playerOrder.filter(pid => pid !== myPid);
@@ -3167,6 +3319,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const voiceRef = useRef(null);
   const [abilitiesModal, setAbilitiesModal] = useState(false);
   const [diceResult, setDiceResult] = useState(null); // {playerName, die, value, color} shown to all
+  const [stormCount, setStormCount] = useState(0);
+  const [globalTokens, setGlobalTokens] = useState({ monarch: null, initiative: null }); // pid or null
+  const [massLifeOpen, setMassLifeOpen] = useState(false);
   // Combat state
   const [attackers, setAttackers] = useState(new Set());
   const [undoStack, setUndoStack] = useState([]);
@@ -3884,6 +4039,11 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     // [Feature 4] Record life change in history
     setLifeHistory(h => ({ ...h, [pid]: [...(h[pid] || [40]), (players[pid]?.life ?? 40) + d] }));
   };
+  const massAdjLife = (d) => {
+    playerOrder.forEach(pid => adjLife(pid, d));
+    addLog(`💥 Todos los jugadores ${d > 0 ? "ganan" : "pierden"} ${Math.abs(d)} vida.`);
+    setMassLifeOpen(false);
+  };
   const adjPoison = (pid, d) => { setPlayers(ps => { const next = { ...ps[pid], poison: Math.max(0, ps[pid].poison + d) }; if (pid === myId) syncState(next); return { ...ps, [pid]: next }; }); };
   const adjEnergy = (pid, d) => { setPlayers(ps => { const next = { ...ps[pid], energy: Math.max(0, (ps[pid].energy || 0) + d) }; if (pid === myId) syncState(next); return { ...ps, [pid]: next }; }); };
   const adjExperience = (pid, d) => { setPlayers(ps => { const next = { ...ps[pid], experience: Math.max(0, (ps[pid].experience || 0) + d) }; if (pid === myId) syncState(next); return { ...ps, [pid]: next }; }); };
@@ -3900,14 +4060,26 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     const nextId = playerOrder[(idx + 1) % playerOrder.length];
     const newTurn = turn + 1;
     const msg = `─── Turno ${newTurn}: ${players[nextId]?.name || nextId} ───`;
-    setActivePlayer(nextId); setPhase(0); setTurn(newTurn); setAttackers(new Set()); addLog(msg);
+    setActivePlayer(nextId); setPhase(0); setTurn(newTurn); setAttackers(new Set()); setStormCount(0); addLog(msg);
     setTurnLog(tl => [...tl, { turn: newTurn, entries: [msg] }]);
     rt.current?.broadcast("turn_change", { ap: nextId, ph: 0, t: newTurn, log: msg });
     try {
       const sess = JSON.parse(localStorage.getItem("commander_es_session") || "{}");
       localStorage.setItem("commander_es_session", JSON.stringify({ ...sess, turn: newTurn, phase: 0, activePlayer: nextId, savedAt: Date.now() }));
     } catch { }
-    if (nextId === myId) { untapAll(); }
+    if (nextId === myId) {
+      untapAll();
+      // Auto-add lore counter to each Saga I control on my upkeep
+      setPlayers(ps => {
+        const p = ps[myId]; if (!p) return ps;
+        const sagas = p.battlefield.filter(c => c.type_line?.toLowerCase().includes("saga"));
+        if (!sagas.length) return ps;
+        const next = { ...p, battlefield: p.battlefield.map(c => sagas.find(s => s.instanceId === c.instanceId) ? { ...c, counters: [...(c.counters || []), "lore"] } : c) };
+        addLog(`${p.name}: contador de historia añadido a ${sagas.map(s => s.printed_name || s.name).join(", ")}.`);
+        syncState(next);
+        return { ...ps, [myId]: next };
+      });
+    }
   };
 
   const nextPhase = () => {
@@ -4108,6 +4280,28 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         }
       </div>
 
+      {/* Emblems */}
+      {(p.emblems?.length > 0 || isMe) && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, flexShrink: 0 }}>
+          <div style={{ fontSize: 8, color: "#ddaaff", letterSpacing: 1, textAlign: "center" }}>EMBLEMA</div>
+          {p.emblems?.length > 0
+            ? p.emblems.map((em, i) => (
+              <div key={i} title={em.name || "Emblema"} style={{ width: 52, height: 73, borderRadius: 5, border: "2px solid #aa44ff88", background: "linear-gradient(160deg,#1a0a2a,#2a1040)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 2, cursor: isMe ? "pointer" : "default", position: "relative" }}
+                onClick={isMe ? () => setPlayers(ps => { const pp = ps[p.id]; const next = { ...pp, emblems: pp.emblems.filter((_, j) => j !== i) }; if (p.id === myId) syncState(next); return { ...ps, [p.id]: next }; }) : undefined}>
+                <div style={{ fontSize: 18 }}>👁</div>
+                <div style={{ fontSize: 7, color: "#ddaaff", textAlign: "center", padding: "0 3px", lineHeight: 1.2 }}>{em.name || "Emblema"}</div>
+                {isMe && <div style={{ position: "absolute", top: 2, right: 2, fontSize: 8, color: "#ff8888", cursor: "pointer" }}>✕</div>}
+              </div>
+            ))
+            : <div style={{ width: 52, height: 73, borderRadius: 5, border: "2px dashed #aa44ff44", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 2 }}>
+                <div style={{ fontSize: 14 }}>👁</div>
+                <div style={{ fontSize: 7, color: "#aa44ff55" }}>—</div>
+              </div>
+          }
+          {isMe && <button onClick={() => { const name = window.prompt("Nombre del emblema:", "Emblema"); if (name !== null) { updMe(pp => ({ ...pp, emblems: [...(pp.emblems || []), { name }] }), `${players[myId]?.name} obtiene un emblema: ${name || "Emblema"}.`); } }} style={{ fontSize: 7, padding: "1px 4px", borderRadius: 3, border: "1px solid #aa44ff44", background: "transparent", color: "#aa44ff", cursor: "pointer" }}>+ Emblema</button>}
+        </div>
+      )}
+
       {/* Library */}
       <div style={{ position: "relative" }}>
         <div
@@ -4158,7 +4352,17 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         <div style={{ padding: "2px 6px", display: "flex", alignItems: "center", gap: 4, background: isActive ? "var(--bg-gold)" : "#0d0d18", borderBottom: "1px solid var(--border-default)", flexShrink: 0, flexWrap: "nowrap", minHeight: 24 }}>
           <div style={{ width: 5, height: 5, borderRadius: "50%", background: isActive ? "var(--gold)" : "var(--gray-deep)", flexShrink: 0 }} />
           <span title={p.name} style={{ fontSize: 13, flexShrink: 0 }}>{avatarMap[pid] || "🧙"}</span>
-          <span title={p.name} style={{ fontWeight: 700, fontSize: 10, color: isActive ? "var(--gold)" : "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 70 }}>{p.name}{isMe ? " (tú)" : ""}</span>
+          <span
+            title="Click derecho: Monarca / Iniciativa"
+            onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, title: `${p.name}`, items: [
+              { label: globalTokens.monarch === pid ? "👑 Ceder Monarca" : "👑 Tomar Monarca", action: () => setGlobalTokens(t => ({ ...t, monarch: t.monarch === pid ? null : pid })) },
+              { label: globalTokens.initiative === pid ? "⚡ Ceder Iniciativa" : "⚡ Tomar Iniciativa", action: () => setGlobalTokens(t => ({ ...t, initiative: t.initiative === pid ? null : pid })) },
+            ]}); }}
+            style={{ fontWeight: 700, fontSize: 10, color: isActive ? "var(--gold)" : "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 70, cursor: "context-menu" }}>
+            {p.name}{isMe ? " (tú)" : ""}
+            {globalTokens.monarch === pid && <span title="Tiene el Monarca"> 👑</span>}
+            {globalTokens.initiative === pid && <span title="Tiene la Iniciativa"> ⚡</span>}
+          </span>
 
           {/* Life + sparkline */}
           <div title="Vida" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, background: "#0d0a0a", borderRadius: 4, padding: "0 3px" }}>
@@ -4661,10 +4865,10 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           {/* SECONDARY buttons — smaller */}
           {[
             { icon: "↩", label: "Deshacer", action: undo, color: history.length ? "var(--color-warn-dim)" : "var(--gray-deep)", disabled: !history.length },
-            { icon: "✨", label: "Habil.", action: () => setAbilitiesModal(true), color: "#88eeff" },
             { icon: "❤", label: "Vida", action: () => setLifeHistoryOpen(o => !o), color: "var(--color-damage)" },
             { icon: "💎", label: "Maná", action: () => setManaOpen(o => !o), color: manaOpen ? "var(--gold)" : "var(--gray-mid)" },
             { icon: "⚔", label: "CmdDmg", action: () => setCmdDmgOpen(o => !o), color: cmdDmgOpen ? "var(--color-orange)" : "var(--gray-mid)" },
+            { icon: "💥", label: "Masiva", action: () => setMassLifeOpen(o => !o), color: massLifeOpen ? "var(--color-damage)" : "var(--gray-mid)" },
             { icon: "📝", label: "Notas", action: () => setNotesOpen(o => !o), color: notesOpen ? "var(--color-life)" : "var(--gray-mid)" },
             { icon: "🔍", label: "Buscar", action: () => setCardSearch(s => ({ ...s, open: !s.open, query: "", results: [] })), color: cardSearch.open ? "var(--gold)" : "var(--gray-mid)" },
             { icon: "🔔", label: "Triggers", action: () => setTriggersOpen(o => !o), color: triggers.some(t => t.active) ? "#ffaa44" : triggersOpen ? "var(--gold)" : "var(--gray-mid)" },
@@ -4676,6 +4880,16 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
               <span style={{ fontSize: 6, lineHeight: 1 }}>{btn.label}</span>
             </button>
           ))}
+
+          {/* Storm counter */}
+          <div style={{ width: "100%", borderRadius: 5, border: "1px solid #141420", background: "var(--bg-input)", display: "flex", flexDirection: "column", alignItems: "center", padding: "3px 2px", gap: 1 }}>
+            <span style={{ fontSize: 8, color: "#aaddff", lineHeight: 1 }}>⛈ Storm</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              <button onClick={() => setStormCount(s => Math.max(0, s - 1))} style={{ width: 14, height: 14, borderRadius: "50%", border: "none", background: "var(--bg-damage)", color: "var(--color-damage)", cursor: "pointer", fontSize: 10, fontWeight: 800, padding: 0, lineHeight: 1 }}>−</button>
+              <span style={{ fontSize: 13, fontWeight: 800, color: stormCount > 0 ? "#aaddff" : "var(--gray-deep)", minWidth: 16, textAlign: "center" }}>{stormCount}</span>
+              <button onClick={() => setStormCount(s => s + 1)} style={{ width: 14, height: 14, borderRadius: "50%", border: "none", background: "#0a1a2a", color: "#aaddff", cursor: "pointer", fontSize: 10, fontWeight: 800, padding: 0, lineHeight: 1 }}>+</button>
+            </div>
+          </div>
 
           {/* Separator */}
           <div style={{ width: "80%", height: 1, background: "var(--bg-subtle)", margin: "2px 0", flexShrink: 0 }} />
@@ -4915,6 +5129,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       {/* Mana Tracker */}
       {manaOpen && <ManaTracker mana={mana} onChange={setMana} onClose={() => setManaOpen(false)} />}
       {cmdDmgOpen && <CmdDmgPanel myPid={myId} players={players} playerOrder={playerOrder} avatarMap={avatarMap} onAdjust={(fromPid, d) => adjCmdDmg(fromPid, myId, d)} onAdjustInflicted={(toPid, d) => adjCmdDmg(myId, toPid, d)} onClose={() => setCmdDmgOpen(false)} />}
+      {massLifeOpen && <MassLifeModal players={players} playerOrder={playerOrder} avatarMap={avatarMap} onApply={massAdjLife} onClose={() => setMassLifeOpen(false)} />}
 
 
 
@@ -4927,6 +5142,22 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           </div>
         ))}
       </div>
+
+      {/* Monarch / Initiative banner */}
+      {(globalTokens.monarch || globalTokens.initiative) && (
+        <div style={{ position: "fixed", top: 8, right: 90, display: "flex", gap: 6, zIndex: 490, pointerEvents: "none" }}>
+          {globalTokens.monarch && (
+            <div style={{ background: "#2a1a00", border: "1px solid #ffcc4488", borderRadius: 20, padding: "5px 12px", fontSize: 11, color: "#ffcc44", fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
+              👑 Monarca: {avatarMap?.[globalTokens.monarch] || "🧙"} {players[globalTokens.monarch]?.name}
+            </div>
+          )}
+          {globalTokens.initiative && (
+            <div style={{ background: "#001a2a", border: "1px solid #44aaffcc", borderRadius: 20, padding: "5px 12px", fontSize: 11, color: "#44aaff", fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
+              ⚡ Iniciativa: {avatarMap?.[globalTokens.initiative] || "🧙"} {players[globalTokens.initiative]?.name}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Spectator banner */}
       {isSpectator && (
