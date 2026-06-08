@@ -4528,15 +4528,31 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                 <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "4px 5px", overflowX: "auto", flexShrink: 0, borderLeft: "1px solid var(--bg-subtle)", maxWidth: "55%" }}>
                   <span style={{ fontSize: 7, color: "var(--gray-dark)", writingMode: "vertical-rl", letterSpacing: 1, flexShrink: 0, textTransform: "uppercase" }}>Mano</span>
                   {isMe
-                    ? p.hand.map(card => (
-                      <div key={card.instanceId} onContextMenu={e => openCardCtx(e, pid, card, "hand", true)}>
-                        <CardTile card={card} small
-                          selected={selCard?.instanceId === card.instanceId}
-                          onClick={() => setSelCard(s => s?.instanceId === card.instanceId ? null : card)}
-                          onDoubleClick={() => playCard(card, "hand")}
-                          onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
-                      </div>
-                    ))
+                    ? p.hand.map(card => {
+                        const isDragging = dragCard?.instanceId === card.instanceId;
+                        const isOver = dragOverId === card.instanceId;
+                        return (
+                          <div key={card.instanceId}
+                            draggable
+                            onDragStart={() => setDragCard({ instanceId: card.instanceId, zone: "hand" })}
+                            onDragOver={e => { e.preventDefault(); setDragOverId(card.instanceId); }}
+                            onDragLeave={() => setDragOverId(null)}
+                            onDrop={e => {
+                              e.preventDefault();
+                              if (dragCard?.zone === "hand") reorderZone(pid, "hand", dragCard.instanceId, card.instanceId);
+                              setDragCard(null); setDragOverId(null);
+                            }}
+                            onDragEnd={() => { setDragCard(null); setDragOverId(null); }}
+                            style={{ opacity: isDragging ? 0.4 : 1, outline: isOver ? "2px dashed var(--gold)" : "none", borderRadius: 6, cursor: isDragging ? "grabbing" : "grab", transition: "opacity 0.15s" }}
+                            onContextMenu={e => openCardCtx(e, pid, card, "hand", true)}>
+                            <CardTile card={card} small
+                              selected={selCard?.instanceId === card.instanceId}
+                              onClick={() => setSelCard(s => s?.instanceId === card.instanceId ? null : card)}
+                              onDoubleClick={() => playCard(card, "hand")}
+                              onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
+                          </div>
+                        );
+                      })
                     : p.hand.map(card => (
                       <div key={card.instanceId} style={{ width: 38, height: 52, borderRadius: 4, overflow: "hidden", flexShrink: 0, border: "2px solid #2a3a5a", background: "linear-gradient(160deg,var(--bg-mana),var(--bg-mana),#1a0a2a)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <span style={{ fontSize: 12, opacity: 0.5 }}>🌟</span>
