@@ -1449,74 +1449,85 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
           <input value={playerName} onChange={e => setPlayerName(e.target.value)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 14, outline: "none", width: 120 }} />
           <input value={deckName} onChange={e => setDeckName(e.target.value)} placeholder="Nombre del mazo" style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 13, outline: "none", width: 140 }} />
           {/* Confirmación de reemplazo inline */}
-          {saveConfirm === "replace" ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-raised)", border: "1px solid var(--color-warning)", borderRadius: 8, padding: "5px 10px" }}>
-              <span style={{ fontSize: 11, color: "var(--color-warning)" }}>¿Reemplazar "{deckName}"?</span>
+          {(() => {
+            // Helper: pide confirmación si hay baneadas, retorna true si se puede guardar
+            const confirmBanned = () => {
+              const banned = Object.entries(formatWarnings).filter(([, v]) => v === "banned");
+              if (banned.length === 0) return true;
+              return window.confirm(
+                `⚠️ Este mazo tiene ${banned.length} carta(s) baneada(s) en ${format.label}:\n\n${banned.map(([n]) => `• ${n}`).join("\n")}\n\n¿Guardar de todas formas?`
+              );
+            };
+            return saveConfirm === "replace" ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-raised)", border: "1px solid var(--color-warning)", borderRadius: 8, padding: "5px 10px" }}>
+                <span style={{ fontSize: 11, color: "var(--color-warning)" }}>¿Reemplazar "{deckName}"?</span>
+                <button onClick={async () => {
+                  if (!confirmBanned()) return;
+                  setSaveConfirm(null);
+                  const currentUser = getCurrentUser();
+                  if (currentUser) {
+                    const result = await upsertCloudDeck(deckName, deck, commander, playerName, format, sideboard);
+                    if (result.ok) alert(`✓ Mazo "${deckName}" actualizado ☁`);
+                    else alert(`✗ Error: ${result.error}`);
+                  } else {
+                    saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard);
+                    setSavedDecks(getSavedDecks());
+                    alert(`✓ Mazo "${deckName}" actualizado`);
+                  }
+                }} style={{ padding: "3px 10px", borderRadius: 6, border: "none", background: "var(--color-warning)", color: "var(--color-black)", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>
+                  Reemplazar
+                </button>
+                <button onClick={async () => {
+                  if (!confirmBanned()) return;
+                  setSaveConfirm(null);
+                  const newName = `${deckName} (copia)`;
+                  const currentUser = getCurrentUser();
+                  if (currentUser) {
+                    const result = await saveCloudDeck(newName, deck, commander, playerName, format, sideboard);
+                    if (result.ok) { setDeckName(newName); alert(`✓ Guardado como "${newName}" ☁`); }
+                    else alert(`✗ Error: ${result.error}`);
+                  } else {
+                    saveDeckToStorage(newName, deck, commander, playerName, format, sideboard);
+                    setDeckName(newName);
+                    setSavedDecks(getSavedDecks());
+                    alert(`✓ Guardado como "${newName}"`);
+                  }
+                }} style={{ padding: "3px 10px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11 }}>
+                  Guardar como nuevo
+                </button>
+                <button onClick={() => setSaveConfirm(null)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 14, padding: "0 2px" }}>✕</button>
+              </div>
+            ) : (
               <button onClick={async () => {
-                setSaveConfirm(null);
+                if (formatHasCommander(format) && !commander) return alert(`Selecciona un comandante para el formato ${format.label}.`);
+                if (!confirmBanned()) return;
                 const currentUser = getCurrentUser();
+                const existsLocal = getSavedDecks().some(d => d.name === deckName);
+                let existsCloud = false;
                 if (currentUser) {
-                  const result = await upsertCloudDeck(deckName, deck, commander, playerName, format, sideboard);
-                  if (result.ok) alert(`✓ Mazo "${deckName}" actualizado ☁`);
+                  const r = await authFetch(`/rest/v1/user_decks?user_id=eq.${currentUser.id}&name=eq.${encodeURIComponent(deckName)}&select=id`);
+                  const rows = r.ok ? await r.json() : [];
+                  existsCloud = rows.length > 0;
+                }
+                if (existsLocal || existsCloud) {
+                  setSaveConfirm("replace");
+                  return;
+                }
+                if (currentUser) {
+                  const result = await saveCloudDeck(deckName, deck, commander, playerName, format, sideboard);
+                  if (result.ok) alert(`✓ Mazo "${deckName}" guardado como ${format.label} ☁`);
                   else alert(`✗ Error: ${result.error}`);
                 } else {
                   saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard);
                   setSavedDecks(getSavedDecks());
-                  alert(`✓ Mazo "${deckName}" actualizado`);
+                  alert(`✓ Mazo "${deckName}" guardado como ${format.label}`);
                 }
-              }} style={{ padding: "3px 10px", borderRadius: 6, border: "none", background: "var(--color-warning)", color: "var(--color-black)", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>
-                Reemplazar
+              }}
+                style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,var(--bg-life),#2a6a2a)", color: "var(--color-life)", cursor: "pointer", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
+                💾 Guardar mazo
               </button>
-              <button onClick={async () => {
-                setSaveConfirm(null);
-                const newName = `${deckName} (copia)`;
-                const currentUser = getCurrentUser();
-                if (currentUser) {
-                  const result = await saveCloudDeck(newName, deck, commander, playerName, format, sideboard);
-                  if (result.ok) { setDeckName(newName); alert(`✓ Guardado como "${newName}" ☁`); }
-                  else alert(`✗ Error: ${result.error}`);
-                } else {
-                  saveDeckToStorage(newName, deck, commander, playerName, format, sideboard);
-                  setDeckName(newName);
-                  setSavedDecks(getSavedDecks());
-                  alert(`✓ Guardado como "${newName}"`);
-                }
-              }} style={{ padding: "3px 10px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11 }}>
-                Guardar como nuevo
-              </button>
-              <button onClick={() => setSaveConfirm(null)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 14, padding: "0 2px" }}>✕</button>
-            </div>
-          ) : (
-            <button onClick={async () => {
-              if (formatHasCommander(format) && !commander) return alert(`Selecciona un comandante para el formato ${format.label}.`);
-              const currentUser = getCurrentUser();
-              // Verificar si ya existe un mazo con el mismo nombre
-              const existsLocal = getSavedDecks().some(d => d.name === deckName);
-              let existsCloud = false;
-              if (currentUser) {
-                const r = await authFetch(`/rest/v1/user_decks?user_id=eq.${currentUser.id}&name=eq.${encodeURIComponent(deckName)}&select=id`);
-                const rows = r.ok ? await r.json() : [];
-                existsCloud = rows.length > 0;
-              }
-              if (existsLocal || existsCloud) {
-                setSaveConfirm("replace");
-                return;
-              }
-              // Mazo nuevo — guardar directamente
-              if (currentUser) {
-                const result = await saveCloudDeck(deckName, deck, commander, playerName, format, sideboard);
-                if (result.ok) alert(`✓ Mazo "${deckName}" guardado como ${format.label} ☁`);
-                else alert(`✗ Error: ${result.error}`);
-              } else {
-                saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard);
-                setSavedDecks(getSavedDecks());
-                alert(`✓ Mazo "${deckName}" guardado como ${format.label}`);
-              }
-            }}
-              style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,var(--bg-life),#2a6a2a)", color: "var(--color-life)", cursor: "pointer", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
-              💾 Guardar mazo
-            </button>
-          )}
+            );
+          })()}
           {onHome && <button onClick={onHome} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer", fontSize: 12 }}>🏠</button>}
         </div>
       </div>
@@ -1677,13 +1688,6 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
               <button onClick={() => {
                 if (formatHasCommander(format) && !commander) return alert(`Selecciona un Comandante para el formato ${format.label}.`);
                 if (deck.length < 5) return alert("Agrega más cartas.");
-                // Hard block: no se puede jugar con cartas baneadas
-                const violations = Object.entries(formatWarnings).filter(([, v]) => v === "banned");
-                if (violations.length > 0) {
-                  alert(`🚫 No puedes jugar: hay ${violations.length} carta(s) baneada(s) en ${format.label}:\n\n${violations.map(([n]) => `• ${n}`).join("\n")}\n\nElimínalas del mazo antes de continuar.`);
-                  return;
-                }
-                // Remove commander from deck by name/id (instanceId may differ if loaded from storage)
                 const deckWithoutCmd = !commander ? deck : deck.filter(c =>
                   c.instanceId !== commander.instanceId &&
                   c.name !== commander.name &&
@@ -5017,6 +5021,14 @@ function DeckSelectorModal({ decks, cloudDecks, onSelect, onNew, onClose }) {
     getCardName(d.commander)?.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Check if a saved deck has banned cards in its format
+  const deckHasBanned = (d) => {
+    const fmt = d.format;
+    if (!fmt || fmt.key === "custom") return false;
+    const cards = [...(d.deck || []), ...(d.commander ? [d.commander] : [])];
+    return cards.some(c => c.legalities?.[fmt.key] === "banned");
+  };
+
   // Deck stats
   const deckStats = (deck) => {
     if (!deck) return {};
@@ -5527,7 +5539,10 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
                             ? <img src={d.commander.image_url} style={{ width: 32, height: 44, borderRadius: 3, objectFit: "cover", flexShrink: 0 }} />
                             : <div style={{ width: 32, height: 44, borderRadius: 3, background: "var(--bg-panel)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{group.fmt.icon}</div>}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 }}>
+                              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</span>
+                              {deckHasBanned(d) && <span title="Contiene cartas baneadas en este formato" style={{ fontSize: 9, background: "#4a0a0a", color: "#ff8888", borderRadius: 4, padding: "1px 5px", flexShrink: 0, fontWeight: 800 }}>🚫 BAN</span>}
+                            </div>
                             <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{(d.deck || []).length + (d.commander ? 1 : 0)} cartas{d.commander ? ` · ${d.commander.printed_name || d.commander.name}` : ""}</div>
                           </div>
                           <button onClick={() => onNewGame({ deck: d.deck, commander: d.commander, playerName: d.player_name, format: d.format })}
@@ -5605,7 +5620,10 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
                           <button onClick={() => confirmRename(d)} style={{ padding: "3px 8px", borderRadius: 5, border: "none", background: "var(--bg-life)", color: "var(--color-life)", cursor: "pointer", fontSize: 11 }}>✓</button>
                           <button onClick={() => setRenamingDeck(null)} style={{ padding: "3px 8px", borderRadius: 5, border: "none", background: "var(--bg-panel)", color: "var(--gray-mid)", cursor: "pointer", fontSize: 11 }}>✕</button>
                         </div>
-                        : <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>}
+                        : <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: 5 }}>
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</span>
+                            {deckHasBanned(d) && <span title="Contiene cartas baneadas en este formato" style={{ fontSize: 9, background: "#4a0a0a", color: "#ff8888", borderRadius: 4, padding: "1px 5px", flexShrink: 0, fontWeight: 800 }}>🚫 BAN</span>}
+                          </div>}
                       <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>
                         {d.deck.length + (d.commander ? 1 : 0)} cartas · {d.commander ? getCardName(d.commander) : "Sin comandante"}
                       </div>
