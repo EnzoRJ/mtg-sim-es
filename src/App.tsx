@@ -5464,16 +5464,91 @@ function FormatSelectorModal({ currentFormat, onSelect, onClose }) {
 
 // ─── Tutorial Component ───────────────────────────────────────────────────────
 const TUTORIAL_STEPS = [
-  { title: "¡Bienvenido a MTG Arena ES!", body: "Un simulador de Magic: The Gathering multijugador online. Te guiaremos por las funciones principales.", icon: "🃏" },
-  { title: "Selecciona un Formato", body: "Antes de crear tu mazo, elige el formato de juego: Commander, Standard, Legacy y más. Cada uno tiene sus propias reglas y vidas iniciales.", icon: "📋" },
-  { title: "Construye tu Mazo", body: "Busca cartas por nombre, importa una lista completa, o carga un mazo guardado. Las cartas no legales en tu formato se marcan automáticamente.", icon: "🔍" },
-  { title: "El Comandante", body: "En formatos Commander, busca una criatura legendaria y asígnala como comandante con click derecho → ⚔ Elegir como Comandante.", icon: "⚔️" },
-  { title: "Crear o Unirse a una Partida", body: "Crea una nueva partida y comparte el código de 4 letras con tus amigos. También puedes unirte como espectador para ver sin jugar.", icon: "🔗" },
-  { title: "El Tablero de Juego", body: "Durante la partida: panel izquierdo = fases del turno, panel derecho = acciones. Click derecho en cualquier carta para ver todas las opciones disponibles.", icon: "🎮" },
-  { title: "Acciones con Cartas", body: "Doble click para girar/desgirar. Click derecho para jugar al campo, mover a la mano, añadir contadores, declarar atacante y más.", icon: "🖱️" },
-  { title: "Contadores y Estadísticas", body: "Cada jugador tiene contadores de vida ❤, veneno ☠, energía ⚡ y experiencia ✨. Usa los botones + / − para ajustarlos durante la partida.", icon: "📊" },
-  { title: "Chat de Voz", body: "Activa el micrófono con el botón 🎙 en el panel de acciones para comunicarte con los otros jugadores en tiempo real.", icon: "🎙" },
-  { title: "¡Listo para jugar!", body: "Tus mazos se guardan automáticamente en la nube si estás con sesión iniciada. ¡Buena suerte en tus partidas!", icon: "✨" },
+  {
+    title: "¡Bienvenido a MTG Arena ES!",
+    body: "Un simulador de Magic: The Gathering multijugador online para hasta 4 jugadores. Soporta Commander, Standard, Legacy, Brawl y más formatos.",
+    icon: "🃏",
+  },
+  {
+    title: "Selecciona un Formato",
+    body: "Antes de crear tu mazo elige el formato: Commander (40 vidas, 100 cartas), Duel Commander (20 vidas), Brawl, Oathbreaker, Standard, Legacy y más. Las reglas y vidas iniciales cambian según el formato.",
+    icon: "📋",
+  },
+  {
+    title: "Construye tu Mazo",
+    body: "Busca cartas en español por nombre, importa una lista (1x Sol Ring, 4x Lightning Bolt…), o carga un mazo guardado. Las cartas ilegales o baneadas se marcan automáticamente.\n\n📊 El tab 'Stats' muestra curva de maná, colores y tipos de tu mazo.",
+    icon: "🔍",
+  },
+  {
+    title: "El Comandante",
+    body: "En formatos Commander busca una criatura legendaria y asígnala con click derecho → ⚔ Elegir como Comandante. El impuesto de comandante (+2 por cada vez que regresó a la zona de mando) se muestra sobre la carta.",
+    icon: "⚔️",
+  },
+  {
+    title: "Crear o Unirse a una Partida",
+    body: "Crea una partida y comparte el código de 4 letras. Tus amigos lo ingresan en 'Unirse'. También puedes entrar como 👁 Espectador para ver la partida sin participar.",
+    icon: "🔗",
+  },
+  {
+    title: "El Tablero de Juego",
+    body: "Panel izquierdo: fases del turno y orden de jugadores.\nPanel derecho: acciones rápidas.\nCentro: tu campo (abajo) y oponentes (arriba).\n\nAtajos de teclado:\n  Espacio → siguiente fase\n  E → fin de turno\n  D → robar carta\n  U → desgirar todo",
+    icon: "🎮",
+  },
+  {
+    title: "Acciones con Cartas",
+    body: "• Doble clic en el campo → girar/desgirar\n• Click derecho → menú completo (jugar, mover, contadores, atacar, habilidades…)\n• Arrastrar cartas en la mano o en el campo → reordenarlas\n• Hover sobre cualquier carta → zoom de imagen",
+    icon: "🖱️",
+  },
+  {
+    title: "Biblioteca y Zonas",
+    body: "Click izquierdo en la biblioteca → robar 1 carta.\nClick derecho → Scry, Surveil, Tutor, Mill, Cascade, Discover, Impulse y más.\n\nHaz click en el 🪦 Cementerio o ✨ Exilio de cualquier jugador para ver todas sus cartas y jugarlas con click derecho.",
+    icon: "📚",
+  },
+  {
+    title: "Contadores de Jugador",
+    body: "Cada jugador tiene:\n❤ Vida  ☠ Veneno  ⚡ Energía  ✨ Experiencia\n\nUsa los botones + / − para ajustarlos. El historial de vida muestra una chispa de los cambios.\n\n💥 Vida masiva (columna derecha) aplica ganancia o pérdida de vida a TODOS los jugadores de una vez.",
+    icon: "📊",
+  },
+  {
+    title: "Daño de Comandante",
+    body: "El botón ⚔ CmdDmg abre el panel de daño de comandante, dividido en dos secciones:\n\n• Recibido de — daño que sufriste del comandante de cada oponente\n• Infligido a — daño que tu comandante le hizo a cada uno\n\nLas badges en el header del jugador muestran el avatar del atacante.",
+    icon: "⚔",
+  },
+  {
+    title: "Monarca e Iniciativa",
+    body: "Para asignar el token de Monarca 👑 o Iniciativa ⚡:\n\nHaz click derecho sobre el nombre de cualquier jugador en su panel → 'Tomar Monarca' o 'Tomar Iniciativa'.\n\nEl token activo aparece como badge en el nombre del jugador y en un banner en la parte superior de la pantalla.",
+    icon: "👑",
+  },
+  {
+    title: "Storm, Emblemas y Sagas",
+    body: "⛈ Storm counter: widget +/− en la columna derecha. Se resetea automáticamente al cambiar de turno.\n\n👁 Emblemas: zona dedicada en la barra de cada jugador. Usa el botón '+ Emblema' para agregarlos.\n\nSagas: al inicio de tu turno se añade un lore counter automáticamente a cada Saga que controles.",
+    icon: "⛈",
+  },
+  {
+    title: "Tokens",
+    body: "El botón 🪄 Token abre el creador:\n• Buscar en Scryfall: funciona en español ('Soldado', 'Tesoro') e inglés ('Soldier', 'Treasure')\n• Crear manual: define nombre, fuerza, resistencia y color\n\nLos tokens relacionados con tu comandante aparecen como sugerencias automáticas.",
+    icon: "🪄",
+  },
+  {
+    title: "Dados y Moneda",
+    body: "El botón 🎲 Dado abre el lanzador con d4, d6, d8, d10, d12, d20 y d100.\n\nTambién incluye 🪙 Lanzar Moneda → muestra CARA 👑 o CRUZ 🌙 con animación.\n\nEl resultado se muestra a todos los jugadores de la sala.",
+    icon: "🎲",
+  },
+  {
+    title: "Herramientas de Partida",
+    body: "Columna derecha — botones secundarios:\n💎 Maná tracker  ⚔ CmdDmg  💥 Vida masiva\n📝 Notas  🔍 Buscar carta  🔔 Triggers\n❤ Historial de vida  ↩ Deshacer última acción\n\n🔔 Triggers: configura recordatorios que se activan al inicio/fin de turno.",
+    icon: "🛠",
+  },
+  {
+    title: "Chat y Voz",
+    body: "💬 Chat: envía mensajes de texto a todos los jugadores de la sala.\n🎙 Voz: activa el micrófono para hablar en tiempo real (WebRTC, sin servidor externo).\n\nAmbos botones están en la columna de acciones primarias (panel derecho).",
+    icon: "🎙",
+  },
+  {
+    title: "¡Listo para jugar!",
+    body: "Inicia sesión con Google o email para guardar tus mazos en la nube ☁ y sincronizarlos entre dispositivos.\n\nSin cuenta, los mazos se guardan en el navegador de forma local.\n\n¡Buena suerte en tus partidas! 🃏✨",
+    icon: "✨",
+  },
 ];
 
 function Tutorial({ onClose }) {
@@ -5483,7 +5558,7 @@ function Tutorial({ onClose }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000c", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, fontFamily: "'Crimson Text',Georgia,serif" }}>
-      <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--gold-40)", borderRadius: 20, padding: 32, width: 420, display: "flex", flexDirection: "column", gap: 20, textAlign: "center", boxShadow: "0 20px 60px var(--scrim-67)" }}>
+      <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--gold-40)", borderRadius: 20, padding: 32, width: 460, maxHeight: "88vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 20, textAlign: "center", boxShadow: "0 20px 60px var(--scrim-67)" }}>
         {/* Step indicator */}
         <div style={{ display: "flex", justifyContent: "center", gap: 5 }}>
           {TUTORIAL_STEPS.map((_, i) => (
@@ -5495,7 +5570,7 @@ function Tutorial({ onClose }) {
         <div style={{ fontSize: 48 }}>{s.icon}</div>
         <div>
           <div style={{ fontSize: 18, fontWeight: 800, color: "var(--gold)", marginBottom: 8 }}>{s.title}</div>
-          <div style={{ fontSize: 14, color: "#c0b090", lineHeight: 1.6 }}>{s.body}</div>
+          <div style={{ fontSize: 13, color: "#c0b090", lineHeight: 1.7, whiteSpace: "pre-line", textAlign: "left" }}>{s.body}</div>
         </div>
         {/* Navigation */}
         <div style={{ display: "flex", gap: 10 }}>
