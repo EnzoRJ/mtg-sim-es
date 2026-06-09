@@ -4877,8 +4877,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       onDragOver={e => e.preventDefault()}
                       onDrop={e => { e.preventDefault(); if (isMe && dragCard) setRow2Cards(s => { const n = new Set(s); n.delete(dragCard.instanceId); return n; }); setDragCard(null); setDragOverId(null); }}
                       style={{ height: "100%", overflowX: "auto", overflowY: "hidden", padding: "4px 6px", paddingLeft: isMe && abilityMarkers.length > 0 ? 194 : 6, display: "flex", gap: 5, alignItems: "flex-start", flexWrap: "nowrap" }}>
-                      {permanents.filter(c => !row2Cards.has(c.instanceId)).map(c => renderCard(c))}
-                      {!permanents.filter(c => !row2Cards.has(c.instanceId)).length && (
+                      {permanents.filter(c => isMobile || !row2Cards.has(c.instanceId)).map(c => renderCard(c))}
+                      {!permanents.filter(c => isMobile || !row2Cards.has(c.instanceId)).length && (
                         <div style={{ color: "var(--bg-subtle)", fontSize: 10, flexShrink: 0, paddingTop: 10 }}>Campo vacío</div>
                       )}
                     </div>
