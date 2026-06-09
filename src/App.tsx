@@ -4777,7 +4777,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     </div>
                   )}
 
-                  <CardTile card={card} tapped={card.tapped} small={!isMe || forceSmall}
+                  <CardTile card={card} tapped={card.tapped} small={!isMe || forceSmall || isMobile}
                     faceDown={!!card.faceDown}
                     selected={selCard?.instanceId === card.instanceId}
                     onClick={() => { if (isMe) setSelCard(s => s?.instanceId === card.instanceId ? null : card); }}
@@ -4859,7 +4859,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                 {/* Rows + Lands wrapper */}
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
                   {/* Row 1 — permanents with horizontal scroll */}
-                  <div style={{ position: "relative", flex: 1, minHeight: isMobile ? 70 : 141, overflow: "hidden", borderBottom: "1px solid var(--bg-subtle)" }}>
+                  <div style={{ position: "relative", flex: 1, minHeight: isMobile ? 90 : 141, overflow: "hidden", borderBottom: "1px solid var(--bg-subtle)" }}>
                     {/* Ability markers — overlay separado, sin draggable, arriba a la izquierda */}
                     {isMe && abilityMarkers.length > 0 && (
                       <div className="ability-marker-zone" style={{ position: "absolute", top: 4, left: 6, zIndex: 10, display: "flex", gap: 4, flexWrap: "wrap", maxWidth: 180, pointerEvents: "auto" }}>
@@ -4901,7 +4901,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   )}
 
                   {/* Lands zone — horizontal scroll */}
-                  <div style={{ height: lands.length > 0 ? (isMobile ? 100 : 145) : (isMobile ? 18 : 22), flexShrink: 0, overflow: "hidden", overflowX: "auto", padding: "6px 6px 8px", display: "flex", flexDirection: "row", gap: 4, alignItems: "flex-start", background: "#060609", flexWrap: "nowrap", }}>
+                  <div style={{ height: lands.length > 0 ? (isMobile ? 85 : 145) : (isMobile ? 18 : 22), flexShrink: 0, overflow: "hidden", overflowX: "auto", padding: "6px 6px 8px", display: "flex", flexDirection: "row", gap: 4, alignItems: "flex-start", background: "#060609", flexWrap: "nowrap", }}>
                     {lands.length > 0
                       ? <>
                         <span style={{ fontSize: 8, color: "var(--color-life-bright)", letterSpacing: 1, flexShrink: 0, writingMode: "vertical-rl", marginRight: 2, textShadow: "0 0 8px var(--color-life-bright)" }}>TIERRAS</span>
