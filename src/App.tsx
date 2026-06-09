@@ -4043,6 +4043,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const addCounter = (iid, type) => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === iid ? { ...c, counters: [...(c.counters || []), type] } : c) }));
   const removeCounter = (iid, type) => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === iid ? { ...c, counters: (c.counters || []).filter((x, i, a) => { const idx = a.indexOf(type); return i !== idx; }) } : c) }));
   const setCounters = (iid, newCounters) => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === iid ? { ...c, counters: newCounters } : c) }));
+  const setCardQty = (iid, qty) => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === iid ? { ...c, qty: qty > 1 ? qty : undefined } : c) }));
   const createToken = (name, power, toughness, color, qty = 1, imageUrl = null) => {
     SFX.token();
     const tokens = Array.from({ length: qty }, () => ({
@@ -4198,6 +4199,22 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           })),
           { label: "✏️ Texto personalizado...", action: () => { setCtxMenu(null); setCardMarkerModal({ instanceId: card.instanceId }); } },
         ]
+      },
+      zone === "battlefield" && {
+        label: card.qty > 1 ? `🔢 Copias apiladas: ×${card.qty}` : "🔢 Apilar copias...",
+        submenu: [
+          ...[2, 3, 4, 5, 6, 8, 10].map(n => ({
+            label: `×${n}${card.qty === n ? " ✓" : ""}`,
+            action: () => { setCardQty(card.instanceId, n); setCtxMenu(null); },
+          })),
+          { label: "✏ Cantidad personalizada...", action: () => {
+            const input = prompt("¿Cuántas copias?", String(card.qty || 2));
+            const n = parseInt(input);
+            if (!isNaN(n) && n >= 1) setCardQty(card.instanceId, n);
+            setCtxMenu(null);
+          }},
+          card.qty > 1 && { label: "✕ Quitar badge (×1)", action: () => { setCardQty(card.instanceId, 1); setCtxMenu(null); } },
+        ].filter(Boolean),
       },
       "---",
       zone !== "hand" && { label: "🤚 A la mano", action: () => moveCard(card, zone, "hand") },
@@ -4524,6 +4541,12 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   {card.marker && (
                     <div style={{ position: "absolute", top: 3, left: "50%", transform: "translateX(-50%)", background: card.marker.color, color: "#fff", borderRadius: 4, fontSize: 7, fontWeight: 800, padding: "1px 5px", zIndex: 5, whiteSpace: "nowrap", pointerEvents: "none", boxShadow: `0 0 6px ${card.marker.color}88`, maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {card.marker.text || "●"}
+                    </div>
+                  )}
+                  {/* Quantity stack badge */}
+                  {card.qty > 1 && (
+                    <div style={{ position: "absolute", bottom: 4, left: 4, background: "#0d2a4a", color: "#7ab8ff", borderRadius: 5, fontSize: 9, fontWeight: 900, padding: "1px 6px", zIndex: 5, border: "1px solid #2a6aaa", pointerEvents: "none", letterSpacing: 0.5, boxShadow: "0 1px 4px #000a" }}>
+                      ×{card.qty}
                     </div>
                   )}
 
