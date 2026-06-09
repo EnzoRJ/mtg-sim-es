@@ -4821,7 +4821,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                 {/* Rows + Lands wrapper */}
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
                   {/* Row 1 — permanents with horizontal scroll */}
-                  <div style={{ position: "relative", flex: 1, minHeight: 141, overflow: "hidden", borderBottom: "1px solid var(--bg-subtle)" }}>
+                  <div style={{ position: "relative", flex: 1, minHeight: isMobile ? 70 : 141, overflow: "hidden", borderBottom: "1px solid var(--bg-subtle)" }}>
                     {/* Ability markers — overlay separado, sin draggable, arriba a la izquierda */}
                     {isMe && abilityMarkers.length > 0 && (
                       <div className="ability-marker-zone" style={{ position: "absolute", top: 4, left: 6, zIndex: 10, display: "flex", gap: 4, flexWrap: "wrap", maxWidth: 180, pointerEvents: "auto" }}>
@@ -4848,8 +4848,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     {isMe && <ScrollIndicator containerRef={scrollRef1} />}
                   </div>
 
-                  {/* Row 2 — always visible for isMe, drop target */}
-                  {(isMe || permanents.some(c => row2Cards.has(c.instanceId))) && (
+                  {/* Row 2 — always visible for isMe on desktop, drop target */}
+                  {!isMobile && (isMe || permanents.some(c => row2Cards.has(c.instanceId))) && (
                     <div
                       onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = "var(--bg-elevated)"; e.currentTarget.style.outline = "1px dashed var(--gold-33)"; }}
                       onDragLeave={e => { e.currentTarget.style.background = isMe ? "var(--bg-void)" : "transparent"; e.currentTarget.style.outline = "none"; }}
@@ -4863,7 +4863,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   )}
 
                   {/* Lands zone — horizontal scroll */}
-                  <div style={{ height: lands.length > 0 ? 145 : 22, flexShrink: 0, overflow: "hidden", overflowX: "auto", padding: "6px 6px 8px", display: "flex", flexDirection: "row", gap: 4, alignItems: "flex-start", background: "#060609", flexWrap: "nowrap", }}>
+                  <div style={{ height: lands.length > 0 ? (isMobile ? 100 : 145) : (isMobile ? 18 : 22), flexShrink: 0, overflow: "hidden", overflowX: "auto", padding: "6px 6px 8px", display: "flex", flexDirection: "row", gap: 4, alignItems: "flex-start", background: "#060609", flexWrap: "nowrap", }}>
                     {lands.length > 0
                       ? <>
                         <span style={{ fontSize: 8, color: "var(--color-life-bright)", letterSpacing: 1, flexShrink: 0, writingMode: "vertical-rl", marginRight: 2, textShadow: "0 0 8px var(--color-life-bright)" }}>TIERRAS</span>
@@ -4873,8 +4873,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   </div>
                 </div>{/* end rows+lands col */}
 
-                {/* LOG column — fixed width, full battlefield height, no overlap */}
-                {isMe && (
+                {/* LOG column — fixed width, full battlefield height, no overlap — hidden on mobile */}
+                {isMe && !isMobile && (
                   <div style={{ width: 165, flexShrink: 0, borderLeft: "1px solid var(--bg-subtle)", background: "var(--bg-base)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
                     <div className="neon-text" style={{ fontSize: 9, color: "var(--gold)", letterSpacing: 4, padding: "5px 0 4px", textAlign: "center", borderBottom: "1px solid var(--gold-glow)", flexShrink: 0, fontFamily: "monospace" }}>LOG</div>
                     <div style={{ flex: 1, padding: "4px 6px", overflowY: "auto" }}>
