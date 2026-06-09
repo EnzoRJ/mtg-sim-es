@@ -4019,6 +4019,27 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     commandZone: [...p.commandZone, { ...card, instanceId: uid() }],
     commanderTax: incrementTax ? p.commanderTax + 2 : p.commanderTax,
   }), `${players[myId]?.name} regresa Comandante a la zona de mando.${incrementTax ? " (+2 impuesto)" : ""}`);
+
+  const openCmdAbsentMenu = (e, p) => {
+    if (!e) return;
+    e.preventDefault(); e.stopPropagation();
+    const cmdName = p.commanderCard?.name;
+    const searchZones = ["battlefield", "graveyard", "exile", "hand"];
+    let foundIn = null, foundCard = null;
+    for (const z of searchZones) {
+      const match = p[z]?.find(c => c.name === cmdName);
+      if (match) { foundIn = z; foundCard = match; break; }
+    }
+    const zoneLabel = { battlefield: "campo", graveyard: "cementerio", exile: "exilio", hand: "mano" };
+    const items = foundIn && foundCard
+      ? [
+          { label: `↩ Devolver a zona de mando (+2 impuesto)`, action: () => returnCmdToZone(foundCard, foundIn, true), color: "var(--gold)" },
+          { label: `↩ Devolver sin impuesto`, action: () => returnCmdToZone(foundCard, foundIn, false) },
+          { label: `Está en: ${zoneLabel[foundIn] || foundIn}`, action: () => {} },
+        ]
+      : [{ label: "Comandante no localizado en ninguna zona", action: () => {} }];
+    setCtxMenu({ x: e.clientX, y: e.clientY, title: `⚔ ${cmdName || "Comandante"} ausente`, items });
+  };
   const addCounter = (iid, type) => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === iid ? { ...c, counters: [...(c.counters || []), type] } : c) }));
   const removeCounter = (iid, type) => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === iid ? { ...c, counters: (c.counters || []).filter((x, i, a) => { const idx = a.indexOf(type); return i !== idx; }) } : c) }));
   const setCounters = (iid, newCounters) => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === iid ? { ...c, counters: newCounters } : c) }));
@@ -4286,8 +4307,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             </div>
           ))
           : p.commanderCard
-            ? <div onContextMenu={e => { if (!isMe) return; e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, title: "Comandante ausente", items: [{ label: "↩ Devolver a zona de mando", action: () => { /* can't — not on battlefield */ } }] }); }}
-              style={{ width: 52, height: 73, borderRadius: 5, border: "2px dashed var(--gold-40)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 2 }}>
+            ? <div onContextMenu={isMe ? (e => openCmdAbsentMenu(e, p)) : undefined}
+              title={isMe ? "Click derecho → devolver a zona de mando" : undefined}
+              style={{ width: 52, height: 73, borderRadius: 5, border: "2px dashed var(--gold-40)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 2, cursor: isMe ? "context-menu" : "default" }}>
               <div style={{ fontSize: 14 }}>⚔</div>
               <div style={{ fontSize: 7, color: "var(--gold-40)", textAlign: "center", padding: "0 4px" }}>En juego</div>
               {p.commanderTax > 0 && <div style={{ fontSize: 8, color: "var(--color-orange)", fontWeight: 800 }}>+{p.commanderTax}</div>}
@@ -4702,7 +4724,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                         </div>
                       ))
                       : p.commanderCard
-                        ? <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed var(--gold-27)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1 }}>
+                        ? <div onContextMenu={isMe ? (e => openCmdAbsentMenu(e, p)) : undefined}
+                          title={isMe ? "Click derecho → devolver a zona de mando" : undefined}
+                          style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed var(--gold-27)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1, cursor: isMe ? "context-menu" : "default" }}>
                           <div style={{ fontSize: 12 }}>⚔</div>
                           <div style={{ fontSize: 7, color: "var(--gold-40)" }}>En juego</div>
                           {p.commanderTax > 0 && <div style={{ fontSize: 7, color: "var(--color-orange)", fontWeight: 800 }}>+{p.commanderTax}</div>}
