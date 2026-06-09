@@ -3421,6 +3421,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   // Auto-open mulligan on game start
   const [ctxMenu, setCtxMenu] = useState(null);
   const [showZone, setShowZone] = useState(null);
+  const [zoneFilter, setZoneFilter] = useState("");
   const [selCard, setSelCard] = useState(null);
   const [counterModal, setCounterModal] = useState(null); // instanceId of card
   const [versionModal, setVersionModal] = useState(null); // card to change art version
@@ -3436,7 +3437,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(() => { try { return localStorage.getItem(`notes_${roomCode}`) || ""; } catch { return ""; } });
   const [notesOpen, setNotesOpen] = useState(false);
   const [zoomCard, setZoomCard] = useState(null);
   const [cardSearch, setCardSearch] = useState({ open: false, query: "", results: [], loading: false });
@@ -4646,7 +4647,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
           {speaking[pid] && <span title="Hablando por voz" style={{ fontSize: 10, color: "var(--color-life-bright)", animation: "pulse 0.5s infinite", flexShrink: 0, textShadow: "0 0 8px var(--color-life-bright)" }}>🎙</span>}
           {p.experience > 0 && <span style={{ fontSize: 9, color: "#ddaaff", background: "#1a0a3a", borderRadius: 4, padding: "0 4px", flexShrink: 0 }}>✨{p.experience}</span>}
-          <span style={{ fontSize: 9, color: "var(--text-muted)", marginLeft: "auto", flexShrink: 0 }}>🤚{p.hand.length}</span>
+          <span title={`Mano: ${p.hand.length} carta${p.hand.length !== 1 ? "s" : ""}`} style={{ fontSize: 9, fontWeight: p.hand.length >= 8 ? 800 : 400, color: p.hand.length === 0 ? "var(--color-damage)" : p.hand.length >= 8 ? "var(--color-life-bright)" : "var(--text-muted)", marginLeft: "auto", flexShrink: 0, background: p.hand.length >= 8 ? "#0a2010" : p.hand.length === 0 ? "#2a0808" : "transparent", borderRadius: 4, padding: p.hand.length === 0 || p.hand.length >= 8 ? "0 4px" : 0 }}>🤚{p.hand.length}</span>
         </div>
 
         {/* Body: battlefield + bottom bar — reversed for opponents */}
@@ -5217,36 +5218,54 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
 
       {/* Zone modal */}
-      {showZone && (
-        <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 400 }} onClick={() => setShowZone(null)}>
-          <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 14, padding: 22, maxWidth: 680, maxHeight: "80vh", overflowY: "auto", minWidth: 360 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: showZone.zone === "sideboard" ? "var(--color-info)" : "var(--gold)" }}>
-                {showZone.zone === "graveyard" ? "🪦 Cementerio" : showZone.zone === "sideboard" ? "↔ Sideboard" : "✨ Exilio"} — {players[showZone.pid]?.name}
-              </span>
-              <button onClick={() => setShowZone(null)} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 17 }}>✕</button>
-            </div>
-            {showZone.zone === "sideboard" && showZone.pid === myId && (
-              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10 }}>
-                Click izquierdo → a la mano · Click derecho → más opciones
+      {showZone && (() => {
+        const zoneCards = players[showZone.pid]?.[showZone.zone] || [];
+        const q = zoneFilter.trim().toLowerCase();
+        const visible = q ? zoneCards.filter(c => (c.printed_name || c.name || "").toLowerCase().includes(q) || (c.type_line || "").toLowerCase().includes(q)) : zoneCards;
+        const zoneColor = showZone.zone === "sideboard" ? "var(--color-info)" : "var(--gold)";
+        const zoneTitle = showZone.zone === "graveyard" ? "🪦 Cementerio" : showZone.zone === "sideboard" ? "↔ Sideboard" : "✨ Exilio";
+        const isSbOwner = showZone.zone === "sideboard" && showZone.pid === myId;
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 400 }} onClick={() => { setShowZone(null); setZoneFilter(""); }}>
+            <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 14, padding: 22, maxWidth: 700, maxHeight: "82vh", display: "flex", flexDirection: "column", minWidth: 380 }} onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: zoneColor }}>
+                  {zoneTitle} — {players[showZone.pid]?.name}
+                  <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-muted)", marginLeft: 8 }}>({zoneCards.length} cartas{q ? `, ${visible.length} encontradas` : ""})</span>
+                </span>
+                <button onClick={() => { setShowZone(null); setZoneFilter(""); }} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 17 }}>✕</button>
               </div>
-            )}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-              {(players[showZone.pid]?.[showZone.zone] || []).map(card => (
-                <div key={card.instanceId}
-                  onClick={showZone.zone === "sideboard" && showZone.pid === myId
-                    ? () => { moveCard(card, "sideboard", "hand"); setShowZone(null); }
-                    : undefined}
-                  onContextMenu={e => { setShowZone(null); openCardCtx(e, showZone.pid, card, showZone.zone, showZone.pid === myId); }}
-                  style={{ cursor: showZone.zone === "sideboard" && showZone.pid === myId ? "pointer" : "default" }}>
-                  <CardTile card={card} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
+              {/* Search bar — only if zone has enough cards to warrant it */}
+              {zoneCards.length >= 4 && (
+                <div style={{ position: "relative", marginBottom: 12 }}>
+                  <input autoFocus value={zoneFilter} onChange={e => setZoneFilter(e.target.value)}
+                    placeholder="Filtrar por nombre o tipo..."
+                    style={{ width: "100%", padding: "7px 30px 7px 10px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 12, boxSizing: "border-box", outline: "none" }} />
+                  {zoneFilter && (
+                    <button onClick={() => setZoneFilter("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, padding: 0 }}>✕</button>
+                  )}
                 </div>
-              ))}
-              {!players[showZone.pid]?.[showZone.zone]?.length && <div style={{ color: "var(--gray-dark)", padding: 18 }}>Vacío</div>}
+              )}
+              {isSbOwner && <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10 }}>Click izquierdo → a la mano · Click derecho → más opciones</div>}
+              {/* Cards grid */}
+              <div style={{ overflowY: "auto", flex: 1 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                  {visible.map(card => (
+                    <div key={card.instanceId}
+                      onClick={isSbOwner ? () => { moveCard(card, "sideboard", "hand"); setShowZone(null); setZoneFilter(""); } : undefined}
+                      onContextMenu={e => { setShowZone(null); setZoneFilter(""); openCardCtx(e, showZone.pid, card, showZone.zone, showZone.pid === myId); }}
+                      style={{ cursor: isSbOwner ? "pointer" : "default" }}>
+                      <CardTile card={card} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
+                    </div>
+                  ))}
+                  {visible.length === 0 && <div style={{ color: "var(--gray-dark)", padding: 18 }}>{q ? `Sin resultados para "${zoneFilter}"` : "Vacío"}</div>}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* View top modal */}
       {viewTopModal && (
@@ -5342,7 +5361,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       {chatOpen && <ChatPanel messages={chatMessages} input={chatInput} onInput={setChatInput} onSend={sendChatMessage} onClose={() => setChatOpen(false)} playerName={players[myId]?.name} />}
 
       {/* Notes */}
-      {notesOpen && <NotesPanel notes={notes} onChange={setNotes} onClose={() => setNotesOpen(false)} />}
+      {notesOpen && <NotesPanel notes={notes} onChange={v => { setNotes(v); try { localStorage.setItem(`notes_${roomCode}`, v); } catch {} }} onClose={() => setNotesOpen(false)} />}
 
       {/* Mana Tracker */}
       {manaOpen && <ManaTracker mana={mana} onChange={setMana} onClose={() => setManaOpen(false)} />}
