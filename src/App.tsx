@@ -2714,6 +2714,124 @@ function ResolveModal({ modal, players, onResolve, onClose }) {
 }
 
 
+// ─── Vote Setup Modal ─────────────────────────────────────────────────────────
+function VoteSetupModal({ onClose, onStart }) {
+  const [question, setQuestion] = useState("");
+  const [options, setOptions] = useState(["", ""]);
+
+  const addOption = () => { if (options.length < 4) setOptions(o => [...o, ""]); };
+  const removeOption = (i) => { if (options.length > 2) setOptions(o => o.filter((_, j) => j !== i)); };
+  const setOption = (i, v) => setOptions(o => o.map((x, j) => j === i ? v : x));
+
+  const valid = question.trim() && options.filter(o => o.trim()).length >= 2;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#000c", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 800 }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg-elevated)", border: "1px solid var(--gold)", borderRadius: 14, padding: 24, width: 360, display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ fontSize: 17, fontWeight: 800, color: "var(--gold)", textAlign: "center" }}>🗳 Nueva Votación</div>
+        <div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>Pregunta</div>
+          <input autoFocus value={question} onChange={e => setQuestion(e.target.value)}
+            placeholder="Ej: ¿Quién ataca a quién?"
+            style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, boxSizing: "border-box" }} />
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>Opciones (2–4)</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {options.map((opt, i) => (
+              <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <input value={opt} onChange={e => setOption(i, e.target.value)}
+                  placeholder={`Opción ${i + 1}`}
+                  style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 12 }} />
+                {options.length > 2 && (
+                  <button onClick={() => removeOption(i)} style={{ width: 22, height: 22, borderRadius: "50%", border: "none", background: "#4a1a1a", color: "var(--color-red)", cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0, flexShrink: 0 }}>×</button>
+                )}
+              </div>
+            ))}
+            {options.length < 4 && (
+              <button onClick={addOption} style={{ padding: "5px 0", borderRadius: 7, border: "1px dashed var(--border-strong)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 12 }}>+ Agregar opción</button>
+            )}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => valid && onStart(question.trim(), options.filter(o => o.trim()))}
+            disabled={!valid}
+            style={{ flex: 1, padding: "10px 0", borderRadius: 9, border: "none", background: valid ? "var(--gold)" : "var(--bg-well)", color: valid ? "#000" : "var(--gray-deep)", fontWeight: 800, fontSize: 14, cursor: valid ? "pointer" : "default" }}>
+            Iniciar votación
+          </button>
+          <button onClick={onClose} style={{ padding: "10px 14px", borderRadius: 9, border: "1px solid var(--border-strong)", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>Cancelar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Vote Live Modal ───────────────────────────────────────────────────────────
+function VoteModal({ voteState, players, playerOrder, myId, avatarMap, onVote, onClose, isHost }) {
+  if (!voteState) return null;
+  const { question, options, votes, startedBy } = voteState;
+  const myVote = votes[myId];
+  const totalVoters = playerOrder.length;
+  const totalVoted = Object.keys(votes).length;
+  const allVoted = totalVoted >= totalVoters;
+
+  const tally = options.map((_, i) => ({
+    count: Object.values(votes).filter(v => v === i).length,
+    voters: playerOrder.filter(pid => votes[pid] === i).map(pid => players[pid]?.name || pid),
+  }));
+  const maxCount = Math.max(...tally.map(t => t.count), 1);
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 800 }} onClick={e => { if (isHost) onClose(); }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "var(--bg-elevated)", border: "1px solid var(--gold)", borderRadius: 14, padding: 24, width: 400, display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "var(--gold)" }}>🗳 Votación</div>
+          <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{totalVoted}/{totalVoters} votaron</div>
+        </div>
+        <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 600, lineHeight: 1.4 }}>{question}</div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {options.map((opt, i) => {
+            const t = tally[i];
+            const pct = Math.round((t.count / maxCount) * 100);
+            const isMine = myVote === i;
+            return (
+              <div key={i}>
+                <button onClick={() => !myVote && onVote(i)} disabled={!!myVote}
+                  style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: isMine ? "2px solid var(--gold)" : "1px solid var(--border-strong)", background: isMine ? "#2a2000" : "var(--bg-well)", color: isMine ? "var(--gold)" : "var(--text-primary)", cursor: myVote ? "default" : "pointer", textAlign: "left", fontWeight: isMine ? 800 : 400, fontSize: 13, position: "relative", overflow: "hidden" }}>
+                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${pct}%`, background: isMine ? "#44330088" : "#ffffff0a", borderRadius: 8, transition: "width 0.4s" }} />
+                  <span style={{ position: "relative" }}>{isMine ? "✓ " : ""}{opt}</span>
+                  {t.count > 0 && <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "var(--text-muted)", fontWeight: 700 }}>{t.count}</span>}
+                </button>
+                {t.voters.length > 0 && (
+                  <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2, paddingLeft: 4 }}>
+                    {t.voters.map((name, j) => (
+                      <span key={j}>{avatarMap?.[playerOrder.find(pid => players[pid]?.name === name)] || "🧙"} {name}{j < t.voters.length - 1 ? ", " : ""}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {allVoted && (
+          <div style={{ background: "#1a3a1a", border: "1px solid var(--color-life)", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "var(--color-life)", textAlign: "center", fontWeight: 700 }}>
+            ✓ Todos han votado
+          </div>
+        )}
+
+        {isHost && (
+          <button onClick={onClose} style={{ padding: "9px 0", borderRadius: 9, border: "1px solid var(--border-strong)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 12 }}>
+            Cerrar votación
+          </button>
+        )}
+        {!isHost && !myVote && <div style={{ fontSize: 10, color: "var(--text-muted)", textAlign: "center" }}>Selecciona una opción para votar</div>}
+      </div>
+    </div>
+  );
+}
+
 // ─── Dice Roller Modal ────────────────────────────────────────────────────────
 function DiceModal({ onClose, playerName, onRoll }) {
   const [result, setResult] = useState(null);
@@ -3335,6 +3453,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [stormCount, setStormCount] = useState(0);
   const [globalTokens, setGlobalTokens] = useState({ monarch: null, initiative: null }); // pid or null
   const [massLifeOpen, setMassLifeOpen] = useState(false);
+  const [voteState, setVoteState] = useState(null); // { question, options, votes:{pid:idx}, startedBy }
+  const [voteSetupOpen, setVoteSetupOpen] = useState(false);
   // Combat state
   const [attackers, setAttackers] = useState(new Set());
   const [undoStack, setUndoStack] = useState([]);
@@ -3386,6 +3506,17 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         setDiceResult(payload);
         addLog(`🎲 ${payload.playerName} tira d${payload.die}: ${payload.value}${payload.value === payload.die ? " 🎉" : payload.value === 1 ? " 💀" : ""}`);
         setTimeout(() => setDiceResult(null), 4000);
+      }
+      if (event === "vote_start") {
+        setVoteState({ question: payload.question, options: payload.options, votes: {}, startedBy: payload.startedBy });
+        addLog(`🗳 ${payload.startedByName} inicia votación: "${payload.question}"`);
+      }
+      if (event === "vote_cast") {
+        setVoteState(vs => vs ? { ...vs, votes: { ...vs.votes, [payload.pid]: payload.choice } } : vs);
+      }
+      if (event === "vote_end") {
+        setVoteState(null);
+        addLog("🗳 Votación cerrada.");
       }
     };
   }, [addLog]);
@@ -4935,6 +5066,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             { icon: "📝", label: "Notas", action: () => setNotesOpen(o => !o), color: notesOpen ? "var(--color-life)" : "var(--gray-mid)" },
             { icon: "🔍", label: "Buscar", action: () => setCardSearch(s => ({ ...s, open: !s.open, query: "", results: [] })), color: cardSearch.open ? "var(--gold)" : "var(--gray-mid)" },
             { icon: "🔔", label: "Triggers", action: () => setTriggersOpen(o => !o), color: triggers.some(t => t.active) ? "#ffaa44" : triggersOpen ? "var(--gold)" : "var(--gray-mid)" },
+            { icon: "🗳", label: "Votar", action: () => setVoteSetupOpen(true), color: voteState ? "var(--gold)" : "var(--gray-mid)" },
             ...(voiceEnabled ? [{ icon: muted ? "🔇" : "🔊", label: muted ? "Unmute" : "Mute", action: toggleMute, color: muted ? "var(--color-red)" : "var(--color-life)" }] : []),
           ].map(btn => (
             <button key={btn.label} onClick={btn.action} disabled={btn.disabled} title={btn.label}
@@ -5194,7 +5326,38 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       {cmdDmgOpen && <CmdDmgPanel myPid={myId} players={players} playerOrder={playerOrder} avatarMap={avatarMap} onAdjust={(fromPid, d) => adjCmdDmg(fromPid, myId, d)} onAdjustInflicted={(toPid, d) => adjCmdDmg(myId, toPid, d)} onClose={() => setCmdDmgOpen(false)} />}
       {massLifeOpen && <MassLifeModal players={players} playerOrder={playerOrder} avatarMap={avatarMap} onApply={massAdjLife} onClose={() => setMassLifeOpen(false)} />}
 
+      {voteSetupOpen && (
+        <VoteSetupModal
+          onClose={() => setVoteSetupOpen(false)}
+          onStart={(question, options) => {
+            const payload = { question, options, startedBy: myId, startedByName: players[myId]?.name || myId };
+            setVoteState({ question, options, votes: {}, startedBy: myId });
+            rt.current?.broadcast("vote_start", payload);
+            addLog(`🗳 ${players[myId]?.name} inicia votación: "${question}"`);
+            setVoteSetupOpen(false);
+          }}
+        />
+      )}
 
+      {voteState && (
+        <VoteModal
+          voteState={voteState}
+          players={players}
+          playerOrder={playerOrder}
+          myId={myId}
+          avatarMap={avatarMap}
+          isHost={voteState.startedBy === myId}
+          onVote={(choice) => {
+            setVoteState(vs => vs ? { ...vs, votes: { ...vs.votes, [myId]: choice } } : vs);
+            rt.current?.broadcast("vote_cast", { pid: myId, choice });
+            addLog(`🗳 ${players[myId]?.name} vota: "${voteState.options[choice]}"`);
+          }}
+          onClose={() => {
+            setVoteState(null);
+            rt.current?.broadcast("vote_end", {});
+          }}
+        />
+      )}
 
 
       {/* Notifications */}
