@@ -3329,6 +3329,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [muted, setMuted] = useState(false);
   const [speaking, setSpeaking] = useState({}); // {pid: bool}
   const voiceRef = useRef(null);
+  const gameOnMessageRef = useRef(null);
   const [abilitiesModal, setAbilitiesModal] = useState(false);
   const [diceResult, setDiceResult] = useState(null); // {playerName, die, value, color} shown to all
   const [stormCount, setStormCount] = useState(0);
@@ -3358,6 +3359,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const rt = useRef(rtInstance);
   const syncDebounce = useRef(null);
   const pendingSync = useRef(null);
+  const isMounted = useRef(true);
   const playerOrder = initialPlayers.map(p => p.id);
   // Map pid → avatar for use in sub-components
   const avatarMap = Object.fromEntries(initialPlayers.map(p => [p.id, p.avatar || "🧙"]));
@@ -3376,15 +3378,13 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   }, []);
 
   useEffect(() => {
-    if (!rt.current) return;
-    rt.current.onMessage = (event, payload) => {
+    gameOnMessageRef.current = (event, payload) => {
       if (event === "state_update") { setPlayers(ps => ({ ...ps, [payload.pid]: payload.state })); if (payload.log) addLog(payload.log); }
       if (event === "turn_change") { setActivePlayer(payload.ap); setPhase(payload.ph); setTurn(payload.t); addLog(payload.log); }
       if (event === "chat_msg") { setChatMessages(m => [...m, payload]); SFX.chat(); }
       if (event === "dice_roll") {
         setDiceResult(payload);
         addLog(`🎲 ${payload.playerName} tira d${payload.die}: ${payload.value}${payload.value === payload.die ? " 🎉" : payload.value === 1 ? " 💀" : ""}`);
-        // Auto-hide after 4 seconds
         setTimeout(() => setDiceResult(null), 4000);
       }
     };
@@ -3399,10 +3399,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     vc.onPeerJoin = (pid) => addLog(`🎙 ${players[pid]?.name || pid} conectado a voz.`);
     vc.onPeerLeave = (pid) => { setSpeaking(s => ({ ...s, [pid]: false })); addLog(`🎙 ${players[pid]?.name || pid} desconectado de voz.`); };
 
-    // Handle WebRTC signals from Supabase
-    const origOnMessage = rt.current?.onMessage;
     if (rt.current) {
-      const prevOnMsg = rt.current.onMessage;
       rt.current.onMessage = (event, payload) => {
         if (event === "notification" && payload.from !== myId) {
           showNotification(payload.msg, payload.from);
@@ -3410,7 +3407,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         if (event === "webrtc_signal" && payload.to === myId) {
           vc.handleSignal(payload.from, payload);
         }
-        prevOnMsg?.(event, payload);
+        gameOnMessageRef.current?.(event, payload);
       };
     }
 
@@ -3524,6 +3521,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     pendingSync.current = { state, logMsg };
     if (syncDebounce.current) clearTimeout(syncDebounce.current);
     syncDebounce.current = setTimeout(() => {
+      if (!isMounted.current) return;
       const { state: s, logMsg: msg } = pendingSync.current || {};
       if (!s) return;
       rt.current?.broadcast("state_update", { pid: myId, state: s, log: msg });
@@ -3534,6 +3532,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const saveHistory = (ps) => setHistory(h => [...h.slice(-19), JSON.parse(JSON.stringify(ps))]);
   // Auto-open mulligan on game start
   useEffect(() => { setMulliganModal(true); }, []);
+  useEffect(() => { return () => { isMounted.current = false; if (syncDebounce.current) clearTimeout(syncDebounce.current); }; }, []);
 
   // Reorder cards in a zone by dragging
   const reorderZone = (pid, zone, fromId, toId) => {
@@ -3566,7 +3565,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   };
 
   const updMe = (fn, logMsg) => {
-    setPlayers(ps => { saveHistory(ps); const next = fn({ ...ps[myId] }); syncState(next, logMsg); if (logMsg) addLog(logMsg); return { ...ps, [myId]: next }; });
+    setPlayers(ps => { if (!ps[myId]) return ps; saveHistory(ps); const next = fn({ ...ps[myId] }); syncState(next, logMsg); if (logMsg) addLog(logMsg); return { ...ps, [myId]: next }; });
   };
   const undo = () => {
     setHistory(h => {
@@ -3600,15 +3599,15 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       });
     },
     viewTop: (pid, n = 1) => {
-      const p = players[pid];
+      const p = players[pid]; if (!p) return;
       setViewTopModal({ pid, cards: p.library.slice(0, n) });
     },
     scry: (pid, n = 1) => {
-      const p = players[pid];
+      const p = players[pid]; if (!p) return;
       setScryModal({ pid, cards: p.library.slice(0, n).map(c => ({ ...c, dest: "top" })), mode: "scry" });
     },
     surveil: (pid, n = 1) => {
-      const p = players[pid];
+      const p = players[pid]; if (!p) return;
       setScryModal({ pid, cards: p.library.slice(0, n).map(c => ({ ...c, dest: "top" })), mode: "surveil" });
     },
     shuffleLib: (pid) => {
@@ -3637,7 +3636,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     // al hechizo que disparó Cascade. Puedes lanzarla sin pagar su coste.
     // Todas las exiladas (incluida la encontrada si no la lanzas) vuelven al fondo en orden aleatorio.
     cascade: (pid, triggerCmc = null) => {
-      const p = players[pid];
+      const p = players[pid]; if (!p) return;
       // Ask for the CMC of the spell that triggered Cascade if not provided
       let cmc = triggerCmc;
       if (cmc === null) {
@@ -3690,7 +3689,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
     // Discover X: exile top X, pick one to play free, rest to bottom
     discover: (pid, n = 4) => {
-      const p = players[pid];
+      const p = players[pid]; if (!p) return;
       const cards = p.library.slice(0, n);
       const rest = p.library.slice(n);
       setPlayers(ps => { const next = { ...ps[pid], library: rest }; if (pid === myId) syncState(next); return { ...ps, [pid]: next }; });
@@ -3699,7 +3698,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
     // Impulse: exile top X, play one this turn, rest exiled
     impulse: (pid, n = 4) => {
-      const p = players[pid];
+      const p = players[pid]; if (!p) return;
       const cards = p.library.slice(0, n);
       const rest = p.library.slice(n);
       setPlayers(ps => { const next = { ...ps[pid], library: rest }; if (pid === myId) syncState(next); return { ...ps, [pid]: next }; });
@@ -3708,7 +3707,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
     // Phenomenon / Foretell: exile top 2 face-down, cast later
     foretell: (pid) => {
-      const p = players[pid];
+      const p = players[pid]; if (!p) return;
       if (!p.library.length) return;
       const card = { ...p.library[0], foretold: true };
       setPlayers(ps => {
@@ -3721,7 +3720,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
     // Suspend: exile with time counters
     suspend: (pid) => {
-      const p = players[pid];
+      const p = players[pid]; if (!p) return;
       const x = parseInt(prompt("¿Cuántos contadores de tiempo (Suspend)?", "3"));
       if (!x || x < 1) return;
       setResolveModal({ mode: "suspend", cards: p.library.slice(0, 5), rest: p.library.slice(5), pid, label: `⏳ Suspend (${x} contadores)`, extra: { timeCounters: x } });
@@ -3729,7 +3728,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
     // Connive: draw then discard
     connive: (pid, n = 1) => {
-      const p = players[pid];
+      const p = players[pid]; if (!p) return;
       const drawn = p.library.slice(0, n).map(c => ({ ...c, instanceId: uid() }));
       const newLib = p.library.slice(n);
       const newHand = [...p.hand, ...drawn];
@@ -3750,7 +3749,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
     // Miracle: reveal top, if matches, cast for miracle cost
     miracle: (pid) => {
-      const p = players[pid];
+      const p = players[pid]; if (!p) return;
       if (!p.library.length) return;
       const top = p.library[0];
       setViewTopModal({ pid, cards: [top], label: "✨ Miracle — carta revelada" });
