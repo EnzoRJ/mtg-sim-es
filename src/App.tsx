@@ -1927,9 +1927,19 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
   // Build my own playerState from my deck — done once here
   const myPlayerState = useRef(null);
   const getMyState = () => {
+    // When resuming, prefer the saved in-progress state (has current hand, battlefield, etc.)
+    if (resumeCode) {
+      try {
+        const saved = JSON.parse(localStorage.getItem("commander_es_session") || "{}");
+        const myPlayer = saved.players?.find(p => p.id === myId);
+        if (myPlayer?.playerState?.library !== undefined) {
+          myPlayerState.current = myPlayer.playerState;
+          return myPlayer.playerState;
+        }
+      } catch {}
+    }
     const deck = deckData?.deck || [];
     const commander = deckData?.commander || null;
-    const playerName = name || "Jugador";
     myPlayerState.current = mkState(myId, name || "Jugador", deck, commander, deckData?.format?.life || 40, deckData?.sideboard || []);
     return myPlayerState.current;
   };
@@ -3662,8 +3672,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     }, 50);
   };
   const saveHistory = (ps) => setHistory(h => [...h.slice(-19), JSON.parse(JSON.stringify(ps))]);
-  // Auto-open mulligan on game start
-  useEffect(() => { setMulliganModal(true); }, []);
+  // Auto-open mulligan on game start — skip if restoring a session already in progress
+  useEffect(() => { if (!resumedTurn) setMulliganModal(true); }, []);
   useEffect(() => { return () => { isMounted.current = false; if (syncDebounce.current) clearTimeout(syncDebounce.current); }; }, []);
 
   // Reorder cards in a zone by dragging
@@ -6385,11 +6395,21 @@ export default function App() {
 
   const handleGameStart = (players, code, myId, rt) => {
     const isHostPlayer = players.find(p => p.id === myId)?.isHost || false;
-    const sessionData = { roomCode: code, myId, turn: 1, playerName: players.find(p => p.id === myId)?.name, savedAt: Date.now(), players, isHost: isHostPlayer };
-    // Ensure myId is persisted for reconnection
+    // Restore turn/phase/activePlayer/turnLog from saved session if room matches
+    let resumedTurn, resumedPhase, resumedActivePlayer, resumedTurnLog;
+    try {
+      const saved = JSON.parse(localStorage.getItem("commander_es_session") || "{}");
+      if (saved.roomCode === code && saved.turn > 1) {
+        resumedTurn = saved.turn;
+        resumedPhase = saved.phase;
+        resumedActivePlayer = saved.activePlayer;
+        resumedTurnLog = saved.turnLog;
+      }
+    } catch {}
+    const sessionData = { roomCode: code, myId, turn: resumedTurn || 1, playerName: players.find(p => p.id === myId)?.name, savedAt: Date.now(), players, isHost: isHostPlayer };
     if (!getCurrentUser()) localStorage.setItem("commander_es_player_id", myId);
     localStorage.setItem("commander_es_session", JSON.stringify(sessionData));
-    setGameData({ players, myId, rt, roomCode: code });
+    setGameData({ players, myId, rt, roomCode: code, resumedTurn, resumedPhase, resumedActivePlayer, resumedTurnLog });
     setSavedSession(sessionData);
     setStage("game");
   };
@@ -6493,8 +6513,28 @@ export default function App() {
           setStage("deck-edit");
         }}
         onResumeSession={(session) => {
-          setDeckData({ deck: [], commander: null, playerName: session.playerName || "Jugador", wasHost: session.isHost });
-          setStage("lobby-resume");
+          // Solo session: bypass Lobby entirely, restore state directly from localStorage
+          if ((session.players?.length ?? 0) <= 1) {
+            const rt = new SupabaseRealtime();
+            // Connect silently — broadcasts are no-ops if nobody else joins
+            try { rt.connect(session.roomCode, () => {}); } catch {}
+            setGameData({
+              players: session.players || [],
+              myId: session.myId,
+              rt,
+              roomCode: session.roomCode,
+              resumedTurn: session.turn || 1,
+              resumedPhase: session.phase || 0,
+              resumedActivePlayer: session.activePlayer || session.players?.[0]?.id,
+              resumedTurnLog: session.turnLog,
+            });
+            setSavedSession(session);
+            setStage("game");
+          } else {
+            // Multiplayer: go through Lobby to re-handshake with other players
+            setDeckData({ deck: [], commander: null, playerName: session.playerName || "Jugador", wasHost: session.isHost });
+            setStage("lobby-resume");
+          }
         }}
         onClearSession={() => {
           localStorage.removeItem("commander_es_session");
