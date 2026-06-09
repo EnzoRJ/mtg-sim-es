@@ -4726,30 +4726,38 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     const touch = e.touches[0];
                     const timer = setTimeout(() => {
                       if (!touchDragRef.current?.instanceId) return;
-                      touchDragRef.current.active = true;
-                      setDragCard({ instanceId: card.instanceId, zone });
+                      touchDragRef.current.longPressReady = true;
                       navigator.vibrate?.(40);
                     }, 400);
-                    touchDragRef.current = { instanceId: card.instanceId, zone, timer, active: false, startX: touch.clientX, startY: touch.clientY };
+                    touchDragRef.current = { instanceId: card.instanceId, zone, timer, active: false, longPressReady: false, startX: touch.clientX, startY: touch.clientY };
                   } : undefined}
                   onTouchMove={isMe && isMobile ? (e) => {
                     if (!touchDragRef.current) return;
                     const touch = e.touches[0];
-                    if (!touchDragRef.current.active) {
+                    if (!touchDragRef.current.longPressReady) {
                       if (Math.abs(touch.clientX - touchDragRef.current.startX) > 8 || Math.abs(touch.clientY - touchDragRef.current.startY) > 8) {
                         clearTimeout(touchDragRef.current.timer);
                         touchDragRef.current = null;
                       }
                       return;
                     }
-                    const el = document.elementFromPoint(touch.clientX, touch.clientY);
-                    const overId = el?.closest("[data-card-id]")?.getAttribute("data-card-id");
-                    setDragOverId(overId || null);
+                    if (!touchDragRef.current.active && (Math.abs(touch.clientX - touchDragRef.current.startX) > 10 || Math.abs(touch.clientY - touchDragRef.current.startY) > 10)) {
+                      touchDragRef.current.active = true;
+                      setDragCard({ instanceId: card.instanceId, zone });
+                    }
+                    if (touchDragRef.current.active) {
+                      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                      const overId = el?.closest("[data-card-id]")?.getAttribute("data-card-id");
+                      setDragOverId(overId || null);
+                    }
                   } : undefined}
                   onTouchEnd={isMe && isMobile ? (e) => {
                     if (!touchDragRef.current) return;
                     clearTimeout(touchDragRef.current.timer);
-                    if (touchDragRef.current.active) {
+                    if (touchDragRef.current.longPressReady && !touchDragRef.current.active) {
+                      const fakeE = { preventDefault: () => {}, stopPropagation: () => {}, clientX: touchDragRef.current.startX, clientY: touchDragRef.current.startY };
+                      openCardCtx(fakeE, pid, card, zone, isMe);
+                    } else if (touchDragRef.current.active) {
                       const touch = e.changedTouches[0];
                       const el = document.elementFromPoint(touch.clientX, touch.clientY);
                       const targetId = el?.closest("[data-card-id]")?.getAttribute("data-card-id");
