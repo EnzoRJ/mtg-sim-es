@@ -5722,6 +5722,7 @@ function mbtn(bg, col) { return { width: 20, height: 20, borderRadius: "50%", bo
 
 // ─── Deck Selector Modal ──────────────────────────────────────────────────────
 function DeckSelectorModal({ decks, cloudDecks, onSelect, onNew, onClose }) {
+  const isMobileView = typeof window !== "undefined" && window.innerWidth <= 600;
   const [search, setSearch] = useState("");
   const [hover, setHover] = useState(null);
   const allDecks = [
@@ -5755,10 +5756,10 @@ function DeckSelectorModal({ decks, cloudDecks, onSelect, onNew, onClose }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 900, fontFamily: "'Crimson Text',Georgia,serif" }} onClick={onClose}>
-      <div style={{ background: "var(--bg-well)", border: "1px solid var(--border-strong)", borderRadius: 18, padding: 0, width: 640, maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden" }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: "var(--bg-well)", border: "1px solid var(--border-strong)", borderRadius: 18, padding: 0, width: isMobileView ? "96vw" : 640, maxWidth: 640, maxHeight: "88dvh", display: "flex", flexDirection: "column", overflow: "hidden" }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div style={{ padding: "20px 24px 0", flexShrink: 0 }}>
+        <div style={{ padding: isMobileView ? "14px 14px 0" : "20px 24px 0", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <div>
               <div style={{ fontSize: 18, fontWeight: 800, color: "var(--gold)" }}>📚 Elige un mazo</div>
@@ -5773,12 +5774,12 @@ function DeckSelectorModal({ decks, cloudDecks, onSelect, onNew, onClose }) {
             </button>
           </div>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre o comandante..."
-            autoFocus
+            autoFocus={!isMobileView}
             style={{ width: "100%", padding: "9px 14px", borderRadius: 9, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 12 }} />
         </div>
 
         {/* Deck grid */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "0 24px 20px", display: "flex", flexWrap: "wrap", gap: 12, alignContent: "flex-start" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: isMobileView ? "0 12px 16px" : "0 24px 20px", display: "flex", flexWrap: "wrap", gap: 12, alignContent: "flex-start" }}>
           {filtered.map((d, i) => {
             const stats = deckStats(d);
             const cmdImg = d.commander?.image_url;
@@ -5787,7 +5788,7 @@ function DeckSelectorModal({ decks, cloudDecks, onSelect, onNew, onClose }) {
                 onMouseEnter={e => setHover({ d, x: e.clientX, y: e.clientY })}
                 onMouseMove={e => setHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
                 onMouseLeave={() => setHover(null)}
-                style={{ width: 180, borderRadius: 12, border: "1px solid var(--border-default)", background: "var(--bg-elevated)", cursor: "pointer", overflow: "hidden", transition: "all 0.15s", flexShrink: 0 }}
+                style={{ width: isMobileView ? "calc(50% - 6px)" : 180, borderRadius: 12, border: "1px solid var(--border-default)", background: "var(--bg-elevated)", cursor: "pointer", overflow: "hidden", transition: "all 0.15s", flexShrink: 0 }}
                 onMouseOver={e => { e.currentTarget.style.border = "1px solid var(--gold-40)"; e.currentTarget.style.background = "var(--bg-subtle)"; }}
                 onMouseOut={e => { e.currentTarget.style.border = "1px solid var(--border-default)"; e.currentTarget.style.background = "var(--bg-elevated)"; }}>
                 {/* Commander image */}
