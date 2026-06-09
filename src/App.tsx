@@ -2777,7 +2777,7 @@ function VoteSetupModal({ onClose, onStart }) {
 }
 
 // ─── Vote Live Modal ───────────────────────────────────────────────────────────
-function VoteModal({ voteState, players, playerOrder, myId, avatarMap, onVote, onClose, isHost }) {
+function VoteModal({ voteState, players, playerOrder, myId, avatarMap, onVote, onClose, onDismiss, isHost }) {
   if (!voteState) return null;
   const { question, options, votes, startedBy } = voteState;
   const myVote = votes[myId];
@@ -2831,11 +2831,10 @@ function VoteModal({ voteState, players, playerOrder, myId, avatarMap, onVote, o
           </div>
         )}
 
-        {isHost && (
-          <button onClick={onClose} style={{ padding: "9px 0", borderRadius: 9, border: "1px solid var(--border-strong)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 12 }}>
-            Cerrar votación
-          </button>
-        )}
+        {isHost
+          ? <button onClick={onClose} style={{ padding: "9px 0", borderRadius: 9, border: "1px solid var(--border-strong)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 12 }}>Cerrar votación</button>
+          : <button onClick={onDismiss} style={{ padding: "9px 0", borderRadius: 9, border: "1px solid var(--border-strong)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 12 }}>Cerrar para mí</button>
+        }
         {!isHost && !myVote && <div style={{ fontSize: 10, color: "var(--text-muted)", textAlign: "center" }}>Selecciona una opción para votar</div>}
       </div>
     </div>
@@ -3681,13 +3680,15 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     if (fromId === toId) return;
     setPlayers(ps => {
       const p = ps[pid];
-      const arr = zone === "hand" ? [...p.hand] : [...p.battlefield];
+      if (!p) return ps;
+      const key = zone === "lands" ? "battlefield" : zone;
+      const arr = key === "hand" ? [...p.hand] : [...(p[key] || p.battlefield)];
       const fromIdx = arr.findIndex(c => c.instanceId === fromId);
       const toIdx = arr.findIndex(c => c.instanceId === toId);
       if (fromIdx === -1 || toIdx === -1) return ps;
       const [moved] = arr.splice(fromIdx, 1);
       arr.splice(toIdx, 0, moved);
-      const next = zone === "hand" ? { ...p, hand: arr } : { ...p, battlefield: arr };
+      const next = key === "hand" ? { ...p, hand: arr } : { ...p, [key]: arr };
       if (pid === myId) syncState(next);
       return { ...ps, [pid]: next };
     });
@@ -4208,24 +4209,24 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   };
   const adjLife = (pid, d) => {
     setPlayers(ps => {
+      if (!ps[pid]) return ps;
       const next = { ...ps[pid], life: ps[pid].life + d };
       if (pid === myId) { syncState(next, `${ps[pid].name}: vida ${ps[pid].life}→${next.life}`); addLog(`${ps[pid].name}: vida ${ps[pid].life}→${next.life}`); }
       return { ...ps, [pid]: next };
     });
-    // [Feature 4] Record life change in history
-    setLifeHistory(h => ({ ...h, [pid]: [...(h[pid] || [40]), (players[pid]?.life ?? 40) + d] }));
+    setLifeHistory(h => ({ ...h, [pid]: [...(h[pid] || [40]), (h[pid]?.at(-1) ?? 40) + d] }));
   };
   const massAdjLife = (d) => {
     playerOrder.forEach(pid => adjLife(pid, d));
     addLog(`💥 Todos los jugadores ${d > 0 ? "ganan" : "pierden"} ${Math.abs(d)} vida.`);
     setMassLifeOpen(false);
   };
-  const adjPoison = (pid, d) => { setPlayers(ps => { const next = { ...ps[pid], poison: Math.max(0, ps[pid].poison + d) }; if (pid === myId) syncState(next); return { ...ps, [pid]: next }; }); };
-  const adjEnergy = (pid, d) => { setPlayers(ps => { const next = { ...ps[pid], energy: Math.max(0, (ps[pid].energy || 0) + d) }; if (pid === myId) syncState(next); return { ...ps, [pid]: next }; }); };
-  const adjExperience = (pid, d) => { setPlayers(ps => { const next = { ...ps[pid], experience: Math.max(0, (ps[pid].experience || 0) + d) }; if (pid === myId) syncState(next); return { ...ps, [pid]: next }; }); };
+  const adjPoison = (pid, d) => { setPlayers(ps => { if (!ps[pid]) return ps; const next = { ...ps[pid], poison: Math.max(0, ps[pid].poison + d) }; if (pid === myId) syncState(next); return { ...ps, [pid]: next }; }); };
+  const adjEnergy = (pid, d) => { setPlayers(ps => { if (!ps[pid]) return ps; const next = { ...ps[pid], energy: Math.max(0, (ps[pid].energy || 0) + d) }; if (pid === myId) syncState(next); return { ...ps, [pid]: next }; }); };
+  const adjExperience = (pid, d) => { setPlayers(ps => { if (!ps[pid]) return ps; const next = { ...ps[pid], experience: Math.max(0, (ps[pid].experience || 0) + d) }; if (pid === myId) syncState(next); return { ...ps, [pid]: next }; }); };
   const adjCmdDmg = (fromPid, toPid, d) => {
     setPlayers(ps => {
-      const p = ps[toPid]; const cur = p.commanderDamage[fromPid] || 0; const next = { ...p, commanderDamage: { ...p.commanderDamage, [fromPid]: Math.max(0, cur + d) } };
+      const p = ps[toPid]; if (!p) return ps; const cur = p.commanderDamage[fromPid] || 0; const next = { ...p, commanderDamage: { ...p.commanderDamage, [fromPid]: Math.max(0, cur + d) } };
       if (toPid === myId) { syncState(next); }
       return { ...ps, [toPid]: next };
     });
@@ -5404,6 +5405,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             rt.current?.broadcast("vote_cast", { pid: myId, choice });
             addLog(`🗳 ${players[myId]?.name} vota: "${voteState.options[choice]}"`);
           }}
+          onDismiss={() => setVoteState(null)}
           onClose={() => {
             setVoteState(null);
             rt.current?.broadcast("vote_end", {});
@@ -6499,7 +6501,7 @@ export default function App() {
         onSpectate={(code) => {
           // Join as spectator — no deck needed
           const rt = new SupabaseRealtime();
-          rt.joinRoom(code);
+          rt.connect(code, () => {});
           setGameData({ players: [], myId: "spectator_" + uid(), rt, roomCode: code, isSpectator: true });
           setStage("game");
         }}
