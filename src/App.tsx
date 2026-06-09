@@ -4125,7 +4125,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   };
   const moveCard = (card, from, to) => {
     if (from === "battlefield") setRow2Cards(s => { const n = new Set(s); n.delete(card.instanceId); return n; });
-    updMe(p => ({ ...p, [from]: p[from].filter(c => c.instanceId !== card.instanceId), [to]: to === "library_top" ? [card, ...p.library] : to === "library_bottom" ? [...p.library, card] : to === "hand" ? [...p.hand, card] : [card, ...p[to]] }), `${players[myId]?.name}: ${getCardName(card)} → ${to === "graveyard" ? "cementerio" : to === "exile" ? "exilio" : to === "hand" ? "mano" : "biblioteca"}.`);
+    const toLabel = to === "graveyard" ? "cementerio" : to === "exile" ? "exilio" : to === "hand" ? "mano" : to === "sideboard" ? "sideboard" : "biblioteca";
+    updMe(p => ({ ...p, [from]: p[from].filter(c => c.instanceId !== card.instanceId), [to]: to === "library_top" ? [card, ...p.library] : to === "library_bottom" ? [...p.library, card] : to === "hand" ? [...p.hand, card] : [card, ...(p[to] || [])] }), `${players[myId]?.name}: ${getCardName(card)} → ${toLabel}.`);
     setCtxMenu(null);
   };
   const playCommander = () => {
@@ -4353,6 +4354,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       zone !== "exile" && { label: "✨ Exiliar", action: () => moveCard(card, zone, "exile") },
       { label: "📚 A biblioteca (arriba)", action: () => moveCard(card, zone, "library_top") },
       { label: "📚 A biblioteca (abajo)", action: () => moveCard(card, zone, "library_bottom") },
+      zone !== "sideboard" && (players[myId]?.sideboard?.length > 0 || zone === "sideboard") && { label: "↔ Al Sideboard", action: () => moveCard(card, zone, "sideboard"), color: "var(--color-info)" },
       isCmd && { label: "⚔ A zona de mando", action: () => returnCmdToZone(card, zone, true), color: "var(--gold)" },
       "---",
       // Contadores: solo para permanentes que no son tierras
@@ -4518,6 +4520,17 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           : <div style={{ width: 52, height: 73, borderRadius: 5, border: "2px dashed var(--border-panel)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 2, cursor: "pointer" }}><div style={{ fontSize: 14 }}>✨</div><div style={{ fontSize: 9, color: "var(--gray-dark)" }}>0</div></div>}
         <div style={{ position: "absolute", top: -10, left: 0, right: 0, textAlign: "center", fontSize: 8, color: "var(--text-muted)" }}>✨ {p.exile.length}</div>
       </div>
+
+      {/* Sideboard — only when player has one */}
+      {(p.sideboard || []).length > 0 && (
+        <div style={{ position: "relative" }} onClick={() => setShowZone({ pid: p.id, zone: "sideboard" })}>
+          <div style={{ width: 52, height: 73, borderRadius: 5, border: "2px solid var(--color-info)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 2, cursor: "pointer", background: "#0a1a2a" }}>
+            <div style={{ fontSize: 13 }}>↔</div>
+            <div style={{ fontSize: 9, color: "var(--color-info)", fontWeight: 800 }}>{p.sideboard.length}</div>
+          </div>
+          <div style={{ position: "absolute", top: -10, left: 0, right: 0, textAlign: "center", fontSize: 8, color: "var(--color-info)" }}>↔ SB</div>
+        </div>
+      )}
     </div>
   );
 
@@ -5208,15 +5221,25 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 400 }} onClick={() => setShowZone(null)}>
           <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 14, padding: 22, maxWidth: 680, maxHeight: "80vh", overflowY: "auto", minWidth: 360 }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)" }}>
-                {showZone.zone === "graveyard" ? "🪦 Cementerio" : "✨ Exilio"} — {players[showZone.pid]?.name}
+              <span style={{ fontSize: 14, fontWeight: 700, color: showZone.zone === "sideboard" ? "var(--color-info)" : "var(--gold)" }}>
+                {showZone.zone === "graveyard" ? "🪦 Cementerio" : showZone.zone === "sideboard" ? "↔ Sideboard" : "✨ Exilio"} — {players[showZone.pid]?.name}
               </span>
               <button onClick={() => setShowZone(null)} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 17 }}>✕</button>
             </div>
+            {showZone.zone === "sideboard" && showZone.pid === myId && (
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10 }}>
+                Click izquierdo → a la mano · Click derecho → más opciones
+              </div>
+            )}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
               {(players[showZone.pid]?.[showZone.zone] || []).map(card => (
-                <div key={card.instanceId} onContextMenu={e => { setShowZone(null); openCardCtx(e, showZone.pid, card, showZone.zone, showZone.pid === myId); }}>
-                  <CardTile card={card} onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
+                <div key={card.instanceId}
+                  onClick={showZone.zone === "sideboard" && showZone.pid === myId
+                    ? () => { moveCard(card, "sideboard", "hand"); setShowZone(null); }
+                    : undefined}
+                  onContextMenu={e => { setShowZone(null); openCardCtx(e, showZone.pid, card, showZone.zone, showZone.pid === myId); }}
+                  style={{ cursor: showZone.zone === "sideboard" && showZone.pid === myId ? "pointer" : "default" }}>
+                  <CardTile card={card} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
                 </div>
               ))}
               {!players[showZone.pid]?.[showZone.zone]?.length && <div style={{ color: "var(--gray-dark)", padding: 18 }}>Vacío</div>}
