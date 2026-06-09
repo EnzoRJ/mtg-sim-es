@@ -3513,6 +3513,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [isPortrait, setIsPortrait] = useState(() => typeof window !== "undefined" && window.innerHeight > window.innerWidth);
   const [expandedOpponent, setExpandedOpponent] = useState(null);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
+  const touchDragRef = useRef(null); // { instanceId, zone, timer, active, startX, startY }
   const rt = useRef(rtInstance);
   const syncDebounce = useRef(null);
   const pendingSync = useRef(null);
@@ -4706,22 +4707,59 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
               const isOver = dragOverId === card.instanceId;
               return (
                 <div key={card.instanceId}
-                  draggable={isMe}
-                  onDragStart={() => isMe && setDragCard({ instanceId: card.instanceId, zone })}
-                  onDragOver={e => { e.preventDefault(); isMe && setDragOverId(card.instanceId); }}
-                  onDragLeave={() => setDragOverId(null)}
+                  data-card-id={card.instanceId}
+                  draggable={isMe && !isMobile}
+                  onDragStart={() => isMe && !isMobile && setDragCard({ instanceId: card.instanceId, zone })}
+                  onDragOver={e => { e.preventDefault(); isMe && !isMobile && setDragOverId(card.instanceId); }}
+                  onDragLeave={() => { if (!isMobile) setDragOverId(null); }}
                   onDrop={e => {
                     e.preventDefault();
-                    if (dragCard && isMe) {
+                    if (dragCard && isMe && !isMobile) {
                       if (dragCard.zone === zone) {
-                        // Same zone — reorder
                         reorderZone(pid, zone, dragCard.instanceId, card.instanceId);
                       }
-                      // Don't stopPropagation — let row containers handle cross-row drops
                     }
                     setDragCard(null); setDragOverId(null);
                   }}
                   onDragEnd={() => { setDragCard(null); setDragOverId(null); }}
+                  onTouchStart={isMe && isMobile ? (e) => {
+                    const touch = e.touches[0];
+                    const timer = setTimeout(() => {
+                      if (!touchDragRef.current?.instanceId) return;
+                      touchDragRef.current.active = true;
+                      setDragCard({ instanceId: card.instanceId, zone });
+                      navigator.vibrate?.(40);
+                    }, 400);
+                    touchDragRef.current = { instanceId: card.instanceId, zone, timer, active: false, startX: touch.clientX, startY: touch.clientY };
+                  } : undefined}
+                  onTouchMove={isMe && isMobile ? (e) => {
+                    if (!touchDragRef.current) return;
+                    const touch = e.touches[0];
+                    if (!touchDragRef.current.active) {
+                      if (Math.abs(touch.clientX - touchDragRef.current.startX) > 8 || Math.abs(touch.clientY - touchDragRef.current.startY) > 8) {
+                        clearTimeout(touchDragRef.current.timer);
+                        touchDragRef.current = null;
+                      }
+                      return;
+                    }
+                    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                    const overId = el?.closest("[data-card-id]")?.getAttribute("data-card-id");
+                    setDragOverId(overId || null);
+                  } : undefined}
+                  onTouchEnd={isMe && isMobile ? (e) => {
+                    if (!touchDragRef.current) return;
+                    clearTimeout(touchDragRef.current.timer);
+                    if (touchDragRef.current.active) {
+                      const touch = e.changedTouches[0];
+                      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                      const targetId = el?.closest("[data-card-id]")?.getAttribute("data-card-id");
+                      if (targetId && targetId !== touchDragRef.current.instanceId && touchDragRef.current.zone === zone) {
+                        reorderZone(pid, zone, touchDragRef.current.instanceId, targetId);
+                      }
+                    }
+                    touchDragRef.current = null;
+                    setDragCard(null); setDragOverId(null);
+                  } : undefined}
                   style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", opacity: isDragging ? 0.4 : 1, outline: isOver ? "2px dashed var(--gold)" : "none", borderRadius: 6, cursor: isDragging ? "grabbing" : "default", transition: "opacity 0.15s", overflow: "visible" }}
                   onContextMenu={e => openCardCtx(e, pid, card, "battlefield", isMe)}>
                   {isAttacking && <div style={{ position: "absolute", inset: -2, borderRadius: 6, border: "2px solid var(--color-red)", zIndex: 3, pointerEvents: "none", boxShadow: "0 0 8px var(--color-red-67)" }} />}
