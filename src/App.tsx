@@ -3409,6 +3409,29 @@ function exportGameState(players, playerOrder, turn, phase, turnLog, roomCode) {
 // Layout: top-left, top-right, bottom-left, bottom-right, center = me
 // Positions: p1=bottom-center(me), p2=top-center, p3=left, p4=right  (adjusted by count)
 
+function MobileOpponentBar({ p, isActive, globalTokens, avatarMap, onExpand }) {
+  const pid = p.id;
+  return (
+    <button onClick={onExpand} style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 8px", borderRadius: 8, border: `1px solid ${isActive ? "var(--gold)" : "var(--bg-subtle)"}`, background: isActive ? "var(--bg-gold)" : "var(--bg-well)", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, boxShadow: isActive ? "0 0 8px var(--gold-40)" : "none", minWidth: 110, fontFamily: "'Crimson Text',Georgia,serif" }}>
+      <span style={{ fontSize: 20 }}>{avatarMap?.[pid] || "🧙"}</span>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+        <span style={{ fontSize: 9, fontWeight: 700, color: isActive ? "var(--gold)" : "var(--text-primary)", maxWidth: 72, overflow: "hidden", textOverflow: "ellipsis" }}>
+          {p.name}{globalTokens?.monarch === pid ? " 👑" : ""}{globalTokens?.initiative === pid ? " ⚡" : ""}
+        </span>
+        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+          <span style={{ fontSize: 13, fontWeight: 800, color: p.life <= 10 ? "var(--color-red)" : "var(--gold)" }}>{p.life}❤</span>
+          {p.poison > 0 && <span style={{ fontSize: 9, color: "#ff88ff" }}>☠{p.poison}</span>}
+          {(p.energy || 0) > 0 && <span style={{ fontSize: 9, color: "var(--color-info-bright)" }}>⚡{p.energy}</span>}
+          <span style={{ fontSize: 9, color: "var(--text-muted)" }}>🃏{p.hand?.length || 0}</span>
+          {Object.entries(p.commanderDamage || {}).filter(([, v]) => (v as number) > 0).map(([k, v]) => (
+            <span key={k} style={{ fontSize: 9, color: (v as number) >= 21 ? "#ff4444" : (v as number) >= 15 ? "#ffaa44" : "var(--color-orange)" }}>⚔{v as number}</span>
+          ))}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSession, roomCode, isSpectator, resumedTurn, resumedPhase, resumedActivePlayer, resumedTurnLog }) {
   const [turn, setTurn] = useState(resumedTurn || 1);
   const [phase, setPhase] = useState(resumedPhase || 0);
@@ -3486,6 +3509,10 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [triggersOpen, setTriggersOpen] = useState(false);
   // [Feature 5] Pending card marker: {instanceId, zone}
   const [cardMarkerModal, setCardMarkerModal] = useState(null);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth <= 768);
+  const [isPortrait, setIsPortrait] = useState(() => typeof window !== "undefined" && window.innerHeight > window.innerWidth);
+  const [expandedOpponent, setExpandedOpponent] = useState(null);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const rt = useRef(rtInstance);
   const syncDebounce = useRef(null);
   const pendingSync = useRef(null);
@@ -3674,6 +3701,12 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   // Auto-open mulligan on game start — skip if restoring a session already in progress
   useEffect(() => { if (!resumedTurn) setMulliganModal(true); }, []);
   useEffect(() => { return () => { isMounted.current = false; if (syncDebounce.current) clearTimeout(syncDebounce.current); }; }, []);
+  useEffect(() => {
+    const fn = () => { setIsMobile(window.innerWidth <= 768); setIsPortrait(window.innerHeight > window.innerWidth); };
+    window.addEventListener("resize", fn);
+    window.addEventListener("orientationchange", fn);
+    return () => { window.removeEventListener("resize", fn); window.removeEventListener("orientationchange", fn); };
+  }, []);
 
   // Reorder cards in a zone by dragging
   const reorderZone = (pid, zone, fromId, toId) => {
@@ -5024,6 +5057,93 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
 
       {/* Board: PhasePanel | Grid | ActionPanel */}
+      {isMobile ? (
+        <>
+          {/* Portrait hint */}
+          {isPortrait && (
+            <div style={{ position: "fixed", inset: 0, background: "#000e", zIndex: 950, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+              <div style={{ fontSize: 48 }}>📱</div>
+              <div style={{ fontSize: 16, color: "var(--gold)", fontWeight: 800 }}>Gira tu dispositivo</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", maxWidth: 240 }}>El tablero funciona mejor en horizontal</div>
+            </div>
+          )}
+          {/* Opponent strips — horizontal scroll */}
+          <div style={{ flexShrink: 0, display: "flex", gap: 3, padding: "3px 5px", background: "var(--bg-base)", borderBottom: "1px solid var(--bg-subtle)", overflowX: "auto" }}>
+            {opponentSlots.map(p => (
+              <MobileOpponentBar key={p.id} p={p} isActive={activePlayer === p.id} globalTokens={globalTokens} avatarMap={avatarMap} onExpand={() => setExpandedOpponent(p.id)} />
+            ))}
+            {opponentSlots.length === 0 && <div style={{ fontSize: 9, color: "var(--text-muted)", padding: "5px 8px", alignSelf: "center" }}>Solo — sin oponentes</div>}
+          </div>
+          {/* My zone */}
+          <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+            {renderPlayerPanel(myId, true, 0)}
+          </div>
+          {/* Mobile action bar */}
+          <div style={{ flexShrink: 0, display: "flex", gap: 1, padding: "3px 4px", background: "var(--bg-base)", borderTop: "1px solid var(--bg-subtle)", alignItems: "stretch" }}>
+            <button onClick={isMyTurn ? nextPhase : undefined} style={{ flex: 1.5, padding: "4px 2px", borderRadius: 7, border: `1px solid ${isMyTurn ? "var(--gold)" : "var(--bg-subtle)"}`, background: isMyTurn ? "var(--bg-gold)" : "var(--bg-well)", color: isMyTurn ? "var(--gold)" : "var(--text-muted)", cursor: isMyTurn ? "pointer" : "default", fontSize: 7, fontWeight: 700, display: "flex", flexDirection: "column", alignItems: "center", gap: 1, justifyContent: "center" }}>
+              <span style={{ fontSize: 11 }}>{["🌙","📖","⚡","⚔️","⚡","🏁"][phase] || "⚡"}</span>
+              <span>{PHASES[phase]}</span>
+            </button>
+            {[
+              { icon: "📚", label: "Robar", action: () => libActions.draw(myId, 1), color: "var(--color-info)" },
+              { icon: "⟲", label: "Destapar", action: untapAll, color: "var(--color-life)" },
+              { icon: phase >= 5 ? "↪" : "▶", label: phase >= 5 ? "Fin" : "Fase", action: isMyTurn ? (phase >= 5 ? advanceToNextPlayer : nextPhase) : undefined, color: isMyTurn ? "var(--gold)" : "var(--gray-dark)" },
+              { icon: "🪄", label: "Token", action: () => setTokenModal(true), color: "var(--color-poison)" },
+              { icon: "🎲", label: "Dado", action: () => setDiceModal(true), color: "var(--color-orange)" },
+            ].map(btn => (
+              <button key={btn.label} onClick={btn.action} title={btn.label} style={{ flex: 1, padding: "4px 2px", borderRadius: 7, border: "1px solid var(--bg-subtle)", background: "var(--bg-well)", color: btn.color, cursor: btn.action ? "pointer" : "default", display: "flex", flexDirection: "column", alignItems: "center", gap: 1, justifyContent: "center" }}>
+                <span style={{ fontSize: 13 }}>{btn.icon}</span>
+                <span style={{ fontSize: 6, lineHeight: 1 }}>{btn.label}</span>
+              </button>
+            ))}
+            <button onClick={() => setMobileActionsOpen(true)} style={{ flex: 1, padding: "4px 2px", borderRadius: 7, border: "1px solid var(--bg-subtle)", background: "var(--bg-well)", color: "var(--gold)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 1, justifyContent: "center" }}>
+              <span style={{ fontSize: 13 }}>⊞</span>
+              <span style={{ fontSize: 6, lineHeight: 1 }}>Más</span>
+            </button>
+          </div>
+          {/* Expanded opponent full-screen overlay */}
+          {expandedOpponent && (
+            <div style={{ position: "fixed", inset: 0, background: "var(--bg-deep)", zIndex: 130, display: "flex", flexDirection: "column", fontFamily: "'Crimson Text',Georgia,serif" }}>
+              <div style={{ padding: "5px 10px", background: "var(--bg-base)", borderBottom: "1px solid var(--bg-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gold)" }}>👁 {players[expandedOpponent]?.name}</span>
+                <button onClick={() => setExpandedOpponent(null)} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 22, cursor: "pointer", padding: "0 4px", lineHeight: 1 }}>×</button>
+              </div>
+              <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+                {renderPlayerPanel(expandedOpponent, false, 0)}
+              </div>
+            </div>
+          )}
+          {/* Mobile actions bottom sheet */}
+          {mobileActionsOpen && (
+            <div style={{ position: "fixed", inset: 0, background: "#000a", zIndex: 200, display: "flex", alignItems: "flex-end" }} onClick={() => setMobileActionsOpen(false)}>
+              <div style={{ width: "100%", background: "var(--bg-elevated)", border: "1px solid var(--bg-subtle)", borderRadius: "16px 16px 0 0", padding: "12px 16px 20px", display: "flex", flexDirection: "column", gap: 10 }} onClick={e => e.stopPropagation()}>
+                <div style={{ width: 40, height: 3, borderRadius: 2, background: "var(--gray-dark)", alignSelf: "center", marginBottom: 4 }} />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {[
+                    { icon: "↩", label: "Deshacer", action: () => { undo(); setMobileActionsOpen(false); }, color: history.length ? "var(--color-warn-dim)" : "var(--gray-deep)", disabled: !history.length },
+                    { icon: "❤", label: "Vida", action: () => { setLifeHistoryOpen(o => !o); setMobileActionsOpen(false); }, color: "var(--color-damage)" },
+                    { icon: "💎", label: "Maná", action: () => { setManaOpen(o => !o); setMobileActionsOpen(false); }, color: "var(--gold)" },
+                    { icon: "⚔", label: "CmdDmg", action: () => { setCmdDmgOpen(o => !o); setMobileActionsOpen(false); }, color: "var(--color-orange)" },
+                    { icon: "💥", label: "Masiva", action: () => { setMassLifeOpen(o => !o); setMobileActionsOpen(false); }, color: "var(--color-damage)" },
+                    { icon: "💬", label: "Chat", action: () => { setChatOpen(o => !o); setMobileActionsOpen(false); }, color: "var(--color-info)" },
+                    { icon: "📝", label: "Notas", action: () => { setNotesOpen(o => !o); setMobileActionsOpen(false); }, color: "var(--color-life)" },
+                    { icon: "🔔", label: "Triggers", action: () => { setTriggersOpen(o => !o); setMobileActionsOpen(false); }, color: "#ffaa44" },
+                    { icon: "🗳", label: "Votar", action: () => { setVoteSetupOpen(true); setMobileActionsOpen(false); }, color: "var(--gold)" },
+                    { icon: "🎙", label: voiceEnabled ? (muted ? "Silenc." : "Voz ON") : "Voz", action: () => { toggleVoice(); setMobileActionsOpen(false); }, color: voiceEnabled ? (muted ? "var(--color-damage)" : "var(--color-life-bright)") : "var(--gray-dark)" },
+                    { icon: "✕", label: "Salir", action: () => { try { const sess = JSON.parse(localStorage.getItem("commander_es_session") || "{}"); const allStates = Object.fromEntries(Object.entries(players).map(([pid, p]) => [pid, p])); const snapshot = { ...sess, players: (sess.players || []).map(p => ({ ...p, playerState: allStates[p.id] || p.playerState })), turn, phase, activePlayer, turnLog, savedAt: Date.now() }; localStorage.setItem("commander_es_session", JSON.stringify(snapshot)); localStorage.setItem("commander_es_full_save", JSON.stringify(snapshot)); } catch {} onExit(); setMobileActionsOpen(false); }, color: "var(--gray-darker)" },
+                  ].map(btn => (
+                    <button key={btn.label} onClick={btn.action} disabled={btn.disabled}
+                      style={{ flex: "0 0 calc(25% - 5px)", padding: "10px 4px", borderRadius: 10, border: "1px solid var(--bg-subtle)", background: "var(--bg-well)", color: btn.color, cursor: btn.disabled ? "default" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, opacity: btn.disabled ? 0.3 : 1 }}>
+                      <span style={{ fontSize: 18 }}>{btn.icon}</span>
+                      <span style={{ fontSize: 9 }}>{btn.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
 
         {/* LEFT: Phase + Turn order panel */}
@@ -5224,7 +5344,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
 
 
-      </div>{/* end board flex row */}
+      </div>
+      )}{/* end board flex row */}
 
 
 
