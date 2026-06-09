@@ -3509,7 +3509,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [triggersOpen, setTriggersOpen] = useState(false);
   // [Feature 5] Pending card marker: {instanceId, zone}
   const [cardMarkerModal, setCardMarkerModal] = useState(null);
-  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth <= 768);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth <= 1024);
   const [isPortrait, setIsPortrait] = useState(() => typeof window !== "undefined" && window.innerHeight > window.innerWidth);
   const [expandedOpponent, setExpandedOpponent] = useState(null);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
@@ -3703,7 +3703,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   useEffect(() => { if (!resumedTurn) setMulliganModal(true); }, []);
   useEffect(() => { return () => { isMounted.current = false; if (syncDebounce.current) clearTimeout(syncDebounce.current); }; }, []);
   useEffect(() => {
-    const fn = () => { setIsMobile(window.innerWidth <= 768); setIsPortrait(window.innerHeight > window.innerWidth); };
+    const fn = () => { setIsMobile(window.innerWidth <= 1024); setIsPortrait(window.innerHeight > window.innerWidth); };
     window.addEventListener("resize", fn);
     window.addEventListener("orientationchange", fn);
     return () => { window.removeEventListener("resize", fn); window.removeEventListener("orientationchange", fn); };
