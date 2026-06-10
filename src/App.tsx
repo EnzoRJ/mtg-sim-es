@@ -4901,12 +4901,12 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
           {speaking[pid] && <span title="Hablando por voz" style={{ fontSize: 10, color: "var(--color-life-bright)", animation: "pulse 0.5s infinite", flexShrink: 0, textShadow: "0 0 8px var(--color-life-bright)" }}>🎙</span>}
           {p.experience > 0 && <span style={{ fontSize: 9, color: "#ddaaff", background: "#1a0a3a", borderRadius: 4, padding: "0 4px", flexShrink: 0 }}>✨{p.experience}</span>}
-          <span title={`Mano: ${p.hand.length} carta${p.hand.length !== 1 ? "s" : ""}`} style={{ fontSize: 9, fontWeight: p.hand.length >= 8 ? 800 : 400, color: p.hand.length === 0 ? "var(--color-damage)" : p.hand.length >= 8 ? "var(--color-life-bright)" : "var(--text-muted)", marginLeft: "auto", flexShrink: 0, background: p.hand.length >= 8 ? "#0a2010" : p.hand.length === 0 ? "#2a0808" : "transparent", borderRadius: 4, padding: p.hand.length === 0 || p.hand.length >= 8 ? "0 4px" : 0 }}>🤚{p.hand.length}</span>
           {isMe && lastCardAction && (
-            <span style={{ fontSize: 8, color: lastCardAction.color, background: "#0008", borderRadius: 4, padding: "0 4px", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flexShrink: 0, animation: "toast-in 0.18s ease-out" }}>
+            <span style={{ fontSize: 8, color: lastCardAction.color, background: "#0008", borderRadius: 4, padding: "0 4px", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flexShrink: 0, marginLeft: "auto", animation: "toast-in 0.18s ease-out" }}>
               {lastCardAction.icon} {lastCardAction.name}
             </span>
           )}
+          <span title={`Mano: ${p.hand.length} carta${p.hand.length !== 1 ? "s" : ""}`} style={{ fontSize: 9, fontWeight: p.hand.length >= 8 ? 800 : 400, color: p.hand.length === 0 ? "var(--color-damage)" : p.hand.length >= 8 ? "var(--color-life-bright)" : "var(--text-muted)", marginLeft: lastCardAction && isMe ? 0 : "auto", flexShrink: 0, background: p.hand.length >= 8 ? "#0a2010" : p.hand.length === 0 ? "#2a0808" : "transparent", borderRadius: 4, padding: p.hand.length === 0 || p.hand.length >= 8 ? "0 4px" : 0 }}>🤚{p.hand.length}</span>
         </div>
 
         {/* Body: battlefield + bottom bar — reversed for opponents */}
