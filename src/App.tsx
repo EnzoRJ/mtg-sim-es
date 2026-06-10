@@ -1320,8 +1320,28 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
   const handleImport = async () => {
     setImportLoading(true);
     const lines = importText.split("\n").map(l => l.trim()).filter(Boolean);
+
+    // Pre-scan: detect commander hints before fetching
+    let commanderLineName = null;
+    let inCommanderSection = false;
+    for (const line of lines) {
+      const lower = line.toLowerCase();
+      if (lower.startsWith("// commander") || lower === "commander") { inCommanderSection = true; continue; }
+      if (line.startsWith("//") || line.startsWith("#")) { inCommanderSection = false; continue; }
+      if (line.includes("*CMDR*")) {
+        const cleaned = line.replace(/\*CMDR\*/g, "").trim();
+        const m2 = cleaned.match(/^(\d+)x?\s+(.+)$/i);
+        commanderLineName = (m2 ? m2[2] : cleaned).trim();
+        break;
+      }
+      if (inCommanderSection && !commanderLineName) {
+        const m2 = line.match(/^(\d+)x?\s+(.+)$/i);
+        commanderLineName = (m2 ? m2[2] : line).trim();
+      }
+    }
+
     const validLines = lines.filter(l => !l.startsWith("//") && !l.startsWith("#") && l.trim());
-    const total = validLines.reduce((s, l) => { const m = l.match(/^(\d+)x?\s+/); return s + (m ? parseInt(m[1]) : 1); }, 0);
+    const total = validLines.reduce((s, l) => { const m = l.replace(/\*CMDR\*/g, "").match(/^(\d+)x?\s+/); return s + (m ? parseInt(m[1]) : 1); }, 0);
     setImportProgress({ done: 0, total });
     const out = [];
     const cache = {};
@@ -1329,8 +1349,9 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
     for (const line of lines) {
       // Skip comment lines
       if (line.startsWith("//") || line.startsWith("#")) continue;
-      const m = line.match(/^(\d+)x?\s+(.+)$/i);
-      const name = (m ? m[2] : line).trim();
+      const cleanLine = line.replace(/\*CMDR\*/g, "").trim();
+      const m = cleanLine.match(/^(\d+)x?\s+(.+)$/i);
+      const name = (m ? m[2] : cleanLine).trim();
       const n = m ? parseInt(m[1]) : 1;
       if (!name || isNaN(n) || n < 1) continue;
       // Delay to respect Scryfall rate limit (~10 req/s)
@@ -1406,7 +1427,23 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
         setImportProgress({ done, total });
       }
     }
-    setDeck(d => [...d, ...out]); setImportLoading(false); setImportProgress({ done: 0, total: 0 }); setTab("mazo");
+    setDeck(d => [...d, ...out]);
+
+    // Auto-assign commander if detected from import markers
+    if (formatHasCommander(format) && commanderLineName) {
+      const cmdCard = out.find(c =>
+        c.name?.toLowerCase() === commanderLineName.toLowerCase() ||
+        c.printed_name?.toLowerCase() === commanderLineName.toLowerCase()
+      );
+      if (cmdCard) setCommander({ ...cmdCard });
+    } else if (formatHasCommander(format) && !commander) {
+      // Fallback: if only one legendary creature in the entire import, auto-assign it
+      const legendaries = out.filter(c => isLegendary(c) && isCreature(c));
+      const uniqueLegNames = [...new Set(legendaries.map(c => c.name))];
+      if (uniqueLegNames.length === 1) setCommander({ ...legendaries[0] });
+    }
+
+    setImportLoading(false); setImportProgress({ done: 0, total: 0 }); setTab("mazo");
   };
 
   const normalizeType = (typeLine) => {
