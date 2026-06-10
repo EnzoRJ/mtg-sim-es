@@ -5148,14 +5148,16 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           </div>
           {/* Mobile action bar */}
           <div style={{ flexShrink: 0, display: "flex", gap: 1, padding: "3px 4px", background: "var(--bg-base)", borderTop: "1px solid var(--bg-subtle)", alignItems: "stretch" }}>
-            <button onClick={isMyTurn ? nextPhase : undefined} style={{ flex: 1.5, padding: "4px 2px", borderRadius: 7, border: `1px solid ${isMyTurn ? "var(--gold)" : "var(--bg-subtle)"}`, background: isMyTurn ? "var(--bg-gold)" : "var(--bg-well)", color: isMyTurn ? "var(--gold)" : "var(--text-muted)", cursor: isMyTurn ? "pointer" : "default", fontSize: 7, fontWeight: 700, display: "flex", flexDirection: "column", alignItems: "center", gap: 1, justifyContent: "center" }}>
-              <span style={{ fontSize: 11 }}>{["🌙","📖","⚡","⚔️","⚡","🏁"][phase] || "⚡"}</span>
-              <span>{PHASES[phase]}</span>
+            <button onClick={isMyTurn ? (phase >= 5 ? advanceToNextPlayer : nextPhase) : undefined} style={{ flex: 2, padding: "4px 6px", borderRadius: 7, border: `1px solid ${isMyTurn ? "var(--gold)" : "var(--bg-subtle)"}`, background: isMyTurn ? "var(--bg-gold)" : "var(--bg-well)", color: isMyTurn ? "var(--gold)" : "var(--text-muted)", cursor: isMyTurn ? "pointer" : "default", fontSize: 7, fontWeight: 700, display: "flex", flexDirection: "row", alignItems: "center", gap: 4, justifyContent: "center" }}>
+              <span style={{ fontSize: 14 }}>{phase >= 5 ? "↪" : "▶"}</span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0 }}>
+                <span style={{ fontSize: 8, lineHeight: 1.2 }}>{["🌙","📖","⚡","⚔️","⚡","🏁"][phase] || "⚡"} {PHASES[phase]}</span>
+                <span style={{ fontSize: 6, color: isMyTurn ? "var(--gold-67)" : "var(--gray-deep)", lineHeight: 1 }}>{phase >= 5 ? "Fin turno" : "Sig. fase"}</span>
+              </div>
             </button>
             {[
               { icon: "📚", label: "Robar", action: () => libActions.draw(myId, 1), color: "var(--color-info)" },
               { icon: "⟲", label: "Destapar", action: untapAll, color: "var(--color-life)" },
-              { icon: phase >= 5 ? "↪" : "▶", label: phase >= 5 ? "Fin" : "Fase", action: isMyTurn ? (phase >= 5 ? advanceToNextPlayer : nextPhase) : undefined, color: isMyTurn ? "var(--gold)" : "var(--gray-dark)" },
               { icon: "🪄", label: "Token", action: () => setTokenModal(true), color: "var(--color-poison)" },
               { icon: "🎲", label: "Dado", action: () => setDiceModal(true), color: "var(--color-orange)" },
             ].map(btn => (
@@ -5706,22 +5708,22 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       {mobileCardTap && isMobile && (() => {
         const ox = Math.max(8, Math.min(mobileCardTap.x - 90, window.innerWidth - 196));
         const oy = Math.max(60, mobileCardTap.y - 96);
-        const btnStyle = { padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", cursor: "pointer", fontSize: 13, fontFamily: "'Crimson Text',Georgia,serif", display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 2 };
+        const btnStyle = { padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", cursor: "pointer", fontSize: 11, fontFamily: "'Crimson Text',Georgia,serif", display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 2 };
         return (
           <div style={{ position: "fixed", inset: 0, zIndex: 480 }} onClick={() => setMobileCardTap(null)}>
-            <div style={{ position: "fixed", left: ox, top: oy, display: "flex", gap: 6, background: "var(--bg-well)", border: "1px solid var(--gold-40)", borderRadius: 12, padding: "8px 10px", boxShadow: "0 4px 24px #000c", zIndex: 481 }} onClick={e => e.stopPropagation()}>
+            <div style={{ position: "fixed", left: ox, top: oy, display: "flex", gap: 5, background: "var(--bg-well)", border: "1px solid var(--gold-40)", borderRadius: 10, padding: "7px 9px", boxShadow: "0 4px 24px #000c", zIndex: 481 }} onClick={e => e.stopPropagation()}>
               <button style={{ ...btnStyle, color: "var(--color-info)" }} onClick={() => { setZoomCard(mobileCardTap.card); setMobileCardTap(null); }}>
-                <span style={{ fontSize: 18 }}>🔍</span><span style={{ fontSize: 9 }}>Ver</span>
+                <span style={{ fontSize: 15 }}>🔍</span><span style={{ fontSize: 8 }}>Ver</span>
               </button>
               <button style={{ ...btnStyle, color: "var(--gold)" }} onClick={() => { tapCard(mobileCardTap.card.instanceId); setMobileCardTap(null); }}>
-                <span style={{ fontSize: 18 }}>↩</span><span style={{ fontSize: 9 }}>Girar</span>
+                <span style={{ fontSize: 15 }}>↩</span><span style={{ fontSize: 8 }}>Girar</span>
               </button>
               <button style={{ ...btnStyle, color: "var(--color-orange)" }} onClick={() => {
                 const fakeE = { preventDefault: () => {}, stopPropagation: () => {}, clientX: mobileCardTap.x, clientY: mobileCardTap.y };
                 openCardCtx(fakeE, mobileCardTap.pid, mobileCardTap.card, mobileCardTap.zone, true);
                 setMobileCardTap(null);
               }}>
-                <span style={{ fontSize: 18 }}>⚙</span><span style={{ fontSize: 9 }}>Acciones</span>
+                <span style={{ fontSize: 15 }}>⚙</span><span style={{ fontSize: 8 }}>Acciones</span>
               </button>
             </div>
           </div>
