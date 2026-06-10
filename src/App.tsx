@@ -6648,6 +6648,7 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
   const [showMyDecks, setShowMyDecks] = useState(false);
   const [viewDeck, setViewDeck] = useState(null);
   const [deckTypeFilter, setDeckTypeFilter] = useState([]);
+  const [detailHover, setDetailHover] = useState(null);
 
   const refreshCloudDecks = () => {
     if (!user) return;
@@ -6689,21 +6690,24 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
   if (viewDeck) {
     const allCards = [...(viewDeck.deck || [])];
     const commander = viewDeck.commander;
+    const deckCards = commander
+      ? allCards.filter(c => c.name !== commander.name && c.id !== commander.id)
+      : allCards;
     const GROUPS = [
       { label: "Comandantes", cards: commander ? [commander] : [] },
-      { label: "Criaturas", cards: allCards.filter(c => isCreature(c) && !isLand(c) && !isPlaneswalker(c)) },
-      { label: "Planeswalkers", cards: allCards.filter(c => isPlaneswalker(c)) },
-      { label: "Instantáneos", cards: allCards.filter(c => c.type_line?.toLowerCase().includes("instant")) },
-      { label: "Conjuros", cards: allCards.filter(c => c.type_line?.toLowerCase().includes("sorcery") && !c.type_line?.toLowerCase().includes("instant")) },
-      { label: "Artefactos", cards: allCards.filter(c => c.type_line?.toLowerCase().includes("artifact") && !isCreature(c)) },
-      { label: "Encantamientos", cards: allCards.filter(c => c.type_line?.toLowerCase().includes("enchantment") && !isCreature(c)) },
-      { label: "Tierras", cards: allCards.filter(c => isLand(c)) },
+      { label: "Criaturas", cards: deckCards.filter(c => isCreature(c) && !isLand(c) && !isPlaneswalker(c)) },
+      { label: "Planeswalkers", cards: deckCards.filter(c => isPlaneswalker(c)) },
+      { label: "Instantáneos", cards: deckCards.filter(c => c.type_line?.toLowerCase().includes("instant")) },
+      { label: "Conjuros", cards: deckCards.filter(c => c.type_line?.toLowerCase().includes("sorcery") && !c.type_line?.toLowerCase().includes("instant")) },
+      { label: "Artefactos", cards: deckCards.filter(c => c.type_line?.toLowerCase().includes("artifact") && !isCreature(c)) },
+      { label: "Encantamientos", cards: deckCards.filter(c => c.type_line?.toLowerCase().includes("enchantment") && !isCreature(c)) },
+      { label: "Tierras", cards: deckCards.filter(c => isLand(c)) },
     ];
-    const nonLands = allCards.filter(c => !isLand(c));
+    const nonLands = deckCards.filter(c => !isLand(c));
     const manaCurve = [0,1,2,3,4,5,6,7].map(n => ({ n, count: nonLands.filter(c => n === 7 ? (c.cmc || 0) >= 7 : (c.cmc || 0) === n).length }));
     const maxBucket = Math.max(...manaCurve.map(b => b.count), 1);
     const avgCmc = nonLands.length ? (nonLands.reduce((s, c) => s + (c.cmc || 0), 0) / nonLands.length).toFixed(2) : "0";
-    const totalCards = allCards.length + (commander ? 1 : 0);
+    const totalCards = deckCards.length + (commander ? 1 : 0);
     const formatLabel = viewDeck.format?.label || "Commander";
 
     const activeFilters = deckTypeFilter.length === 0 ? GROUPS.map(g => g.label) : deckTypeFilter;
@@ -6793,12 +6797,17 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                 {g.cards.map((card, i) => (
-                  <CardTile key={i} card={card} small={false} />
+                  <CardTile key={i} card={card} small={false} onHover={(c, x, y) => setDetailHover({ card: c, x, y })} onHoverEnd={() => setDetailHover(null)} />
                 ))}
               </div>
             </div>
           ))}
         </div>
+        {detailHover?.card && (
+          <div style={{ position: "fixed", left: detailHover.x + 14, top: Math.min(detailHover.y - 80, window.innerHeight - 310), zIndex: 9999, pointerEvents: "none" }}>
+            <img src={detailHover.card.image_url || detailHover.card.image_uris?.normal} style={{ width: 210, borderRadius: 14, boxShadow: "0 8px 40px #000e" }} />
+          </div>
+        )}
       </div>
     );
   }
