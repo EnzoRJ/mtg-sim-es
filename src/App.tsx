@@ -6686,6 +6686,7 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
   const [viewDeck, setViewDeck] = useState(null);
   const [deckTypeFilter, setDeckTypeFilter] = useState([]);
   const [detailHover, setDetailHover] = useState(null);
+  const [detailCtx, setDetailCtx] = useState(null); // {x,y,card} for right-click in detail view
 
   const refreshCloudDecks = () => {
     if (!user) return;
@@ -6730,9 +6731,16 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
     const deckCards = commander
       ? allCards.filter(c => c.name !== commander.name && c.id !== commander.id)
       : allCards;
+    const setDetailCommander = (card) => {
+      const updated = { ...viewDeck, commander: card };
+      setViewDeck(updated);
+      if (user) upsertCloudDeck(updated.name, updated.deck, card, updated.player_name, updated.format, updated.sideboard, updated.coverCard);
+      else saveDeckToStorage(updated.name, updated.deck, card, updated.playerName, updated.format, updated.sideboard, updated.coverCard);
+    };
     const GROUPS = [
       { label: "Comandantes", cards: commander ? [commander] : [] },
-      { label: "Criaturas", cards: deckCards.filter(c => isCreature(c) && !isLand(c) && !isPlaneswalker(c)) },
+      { label: "Criaturas Legendarias", cards: deckCards.filter(c => isCreature(c) && isLegendary(c) && !isLand(c) && !isPlaneswalker(c)) },
+      { label: "Criaturas", cards: deckCards.filter(c => isCreature(c) && !isLegendary(c) && !isLand(c) && !isPlaneswalker(c)) },
       { label: "Planeswalkers", cards: deckCards.filter(c => isPlaneswalker(c)) },
       { label: "Instantáneos", cards: deckCards.filter(c => c.type_line?.toLowerCase().includes("instant")) },
       { label: "Conjuros", cards: deckCards.filter(c => c.type_line?.toLowerCase().includes("sorcery") && !c.type_line?.toLowerCase().includes("instant")) },
@@ -6834,12 +6842,30 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                 {g.cards.map((card, i) => (
-                  <CardTile key={i} card={card} small={false} onHover={(c, x, y) => setDetailHover({ card: c, x, y })} onHoverEnd={() => setDetailHover(null)} />
+                  <div key={i} style={{ position: "relative" }}
+                    onContextMenu={e => { e.preventDefault(); if (isLegendary(card)) setDetailCtx({ x: e.clientX, y: e.clientY, card }); }}>
+                    <CardTile card={card} small={false} onHover={(c, x, y) => setDetailHover({ card: c, x, y })} onHoverEnd={() => setDetailHover(null)} />
+                    {isLegendary(card) && (
+                      <button onClick={() => setDetailCommander(card)} title="Elegir como Comandante"
+                        style={{ position: "absolute", top: -6, left: -6, width: 22, height: 22, borderRadius: "50%", border: "2px solid var(--gold)", background: "#2a1a00", color: "var(--gold)", cursor: "pointer", fontSize: 12, padding: 0, fontWeight: 800, zIndex: 5 }}>⚔</button>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
           ))}
         </div>
+        {detailCtx && (
+          <>
+            <div onClick={() => setDetailCtx(null)} style={{ position: "fixed", inset: 0, zIndex: 9000 }} />
+            <div style={{ position: "fixed", left: detailCtx.x, top: detailCtx.y, zIndex: 9001, background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 8, padding: "4px 0", minWidth: 200, boxShadow: "0 8px 24px #000c" }}>
+              <button onClick={() => { setDetailCommander(detailCtx.card); setDetailCtx(null); }}
+                style={{ width: "100%", padding: "9px 16px", border: "none", background: "none", color: "var(--gold)", textAlign: "left", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+                ⚔ Elegir como Comandante
+              </button>
+            </div>
+          </>
+        )}
         {detailHover?.card && (
           <div style={{ position: "fixed", left: detailHover.x + 14, top: Math.min(detailHover.y - 80, window.innerHeight - 310), zIndex: 9999, pointerEvents: "none" }}>
             <img src={detailHover.card.image_url || detailHover.card.image_uris?.normal} style={{ width: 210, borderRadius: 14, boxShadow: "0 8px 40px #000e" }} />
