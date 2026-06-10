@@ -3648,9 +3648,10 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         addLog("🗳 Votación cerrada.");
       }
       if (event === "reveal_card") {
+        if (payload.targetPid && payload.targetPid !== myId) return; // targeted reveal — only show to target
         const cards = payload.cards || (payload.card ? [payload.card] : []);
         setRevealedCard({ cards, playerName: payload.playerName, pid: payload.pid });
-        addLog(`👁 ${payload.playerName} revela: ${cards.map(getCardName).join(", ")}`);
+        addLog(`👁 ${payload.playerName} revela: ${cards.map(getCardName).join(", ")}${payload.targetPid ? ` (solo a ti)` : ""}`);
         setTimeout(() => setRevealedCard(null), 6000);
       }
     };
@@ -4472,10 +4473,61 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     return [
       zone !== "battlefield" && !card.faceDown && { label: "▶ Jugar en campo", action: () => playCard(card, zone) },
       // [1] MORPH: jugar boca abajo desde la mano
-      zone === "hand" && card.revealed && { label: "🙈 Ocultar de oponentes", action: () => {
-        updMe(p => ({ ...p, hand: p.hand.map(c => c.instanceId === card.instanceId ? { ...c, revealed: false } : c) }), `${players[myId]?.name} oculta ${getCardName(card)}.`);
+      zone === "hand" && {
+        label: "👁 Revelar ▶",
+        submenu: [
+          { label: "👁 Revelar a todos", action: () => {
+            const myName = players[myId]?.name;
+            updMe(p => ({ ...p, hand: p.hand.map(c => c.instanceId === card.instanceId ? { ...c, revealed: true } : c) }), `${myName} revela ${getCardName(card)} a todos.`);
+            setRevealedCard({ cards: [card], playerName: myName, pid: myId });
+            if (rt.current) rt.current.broadcast("reveal_card", { cards: [card], playerName: myName, pid: myId });
+            setTimeout(() => setRevealedCard(null), 6000);
+            setCtxMenu(null);
+          }},
+          ...(playerOrder.filter(p => p !== myId).length > 0 ? ["---", ...playerOrder.filter(p => p !== myId).map(opId => ({
+            label: `👁 Solo a ${players[opId]?.avatar || "🧙"} ${players[opId]?.name || opId}`,
+            action: () => {
+              const myName = players[myId]?.name;
+              if (rt.current) rt.current.broadcast("reveal_card", { cards: [card], playerName: myName, pid: myId, targetPid: opId });
+              setRevealedCard({ cards: [card], playerName: myName, pid: myId });
+              addLog(`👁 ${myName} revela ${getCardName(card)} a ${players[opId]?.name}.`);
+              setTimeout(() => setRevealedCard(null), 6000);
+              setCtxMenu(null);
+            }
+          }))] : []),
+          ...( card.revealed ? ["---", { label: "🙈 Ocultar de oponentes", action: () => {
+            updMe(p => ({ ...p, hand: p.hand.map(c => c.instanceId === card.instanceId ? { ...c, revealed: false } : c) }), `${players[myId]?.name} oculta ${getCardName(card)}.`);
+            setCtxMenu(null);
+          }, color: "var(--color-orange)" }] : []),
+        ]
+      },
+      zone === "hand" && {
+        label: "📢 Anunciar lanzamiento",
+        action: () => {
+          const myName = players[myId]?.name;
+          const msg = `📢 ${myName} anuncia: lanza ${getCardName(card)}.`;
+          addLog(msg);
+          if (rt.current) rt.current.broadcast("chat_msg", { text: msg, sender: myName });
+          addToast(`📢 ${getCardName(card)}`, "var(--color-info)");
+          setCtxMenu(null);
+        }
+      },
+      zone === "hand" && { label: "🗑 Descartar", action: () => {
+        const name = getCardName(card);
+        updMe(p => ({ ...p, hand: p.hand.filter(c => c.instanceId !== card.instanceId), graveyard: [{ ...card }, ...p.graveyard] }), `${players[myId]?.name} descarta ${name}.`);
+        addToast(`🗑 ${name}`, "var(--color-damage)");
         setCtxMenu(null);
-      }, color: "var(--color-orange)" },
+      }, color: "var(--color-damage)" },
+      zone === "hand" && (card.face_urls?.length > 1 || card.card_faces?.length > 1) && { label: "🔄 Ver otra cara", action: () => {
+        updMe(p => ({ ...p, hand: p.hand.map(c => {
+          if (c.instanceId !== card.instanceId) return c;
+          const urls = c.face_urls || c.card_faces?.map(f => f.image_uris?.normal).filter(Boolean);
+          if (!urls?.length) return c;
+          const next = ((c.faceIndex || 0) + 1) % urls.length;
+          return { ...c, faceIndex: next, image_url: urls[next], face_urls: urls };
+        }) }));
+        setCtxMenu(null);
+      }},
       zone === "hand" && { label: "🎴 Jugar boca abajo", action: () => {
         updMe(p => ({ ...p, hand: p.hand.filter(c => c.instanceId !== card.instanceId), battlefield: [...p.battlefield, { ...card, tapped: false, counters: [], abilities: [], faceDown: true }] }), `${players[myId]?.name} juega una carta boca abajo.`);
         setCtxMenu(null);
