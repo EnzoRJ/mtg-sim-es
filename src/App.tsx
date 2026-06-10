@@ -3869,7 +3869,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         const p = { ...ps[pid] };
         const drawn = p.library.slice(0, n).map(c => ({ ...c, instanceId: uid() }));
         const next = { ...p, library: p.library.slice(n), hand: [...p.hand, ...drawn] };
-        if (pid === myId) { syncState(next, `${p.name} roba ${n} carta${n > 1 ? "s" : ""}.`); addLog(`${p.name} roba ${n} carta${n > 1 ? "s" : ""}.`); addToast(`📚 ${n === 1 ? (drawn[0] ? getCardName(drawn[0]) : "carta") : `${n} cartas`}`, "var(--color-info)"); if (n === 1 && drawn[0]) { clearTimeout(lastCardActionTimer.current); setLastCardAction({ name: getCardName(drawn[0]), icon: "📚", color: "var(--color-info)" }); lastCardActionTimer.current = setTimeout(() => setLastCardAction(null), 4000); } }
+        if (pid === myId) { syncState(next, `${p.name} roba ${n} carta${n > 1 ? "s" : ""}.`); addLog(`${p.name} roba ${n} carta${n > 1 ? "s" : ""}.`); clearTimeout(lastCardActionTimer.current); setLastCardAction({ name: n === 1 ? (drawn[0] ? getCardName(drawn[0]) : "carta") : `${n} cartas`, icon: "📚", color: "var(--color-info)" }); lastCardActionTimer.current = setTimeout(() => setLastCardAction(null), 4000); }
         return { ...ps, [pid]: next };
       });
     },
@@ -4289,7 +4289,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     }
     updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === iid ? { ...c, tapped: !c.tapped } : c) }));
   };
-  const untapAll = () => { addToast("↺ Todo destapado", "var(--color-life)", "↺"); updMe(p => ({ ...p, battlefield: p.battlefield.map(c => ({ ...c, tapped: false })) }), `${players[myId]?.name} destapa todo.`); };
+  const untapAll = () => { clearTimeout(lastCardActionTimer.current); setLastCardAction({ name: "Todo destapado", icon: "↺", color: "var(--color-life)" }); lastCardActionTimer.current = setTimeout(() => setLastCardAction(null), 3000); updMe(p => ({ ...p, battlefield: p.battlefield.map(c => ({ ...c, tapped: false })) }), `${players[myId]?.name} destapa todo.`); };
   const playCard = (card, from) => {
     const autoAbilities = cardAbilitiesFromKeywords(card);
     // Store both face URLs for MDFC cards so they can be flipped in-game
@@ -4301,7 +4301,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       [from]: p[from].filter(c => c.instanceId !== card.instanceId),
       battlefield: [...p.battlefield, { ...card, tapped: false, counters: [], abilities: autoAbilities, faceDown: false, ...(face_urls?.length > 1 && { face_urls, faceIndex: 0 }) }]
     }), `${players[myId]?.name} juega ${getCardName(card)}.`);
-    addToast(`▶ ${getCardName(card)}`, "var(--color-life)");
+    clearTimeout(lastCardActionTimer.current);
+    setLastCardAction({ name: getCardName(card), icon: "▶", color: "var(--color-life)" });
+    lastCardActionTimer.current = setTimeout(() => setLastCardAction(null), 3500);
     setSelCard(null); setCtxMenu(null);
   };
   const moveCard = (card, from, to) => {
@@ -4520,7 +4522,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       zone === "hand" && { label: "🗑 Descartar", action: () => {
         const name = getCardName(card);
         updMe(p => ({ ...p, hand: p.hand.filter(c => c.instanceId !== card.instanceId), graveyard: [{ ...card }, ...p.graveyard] }), `${players[myId]?.name} descarta ${name}.`);
-        addToast(`🗑 ${name}`, "var(--color-damage)");
+        clearTimeout(lastCardActionTimer.current); setLastCardAction({ name, icon: "🗑", color: "var(--color-damage)" }); lastCardActionTimer.current = setTimeout(() => setLastCardAction(null), 3500);
         setCtxMenu(null);
       }, color: "var(--color-damage)" },
       zone === "hand" && (card.face_urls?.length > 1 || card.card_faces?.length > 1) && { label: "🔄 Ver otra cara", action: () => {
