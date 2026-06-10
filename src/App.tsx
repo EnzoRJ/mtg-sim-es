@@ -6495,6 +6495,102 @@ function AuthModal({ onAuth, onClose }) {
   );
 }
 
+// ─── COLOR PIPS ──────────────────────────────────────────────────────────────
+function ColorPips({ identity }: { identity: string[] }) {
+  const colorMap = {
+    W: { bg: "#f0e68c", border: "#c8a800", letter: "W" },
+    U: { bg: "#4a90d9", border: "#2a5a9a", letter: "U" },
+    B: { bg: "#888", border: "#444", letter: "B" },
+    R: { bg: "#cc4422", border: "#aa2200", letter: "R" },
+    G: { bg: "#338844", border: "#226633", letter: "G" },
+  };
+  if (!identity || identity.length === 0) return <span style={{ fontSize: 10, color: "var(--gray-dark)" }}>Incoloro</span>;
+  return (
+    <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+      {identity.map((c, i) => {
+        const col = colorMap[c] || { bg: "#555", border: "#333", letter: c };
+        return (
+          <div key={i} style={{ width: 14, height: 14, borderRadius: "50%", background: col.bg, border: `1px solid ${col.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 800, color: "#fff", flexShrink: 0, textShadow: "0 1px 2px rgba(0,0,0,0.7)" }}>
+            {col.letter}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── DECK GRID CARD ───────────────────────────────────────────────────────────
+function DeckGridCard({ deck, onPlay, onEdit, onDelete, onView, playerLabel }: { deck: any, onPlay?: any, onEdit?: any, onDelete?: any, onView?: any, playerLabel?: string }) {
+  const [hovered, setHovered] = React.useState(false);
+  const identity = deck.commander?.color_identity || [];
+  const imgUrl = deck.commander?.image_url;
+  const deckName = deck.name || "Sin nombre";
+  const cardCount = (deck.deck || []).length + (deck.commander ? 1 : 0);
+  const playerName = playerLabel || deck.player_name || deck.playerName || "";
+  const playerInitial = playerName ? playerName[0].toUpperCase() : "?";
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={() => onView && onView(deck)}
+      style={{
+        background: "#161616",
+        border: `2px solid ${hovered ? "var(--gold)" : "#2a2a2a"}`,
+        borderRadius: 12,
+        cursor: "pointer",
+        overflow: "hidden",
+        transition: "border-color 0.18s",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {/* Art area */}
+      <div style={{ position: "relative", height: 155, overflow: "hidden" }}>
+        {imgUrl
+          ? <img src={imgUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "20% 15%", display: "block" }} />
+          : <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg,#2a1a3a,#0a0a1a)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40 }}>⚔</div>}
+        {/* Gradient overlay */}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 60, background: "linear-gradient(to top, #161616 0%, transparent 100%)", pointerEvents: "none" }} />
+        {/* Hover action buttons */}
+        {hovered && (
+          <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 5 }} onClick={e => e.stopPropagation()}>
+            <button onClick={() => onEdit && onEdit(deck)}
+              title="Editar"
+              style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border-strong)", background: "rgba(0,0,0,0.75)", color: "var(--color-info)", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              ✏
+            </button>
+            <button onClick={() => onDelete && onDelete(deck)}
+              title="Eliminar"
+              style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid var(--bg-damage)", background: "rgba(0,0,0,0.75)", color: "var(--color-damage)", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              🗑
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Info area */}
+      <div style={{ padding: "10px 12px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+        {/* Deck name */}
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{deckName}</div>
+        {/* Color pips + label */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <ColorPips identity={identity} />
+          <span style={{ fontSize: 10, color: "var(--gray-dark)" }}>| 🏷 Sin etiquetas</span>
+        </div>
+        {/* Player row */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ width: 20, height: 20, borderRadius: "50%", background: "linear-gradient(135deg,var(--gold),var(--gold-dark))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: "#0a0500", flexShrink: 0 }}>
+            {playerInitial}
+          </div>
+          <span style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{playerName || "Sin jugador"}</span>
+          <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--gray-dark)" }}>{cardCount} cartas</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── HOME SCREEN ─────────────────────────────────────────────────────────────
 function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClearSession, savedSession, user, onSignIn, onSignOut, onChangeName, onSpectate, onShowTutorial, onQuickFormat }) {
   const [decks, setDecks] = useState(getSavedDecks);
@@ -6514,6 +6610,9 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
   const [expandDecks, setExpandDecks] = useState(false);
   const [renamingDeck, setRenamingDeck] = useState(null);
   const [renameValue, setRenameValue] = useState("");
+  const [showMyDecks, setShowMyDecks] = useState(false);
+  const [viewDeck, setViewDeck] = useState(null);
+  const [deckTypeFilter, setDeckTypeFilter] = useState([]);
 
   const refreshCloudDecks = () => {
     if (!user) return;
@@ -6550,6 +6649,178 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
     setRenamingDeck(null);
     refreshDecks();
   };
+
+  // ── Deck detail view ──────────────────────────────────────────────────────
+  if (viewDeck) {
+    const allCards = [...(viewDeck.deck || [])];
+    const commander = viewDeck.commander;
+    const GROUPS = [
+      { label: "Comandantes", cards: commander ? [commander] : [] },
+      { label: "Criaturas", cards: allCards.filter(c => isCreature(c) && !isLand(c) && !isPlaneswalker(c)) },
+      { label: "Planeswalkers", cards: allCards.filter(c => isPlaneswalker(c)) },
+      { label: "Instantáneos", cards: allCards.filter(c => c.type_line?.toLowerCase().includes("instant")) },
+      { label: "Conjuros", cards: allCards.filter(c => c.type_line?.toLowerCase().includes("sorcery") && !c.type_line?.toLowerCase().includes("instant")) },
+      { label: "Artefactos", cards: allCards.filter(c => c.type_line?.toLowerCase().includes("artifact") && !isCreature(c)) },
+      { label: "Encantamientos", cards: allCards.filter(c => c.type_line?.toLowerCase().includes("enchantment") && !isCreature(c)) },
+      { label: "Tierras", cards: allCards.filter(c => isLand(c)) },
+    ];
+    const nonLands = allCards.filter(c => !isLand(c));
+    const manaCurve = [0,1,2,3,4,5,6,7].map(n => ({ n, count: nonLands.filter(c => n === 7 ? (c.cmc || 0) >= 7 : (c.cmc || 0) === n).length }));
+    const maxBucket = Math.max(...manaCurve.map(b => b.count), 1);
+    const avgCmc = nonLands.length ? (nonLands.reduce((s, c) => s + (c.cmc || 0), 0) / nonLands.length).toFixed(2) : "0";
+    const totalCards = allCards.length + (commander ? 1 : 0);
+    const formatLabel = viewDeck.format?.label || "Commander";
+
+    const activeFilters = deckTypeFilter.length === 0 ? GROUPS.map(g => g.label) : deckTypeFilter;
+
+    return (
+      <div style={{ minHeight: "100vh", background: "radial-gradient(ellipse at 50% 0%, #160a28 0%, #0a0a1e 45%, #060616 100%)", color: "var(--text-primary)", fontFamily: "'Crimson Text',Georgia,serif", display: "flex", flexDirection: "row" }}>
+        {/* Left sidebar */}
+        <div style={{ width: 240, flexShrink: 0, background: "#0e0e1a", borderRight: "1px solid #2a2a3a", display: "flex", flexDirection: "column", overflowY: "auto", padding: "0 0 24px" }}>
+          {/* Back button */}
+          <div style={{ padding: "16px 14px 10px" }}>
+            <button onClick={() => { setViewDeck(null); }}
+              style={{ background: "none", border: "none", color: "var(--gold)", cursor: "pointer", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, padding: 0 }}>
+              ← Volver
+            </button>
+          </div>
+          <div style={{ padding: "0 14px 14px", fontSize: 14, fontWeight: 700, color: "#fff", borderBottom: "1px solid #2a2a3a" }}>{viewDeck.name}</div>
+
+          {/* Card type filters */}
+          <div style={{ padding: "14px 14px 10px" }}>
+            <div style={{ fontSize: 11, color: "var(--gray-dark)", marginBottom: 8, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Tipos</div>
+            {GROUPS.map(g => (
+              <label key={g.label} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5, cursor: "pointer" }}>
+                <input type="checkbox"
+                  checked={deckTypeFilter.length === 0 || deckTypeFilter.includes(g.label)}
+                  onChange={() => {
+                    setDeckTypeFilter(prev => {
+                      if (prev.length === 0) return GROUPS.map(x => x.label).filter(l => l !== g.label);
+                      const has = prev.includes(g.label);
+                      const next = has ? prev.filter(l => l !== g.label) : [...prev, g.label];
+                      return next.length === GROUPS.length ? [] : next;
+                    });
+                  }}
+                  style={{ accentColor: "var(--gold)" }} />
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{g.label}</span>
+                <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--gray-dark)" }}>({g.cards.length})</span>
+              </label>
+            ))}
+          </div>
+
+          {/* Mana curve */}
+          <div style={{ padding: "14px 14px 10px", borderTop: "1px solid #2a2a3a" }}>
+            <div style={{ fontSize: 11, color: "var(--gray-dark)", marginBottom: 8, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Curva de maná</div>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 60 }}>
+              {manaCurve.map(b => (
+                <div key={b.n} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                  <div style={{ width: "100%", background: "linear-gradient(to top, var(--gold), #c0a030)", borderRadius: "3px 3px 0 0", height: `${Math.round((b.count / maxBucket) * 50)}px`, minHeight: b.count > 0 ? 2 : 0, transition: "height 0.2s" }} />
+                  <div style={{ fontSize: 8, color: "var(--gray-dark)" }}>{b.n === 7 ? "7+" : b.n}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8 }}>CMC promedio: <strong style={{ color: "var(--gold)" }}>{avgCmc}</strong></div>
+          </div>
+        </div>
+
+        {/* Main content area */}
+        <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
+          {/* Header */}
+          <div style={{ marginBottom: 20 }}>
+            <h2 style={{ margin: 0, fontSize: 28, fontWeight: 900, color: "#fff" }}>{viewDeck.name}</h2>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>{totalCards} cartas · {formatLabel}</div>
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display: "flex", gap: 10, marginBottom: 28 }}>
+            <button onClick={() => {
+              const d = viewDeck;
+              onNewGame({ deck: d.deck, commander: d.commander, playerName: d.player_name || d.playerName, format: d.format });
+            }}
+              style={{ padding: "11px 22px", borderRadius: 10, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "#0a0500", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+              ▶ Jugar
+            </button>
+            <button onClick={() => {
+              const d = viewDeck;
+              onEditDeck({ deck: d.deck, commander: d.commander, playerName: d.player_name || d.playerName, name: d.name, format: d.format, sideboard: d.sideboard });
+            }}
+              style={{ padding: "11px 22px", borderRadius: 10, border: "1px solid var(--border-strong)", background: "transparent", color: "var(--color-info)", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+              ✏ Editar
+            </button>
+          </div>
+
+          {/* Card groups */}
+          {GROUPS.filter(g => g.cards.length > 0 && activeFilters.includes(g.label)).map(g => (
+            <div key={g.label} style={{ marginBottom: 28 }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--gold)", marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
+                <span>{g.label} ({g.cards.length})</span>
+                <div style={{ flex: 1, height: 1, background: "var(--border-default)" }} />
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                {g.cards.map((card, i) => (
+                  <CardTile key={i} card={card} small={false} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── My Decks grid view ────────────────────────────────────────────────────
+  if (showMyDecks) {
+    const gridDecks = user ? cloudDecks : decks;
+
+    return (
+      <div style={{ minHeight: "100vh", background: "radial-gradient(ellipse at 50% 0%, #160a28 0%, #0a0a1e 45%, #060616 100%)", color: "var(--text-primary)", fontFamily: "'Crimson Text',Georgia,serif" }}>
+        {/* Top bar */}
+        <div style={{ display: "flex", alignItems: "center", padding: "18px 24px", borderBottom: "1px solid #2a2a3a", gap: 16 }}>
+          <button onClick={() => setShowMyDecks(false)}
+            style={{ background: "none", border: "none", color: "var(--gold)", cursor: "pointer", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, padding: 0 }}>
+            ← Inicio
+          </button>
+          <h2 style={{ margin: 0, fontSize: 28, fontWeight: 900, color: "#fff", flex: 1 }}>Mis Mazos</h2>
+          <button onClick={() => onNewGame(null)}
+            style={{ padding: "10px 18px", borderRadius: 10, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "#0a0500", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+            + Nuevo Mazo
+          </button>
+        </div>
+
+        {/* Grid */}
+        {gridDecks.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "60px 24px", color: "var(--gray-darker)", fontSize: 14 }}>
+            {loadingCloud ? "Cargando mazos..." : "No hay mazos guardados aún."}
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16, padding: 24 }}>
+            {gridDecks.map((d, i) => (
+              <DeckGridCard
+                key={d.id || d.name || i}
+                deck={d}
+                playerLabel={d.player_name || d.playerName || ""}
+                onView={(deck) => { setDeckTypeFilter([]); setViewDeck(deck); }}
+                onEdit={(deck) => {
+                  onEditDeck({ deck: deck.deck, commander: deck.commander, playerName: deck.player_name || deck.playerName, name: deck.name, format: deck.format, sideboard: deck.sideboard });
+                }}
+                onPlay={(deck) => {
+                  onNewGame({ deck: deck.deck, commander: deck.commander, playerName: deck.player_name || deck.playerName, format: deck.format });
+                }}
+                onDelete={(deck) => {
+                  if (user && deck.id) {
+                    if (!confirm(`¿Eliminar el mazo "${deck.name}"?`)) return;
+                    deleteCloudDeck(deck.id).then(() => setCloudDecks(c => c.filter(x => x.id !== deck.id)));
+                  } else {
+                    deleteDeck(deck.name);
+                  }
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "radial-gradient(ellipse at 50% 0%, #160a28 0%, #0a0a1e 45%, #060616 100%)", color: "var(--text-primary)", fontFamily: "'Crimson Text',Georgia,serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: "24px 16px" }}>
@@ -6668,6 +6939,12 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
                 </button>
               </div>
             )}
+
+            {/* Mis Mazos button — opens full grid view */}
+            <button onClick={() => { setShowMyDecks(true); refreshCloudDecks(); }}
+              style={{ width: "100%", padding: "13px 0", borderRadius: 12, border: "1px solid var(--gold-27)", background: "linear-gradient(135deg,var(--bg-gold),#1a1200)", color: "var(--gold)", fontSize: 14, cursor: "pointer", fontWeight: 700, letterSpacing: 0.5 }}>
+              📚 Mis Mazos ({cloudDecks.length})
+            </button>
           </>
         )}
 
