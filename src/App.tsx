@@ -697,7 +697,7 @@ function CardTile({ card, onClick, onDoubleClick, onRightClick, onHover, onHover
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: "linear-gradient(90deg,#1a2a8a,#8a1a8a,#1a2a8a)" }} />
         </div>
         : imgUrl
-          ? <><div style={{ position: "absolute", inset: 0, display: loaded ? "none" : "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "var(--gray-mid)", padding: 3, textAlign: "center" }}>{getCardName(card)}</div><img src={imgUrl} alt={getCardName(card)} onLoad={() => setLoaded(true)} style={{ width: "100%", height: "100%", objectFit: "cover", display: loaded ? "block" : "none" }} /></>
+          ? <><div className={loaded ? undefined : "skeleton-card"} style={{ position: "absolute", inset: 0, display: loaded ? "none" : "flex", alignItems: "flex-end", justifyContent: "center", padding: "3px 2px" }}><span style={{ fontSize: 7, color: "var(--gray-deep)", lineHeight: 1, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{getCardName(card)}</span></div><img src={imgUrl} alt={getCardName(card)} onLoad={() => setLoaded(true)} style={{ width: "100%", height: "100%", objectFit: "cover", display: loaded ? "block" : "none" }} /></>
           : card?.isToken
             ? <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 3, background: `linear-gradient(135deg,${card.tokenColor || "var(--border-default)"}44,var(--bg-card))`, fontSize: 8, color: card.tokenColor || "var(--gray-light)", textAlign: "center", gap: 3 }}><div style={{ fontSize: 14, fontWeight: 800, color: card.tokenColor || "var(--color-white)" }}>{card.power}/{card.toughness}</div><div style={{ fontSize: 7, opacity: 0.8 }}>{getCardName(card)}</div><div style={{ fontSize: 6, opacity: 0.5 }}>TOKEN</div></div>
             : <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 3, background: "linear-gradient(135deg,var(--bg-panel),var(--bg-card))", fontSize: 8, color: "#ccc", textAlign: "center", gap: 3 }}><div style={{ fontSize: 16 }}>🃏</div><div>{getCardName(card)}</div></div>}
@@ -3514,6 +3514,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [expandedOpponent, setExpandedOpponent] = useState(null);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [mobileCardTap, setMobileCardTap] = useState(null); // { card, pid, zone, x, y }
+  const [toasts, setToasts] = useState([]); // [{id, msg, color, icon}]
+  const [lifeDeltas, setLifeDeltas] = useState({}); // {pid: [{id, value}]}
   const touchDragRef = useRef(null); // { instanceId, zone, timer, active, longPressReady, startX, startY }
   const libLongPressRef = useRef(null); // library long-press timer
   const rt = useRef(rtInstance);
@@ -3535,6 +3537,11 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       };
       return updated;
     });
+  }, []);
+  const addToast = useCallback((msg, color = "var(--gold)", icon = "") => {
+    const id = Date.now() + Math.random();
+    setToasts(t => [...t.slice(-4), { id, msg, color, icon }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 2600);
   }, []);
 
   useEffect(() => {
@@ -3764,7 +3771,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         const p = { ...ps[pid] };
         const drawn = p.library.slice(0, n).map(c => ({ ...c, instanceId: uid() }));
         const next = { ...p, library: p.library.slice(n), hand: [...p.hand, ...drawn] };
-        if (pid === myId) { syncState(next, `${p.name} roba ${n} carta${n > 1 ? "s" : ""}.`); addLog(`${p.name} roba ${n} carta${n > 1 ? "s" : ""}.`); }
+        if (pid === myId) { syncState(next, `${p.name} roba ${n} carta${n > 1 ? "s" : ""}.`); addLog(`${p.name} roba ${n} carta${n > 1 ? "s" : ""}.`); addToast(`📚 ${n === 1 ? (drawn[0] ? getCardName(drawn[0]) : "carta") : `${n} cartas`}`, "var(--color-info)"); }
         return { ...ps, [pid]: next };
       });
     },
@@ -4156,8 +4163,13 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   };
 
   // ── Card Actions ──
-  const tapCard = (iid) => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === iid ? { ...c, tapped: !c.tapped } : c) }));
-  const untapAll = () => updMe(p => ({ ...p, battlefield: p.battlefield.map(c => ({ ...c, tapped: false })) }), `${players[myId]?.name} destapa todo.`);
+  const tapCard = (iid) => {
+    const card = players[myId]?.battlefield.find(c => c.instanceId === iid);
+    const nowTapped = !card?.tapped;
+    if (card) addToast(nowTapped ? `↩ ${getCardName(card)}` : `↺ ${getCardName(card)}`, nowTapped ? "var(--color-warn-dim)" : "var(--color-life)");
+    updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === iid ? { ...c, tapped: !c.tapped } : c) }));
+  };
+  const untapAll = () => { addToast("↺ Todo destapado", "var(--color-life)", "↺"); updMe(p => ({ ...p, battlefield: p.battlefield.map(c => ({ ...c, tapped: false })) }), `${players[myId]?.name} destapa todo.`); };
   const playCard = (card, from) => {
     const autoAbilities = cardAbilitiesFromKeywords(card);
     // Store both face URLs for MDFC cards so they can be flipped in-game
@@ -4169,6 +4181,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       [from]: p[from].filter(c => c.instanceId !== card.instanceId),
       battlefield: [...p.battlefield, { ...card, tapped: false, counters: [], abilities: autoAbilities, faceDown: false, ...(face_urls?.length > 1 && { face_urls, faceIndex: 0 }) }]
     }), `${players[myId]?.name} juega ${getCardName(card)}.`);
+    addToast(`▶ ${getCardName(card)}`, "var(--color-life)");
     setSelCard(null); setCtxMenu(null);
   };
   const moveCard = (card, from, to) => {
@@ -4251,6 +4264,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       return { ...ps, [pid]: next };
     });
     setLifeHistory(h => ({ ...h, [pid]: [...(h[pid] || [40]), (h[pid]?.at(-1) ?? 40) + d] }));
+    const deltaId = Date.now() + Math.random();
+    setLifeDeltas(ld => ({ ...ld, [pid]: [...(ld[pid] || []).slice(-3), { id: deltaId, value: d }] }));
+    setTimeout(() => setLifeDeltas(ld => ({ ...ld, [pid]: (ld[pid] || []).filter(x => x.id !== deltaId) })), 1400);
   };
   const massAdjLife = (d) => {
     playerOrder.forEach(pid => adjLife(pid, d));
@@ -4599,9 +4615,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     const isActive = pid === activePlayer;
 
     return (
-      <div style={{
+      <div className={p.life <= 10 && p.life > 0 ? "critical-life" : undefined} style={{
         display: "flex", flexDirection: "column", height: "100%",
-        border: isActive ? "1px solid var(--gold)" : "1px solid var(--bg-subtle)",
+        border: isActive ? "1px solid var(--gold)" : p.life <= 10 && p.life > 0 ? "1px solid #ff3333" : "1px solid var(--bg-subtle)",
         boxShadow: isActive ? "0 0 12px var(--gold-40), inset 0 0 8px var(--gold-glow)" : "none",
         borderRadius: 10, overflow: "hidden", background: "var(--bg-input)",
       }}>
@@ -4622,11 +4638,16 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           </span>
 
           {/* Life + sparkline */}
-          <div title="Vida" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, background: "#0d0a0a", borderRadius: 4, padding: "0 3px" }}>
+          <div title="Vida" style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0, background: "#0d0a0a", borderRadius: 4, padding: "0 3px", position: "relative" }}>
             {isMe && <button title="Reducir vida" onClick={() => adjLife(pid, -1)} style={mbtn("var(--bg-damage)", "var(--color-damage)")}>−</button>}
             <span style={{ fontSize: 7, color: "#ff6666", lineHeight: 1 }}>❤</span>
             <span title={`Vida: ${p.life}`} style={{ fontSize: 12, fontWeight: 800, color: p.life <= 10 ? "var(--color-red)" : p.life >= 50 ? "var(--color-life-bright)" : "var(--gold)", textShadow: p.life <= 10 ? "0 0 12px var(--color-red)" : "none", minWidth: 20, textAlign: "center" }}>{p.life}</span>
             {isMe && <button title="Aumentar vida" onClick={() => adjLife(pid, 1)} style={mbtn("var(--bg-life)", "var(--color-life)")}>+</button>}
+            {(lifeDeltas[pid] || []).map((d, i) => (
+              <span key={d.id} className="life-delta" style={{ color: d.value > 0 ? "var(--color-life-bright)" : "#ff5555", top: -8, left: "50%", transform: `translateX(${-50 + i * 14}%)` }}>
+                {d.value > 0 ? `+${d.value}` : d.value}
+              </span>
+            ))}
             {/* [Feature 4] Mini sparkline */}
             {(() => {
               const hist = lifeHistory[pid] || [p.life];
@@ -5234,6 +5255,22 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
         {/* CENTER: Player grids */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", gap: 4, padding: 4 }}>
+          {/* Phase timeline bar */}
+          <div style={{ flexShrink: 0, display: "flex", gap: 3, padding: "3px 2px", alignItems: "center" }}>
+            {PHASES.map((name, i) => {
+              const icons = ["🌙","📖","⚡","⚔️","⚡","🏁"];
+              const isActive = i === phase;
+              const isPast = i < phase;
+              return (
+                <div key={i} onClick={isMyTurn && i > phase ? () => setPhase(i) : undefined}
+                  style={{ flex: 1, padding: "3px 4px", borderRadius: 5, border: `1px solid ${isActive ? "var(--gold)" : isPast ? "var(--bg-subtle)" : "var(--bg-panel)"}`, background: isActive ? "var(--bg-gold)" : isPast ? "transparent" : "var(--bg-void)", display: "flex", alignItems: "center", justifyContent: "center", gap: 3, cursor: isMyTurn && i > phase ? "pointer" : "default", opacity: isPast ? 0.35 : 1, transition: "all 0.15s" }}>
+                  <span style={{ fontSize: 9 }}>{icons[i]}</span>
+                  <span style={{ fontSize: 8, fontWeight: isActive ? 800 : 400, color: isActive ? "var(--gold)" : "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
+                  {isActive && <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--gold)", flexShrink: 0, boxShadow: "0 0 6px var(--gold)" }} />}
+                </div>
+              );
+            })}
+          </div>
           {/* Opponents row — in 2-player mode takes 50% height */}
           {opponentSlots.length > 0 && (
             <div style={{ flex: isTwoPlayer ? 1 : 1, display: "flex", gap: 4, minHeight: 0 }}>
@@ -5729,6 +5766,16 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           </div>
         );
       })()}
+      {/* Toast notifications */}
+      {toasts.length > 0 && (
+        <div style={{ position: "fixed", bottom: isMobile ? 56 : 20, right: 14, display: "flex", flexDirection: "column", gap: 6, zIndex: 600, pointerEvents: "none" }}>
+          {toasts.map(t => (
+            <div key={t.id} className="toast-item" style={{ background: "var(--bg-elevated)", border: `1px solid ${t.color}55`, borderLeft: `3px solid ${t.color}`, borderRadius: 8, padding: "6px 12px", fontSize: 12, color: t.color, fontFamily: "'Crimson Text',Georgia,serif", fontWeight: 700, maxWidth: 220, boxShadow: "0 2px 12px #000a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {t.msg}
+            </div>
+          ))}
+        </div>
+      )}
       {/* Context Menu */}
       <CtxMenu menu={ctxMenu} onClose={() => setCtxMenu(null)} />
 
@@ -5848,8 +5895,24 @@ function DeckSelectorModal({ decks, cloudDecks, onSelect, onNew, onClose }) {
                 </div>
                 {/* Info */}
                 <div style={{ padding: "10px 12px" }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.deckName}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.deckName}</div>
                   <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 6 }}>{getCardName(d.commander) || "Sin comandante"}</div>
+                  {/* Mana curve mini bar chart */}
+                  {(() => {
+                    const nonLands = (d.deck || []).filter(c => !isLand(c));
+                    const buckets = [0,1,2,3,4,5,6].map(cmc => nonLands.filter(c => cmc === 6 ? (c.cmc || 0) >= 6 : (c.cmc || 0) === cmc).length);
+                    const max = Math.max(...buckets, 1);
+                    return (
+                      <div style={{ display: "flex", gap: 2, alignItems: "flex-end", height: 24, marginBottom: 6 }} title="Curva de maná">
+                        {buckets.map((count, cmc) => (
+                          <div key={cmc} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                            <div style={{ width: "100%", height: Math.max(2, Math.round((count / max) * 18)), background: ["#888","#aaa","#55cc55","#5588ff","#cc4444","#aa44aa","#ff8844"][cmc], borderRadius: "2px 2px 0 0", opacity: count ? 1 : 0.15 }} />
+                            <span style={{ fontSize: 6, color: "var(--gray-deep)", lineHeight: 1 }}>{cmc === 6 ? "6+" : cmc}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {stats.creatures > 0 && <span style={{ fontSize: 9, color: "var(--color-damage)", background: "#2a1a1a", borderRadius: 4, padding: "1px 5px" }}>⚔{stats.creatures}</span>}
                     {stats.lands > 0 && <span style={{ fontSize: 9, color: "#88cc88", background: "#1a2a1a", borderRadius: 4, padding: "1px 5px" }}>🌲{stats.lands}</span>}
