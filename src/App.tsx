@@ -3513,7 +3513,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [isPortrait, setIsPortrait] = useState(() => typeof window !== "undefined" && window.innerHeight > window.innerWidth);
   const [expandedOpponent, setExpandedOpponent] = useState(null);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
-  const touchDragRef = useRef(null); // { instanceId, zone, timer, active, startX, startY }
+  const [mobileCardTap, setMobileCardTap] = useState(null); // { card, pid, zone, x, y }
+  const touchDragRef = useRef(null); // { instanceId, zone, timer, active, longPressReady, startX, startY }
+  const libLongPressRef = useRef(null); // library long-press timer
   const rt = useRef(rtInstance);
   const syncDebounce = useRef(null);
   const pendingSync = useRef(null);
@@ -4541,6 +4543,16 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         <div
           onClick={isMe ? () => libActions.draw(p.id, 1) : undefined}
           onContextMenu={e => { if (!isMe) return; e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, title: `Biblioteca (${p.library.length})`, items: libraryMenu(p, p.id, isMe, libActions) }); }}
+          onTouchStart={isMe && isMobile ? e => {
+            const touch = e.touches[0];
+            libLongPressRef.current = setTimeout(() => {
+              libLongPressRef.current = null;
+              navigator.vibrate?.(40);
+              setCtxMenu({ x: touch.clientX, y: touch.clientY - 10, title: `Biblioteca (${p.library.length})`, items: libraryMenu(p, p.id, isMe, libActions) });
+            }, 500);
+          } : undefined}
+          onTouchEnd={isMe && isMobile ? () => { clearTimeout(libLongPressRef.current); libLongPressRef.current = null; } : undefined}
+          onTouchMove={isMe && isMobile ? () => { clearTimeout(libLongPressRef.current); libLongPressRef.current = null; } : undefined}
           style={{ width: 52, height: 73, borderRadius: 5, overflow: "hidden", border: "2px solid #3a5a8a", cursor: isMe ? "pointer" : "default", position: "relative", flexShrink: 0 }}>
           <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,var(--bg-mana),var(--bg-mana),#1a0a2a)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
             <div style={{ position: "absolute", inset: 3, border: "1px solid var(--border-strong)", borderRadius: 3 }} />
@@ -4788,9 +4800,19 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   <CardTile card={card} tapped={card.tapped} small={!isMe || forceSmall || isMobile}
                     faceDown={!!card.faceDown}
                     selected={selCard?.instanceId === card.instanceId}
-                    onClick={() => { if (isMe) setSelCard(s => s?.instanceId === card.instanceId ? null : card); }}
-                    onDoubleClick={() => { if (isMe) { tapCard(card.instanceId); setSelCard(null); } else setZoomCard(card); }}
-                    onHover={(c, x, y) => setHover({ card: card.faceDown ? null : card, x, y })} onHoverEnd={() => setHover(null)} />
+                    onClick={e => {
+                      if (isMobile && isMe) {
+                        const t = e?.nativeEvent?.changedTouches?.[0] || e?.nativeEvent;
+                        const x = t?.clientX ?? window.innerWidth / 2;
+                        const y = t?.clientY ?? window.innerHeight / 2;
+                        setMobileCardTap({ card, pid, zone, x, y });
+                      } else if (isMe) {
+                        setSelCard(s => s?.instanceId === card.instanceId ? null : card);
+                      }
+                    }}
+                    onDoubleClick={() => { if (isMe && !isMobile) { tapCard(card.instanceId); setSelCard(null); } else if (!isMe) setZoomCard(card); }}
+                    onHover={isMobile ? undefined : (c, x, y) => setHover({ card: card.faceDown ? null : card, x, y })}
+                    onHoverEnd={isMobile ? undefined : () => setHover(null)} />
                   {/* Ability icons — hidden for face-down cards */}
                   {!card.faceDown && (card.abilities || []).length > 0 && (
                     <div style={{ display: "flex", gap: 2, justifyContent: "center", flexWrap: "wrap", marginTop: 3, pointerEvents: "none", width: isMe ? 90 : 52 }}>
@@ -5680,6 +5702,31 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           onClose={() => setVersionModal(null)}
         />
       )}
+      {/* Mobile card quick-action overlay */}
+      {mobileCardTap && isMobile && (() => {
+        const ox = Math.max(8, Math.min(mobileCardTap.x - 90, window.innerWidth - 196));
+        const oy = Math.max(60, mobileCardTap.y - 96);
+        const btnStyle = { padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", cursor: "pointer", fontSize: 13, fontFamily: "'Crimson Text',Georgia,serif", display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 2 };
+        return (
+          <div style={{ position: "fixed", inset: 0, zIndex: 480 }} onClick={() => setMobileCardTap(null)}>
+            <div style={{ position: "fixed", left: ox, top: oy, display: "flex", gap: 6, background: "var(--bg-well)", border: "1px solid var(--gold-40)", borderRadius: 12, padding: "8px 10px", boxShadow: "0 4px 24px #000c", zIndex: 481 }} onClick={e => e.stopPropagation()}>
+              <button style={{ ...btnStyle, color: "var(--color-info)" }} onClick={() => { setZoomCard(mobileCardTap.card); setMobileCardTap(null); }}>
+                <span style={{ fontSize: 18 }}>🔍</span><span style={{ fontSize: 9 }}>Ver</span>
+              </button>
+              <button style={{ ...btnStyle, color: "var(--gold)" }} onClick={() => { tapCard(mobileCardTap.card.instanceId); setMobileCardTap(null); }}>
+                <span style={{ fontSize: 18 }}>↩</span><span style={{ fontSize: 9 }}>Girar</span>
+              </button>
+              <button style={{ ...btnStyle, color: "var(--color-orange)" }} onClick={() => {
+                const fakeE = { preventDefault: () => {}, stopPropagation: () => {}, clientX: mobileCardTap.x, clientY: mobileCardTap.y };
+                openCardCtx(fakeE, mobileCardTap.pid, mobileCardTap.card, mobileCardTap.zone, true);
+                setMobileCardTap(null);
+              }}>
+                <span style={{ fontSize: 18 }}>⚙</span><span style={{ fontSize: 9 }}>Acciones</span>
+              </button>
+            </div>
+          </div>
+        );
+      })()}
       {/* Context Menu */}
       <CtxMenu menu={ctxMenu} onClose={() => setCtxMenu(null)} />
 
