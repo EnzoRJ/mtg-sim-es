@@ -5769,6 +5769,13 @@ function mbtn(bg, col) { return { width: 20, height: 20, borderRadius: "50%", bo
 
 
 
+function deckHasBanned(d) {
+  const fmt = d.format;
+  if (!fmt || fmt.key === "custom") return false;
+  const cards = [...(d.deck || []), ...(d.commander ? [d.commander] : [])];
+  return cards.some(c => c.legalities?.[fmt.key] === "banned");
+}
+
 // ─── Deck Selector Modal ──────────────────────────────────────────────────────
 function DeckSelectorModal({ decks, cloudDecks, onSelect, onNew, onClose }) {
   const isMobileView = typeof window !== "undefined" && window.innerWidth <= 600;
@@ -5782,14 +5789,6 @@ function DeckSelectorModal({ decks, cloudDecks, onSelect, onNew, onClose }) {
     d.deckName?.toLowerCase().includes(search.toLowerCase()) ||
     getCardName(d.commander)?.toLowerCase().includes(search.toLowerCase())
   );
-
-  // Check if a saved deck has banned cards in its format
-  const deckHasBanned = (d) => {
-    const fmt = d.format;
-    if (!fmt || fmt.key === "custom") return false;
-    const cards = [...(d.deck || []), ...(d.commander ? [d.commander] : [])];
-    return cards.some(c => c.legalities?.[fmt.key] === "banned");
-  };
 
   // Deck stats
   const deckStats = (deck) => {
