@@ -2221,60 +2221,54 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
       {/* First Player Pick Modal */}
       {firstPickModal && (
         <div style={{ position: "fixed", inset: 0, zIndex: 800, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 18, padding: "28px 32px", minWidth: 300, maxWidth: 400, display: "flex", flexDirection: "column", gap: 20, alignItems: "center", boxShadow: "0 8px 40px #000a" }}>
+          <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 18, padding: "28px 32px", minWidth: 300, maxWidth: 420, width: "100%", display: "flex", flexDirection: "column", gap: 18, alignItems: "center", boxShadow: "0 8px 40px #000a" }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: "var(--gold)", fontFamily: "'Crimson Text',Georgia,serif", letterSpacing: 0.5 }}>
               🎲 ¿Quién comienza la partida?
             </div>
 
-            {/* Spinning / chosen display */}
-            <div style={{ minHeight: 80, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              {firstPickModal.chosen ? (
-                <>
-                  <div style={{ fontSize: 36, animation: "phase-pill-in 0.3s ease-out" }}>{firstPickModal.chosen.avatar || "🧙"}</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: "var(--color-life-bright)", animation: "phase-pill-in 0.3s ease-out" }}>¡Comienza {firstPickModal.chosen.name}!</div>
-                </>
-              ) : firstPickModal.spinning ? (
-                <>
-                  <div style={{ fontSize: 30, transition: "all 0.08s" }}>{players[firstPickModal.spinIdx]?.avatar || "🧙"}</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", transition: "all 0.08s" }}>{players[firstPickModal.spinIdx]?.name || "..."}</div>
-                </>
-              ) : (
-                <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", lineHeight: 1.6 }}>
-                  {players.map(p => `${p.avatar || "🧙"} ${p.name}`).join("  ·  ")}
-                </div>
-              )}
-            </div>
-
-            {/* Buttons */}
-            {!firstPickModal.chosen ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
-                <button
-                  onClick={spinFirstPick}
-                  disabled={firstPickModal.spinning}
-                  style={{ padding: "12px 0", borderRadius: 10, border: "none", background: firstPickModal.spinning ? "var(--gray-222)" : "linear-gradient(90deg,#6c3fc4,#3a5acc)", color: "var(--color-white)", fontWeight: 800, fontSize: 14, cursor: firstPickModal.spinning ? "default" : "pointer", letterSpacing: 0.3 }}>
-                  {firstPickModal.spinning ? "🎲 Eligiendo..." : "🎲 Elegir al azar"}
-                </button>
-                <button
-                  onClick={() => { setFirstPickModal(null); startGame(); }}
-                  disabled={firstPickModal.spinning}
-                  style={{ padding: "10px 0", borderRadius: 10, border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-muted)", fontWeight: 700, fontSize: 13, cursor: firstPickModal.spinning ? "default" : "pointer" }}>
-                  ▶ Empezar sin elegir
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
-                <button
-                  onClick={() => { setFirstPickModal(null); startGame(firstPickModal.chosen.id); }}
-                  style={{ padding: "12px 0", borderRadius: 10, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
-                  ▶ Iniciar partida
-                </button>
-                <button
-                  onClick={spinFirstPick}
-                  style={{ padding: "8px 0", borderRadius: 10, border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-muted)", fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
-                  🔄 Volver a elegir
-                </button>
+            {/* Spinning display (only shown while spinning) */}
+            {firstPickModal.spinning && (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minHeight: 64 }}>
+                <div style={{ fontSize: 30 }}>{players[firstPickModal.spinIdx]?.avatar || "🧙"}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{players[firstPickModal.spinIdx]?.name || "..."}</div>
               </div>
             )}
+
+            {/* Player list — always visible when not spinning */}
+            {!firstPickModal.spinning && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
+                {players.map(p => {
+                  const isChosen = firstPickModal.chosen?.id === p.id;
+                  return (
+                    <button key={p.id} onClick={() => !firstPickModal.spinning && setFirstPickModal(m => ({ ...m, chosen: p }))}
+                      style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 10, border: isChosen ? "2px solid var(--gold)" : "1px solid var(--border-default)", background: isChosen ? "var(--gold-20)" : "var(--bg-panel)", cursor: "pointer", transition: "all 0.15s", textAlign: "left", width: "100%" }}>
+                      <span style={{ fontSize: 24, flexShrink: 0 }}>{p.avatar || "🧙"}</span>
+                      <span style={{ fontSize: 14, fontWeight: isChosen ? 800 : 600, color: isChosen ? "var(--gold)" : "var(--text-primary)", flex: 1 }}>{p.name}</span>
+                      {p.isHost && <span style={{ fontSize: 10, color: "var(--gold-60)" }}>👑</span>}
+                      {isChosen && <span style={{ fontSize: 13, color: "var(--gold)" }}>✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
+              {firstPickModal.chosen && !firstPickModal.spinning && (
+                <button onClick={() => { setFirstPickModal(null); startGame(firstPickModal.chosen.id); }}
+                  style={{ padding: "12px 0", borderRadius: 10, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+                  ▶ Comienza {firstPickModal.chosen.name}
+                </button>
+              )}
+              <button onClick={spinFirstPick} disabled={firstPickModal.spinning}
+                style={{ padding: "10px 0", borderRadius: 10, border: "none", background: firstPickModal.spinning ? "var(--gray-222)" : "linear-gradient(90deg,#6c3fc4,#3a5acc)", color: "var(--color-white)", fontWeight: 800, fontSize: 13, cursor: firstPickModal.spinning ? "default" : "pointer" }}>
+                {firstPickModal.spinning ? "🎲 Eligiendo..." : "🎲 Elegir al azar"}
+              </button>
+              <button onClick={() => { setFirstPickModal(null); startGame(); }} disabled={firstPickModal.spinning}
+                style={{ padding: "8px 0", borderRadius: 10, border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-muted)", fontWeight: 600, fontSize: 12, cursor: firstPickModal.spinning ? "default" : "pointer" }}>
+                ▶ Empezar sin elegir
+              </button>
+            </div>
           </div>
         </div>
       )}
