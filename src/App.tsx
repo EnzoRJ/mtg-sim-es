@@ -852,6 +852,8 @@ function libraryMenu(p, pid, isMe, actions) {
         "---",
         { label: "Fondo → Top", action: () => actions.bottomToTop(pid) },
         "---",
+        { label: "👁 Revelar tope", action: () => actions.revealTopCard(pid, 1) },
+        { label: "👁 Revelar X...", action: () => { const x = askX("¿Cuántas cartas revelar?", "3"); if (x) actions.revealTopCard(pid, x); } },
         { label: "🔄 Revelar hasta tierra", action: () => actions.revealUntilLand(pid) },
         { label: "🔎 Tutor → Mano", action: () => actions.tutorToHand(pid) },
         { label: "🔎 Tutor → Campo", action: () => actions.tutorToBattlefield(pid) },
@@ -3516,6 +3518,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [mobileCardTap, setMobileCardTap] = useState(null); // { card, pid, zone, x, y }
   const [toasts, setToasts] = useState([]); // [{id, msg, color, icon}]
   const [lifeDeltas, setLifeDeltas] = useState({}); // {pid: [{id, value}]}
+  const [revealedCard, setRevealedCard] = useState(null); // {card, playerName, pid}
+  const [lastDrawnCard, setLastDrawnCard] = useState(null); // {name}
   const touchDragRef = useRef(null); // { instanceId, zone, timer, active, longPressReady, startX, startY }
   const libLongPressRef = useRef(null); // library long-press timer
   const rt = useRef(rtInstance);
@@ -3564,6 +3568,12 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       if (event === "vote_end") {
         setVoteState(null);
         addLog("🗳 Votación cerrada.");
+      }
+      if (event === "reveal_card") {
+        const cards = payload.cards || (payload.card ? [payload.card] : []);
+        setRevealedCard({ cards, playerName: payload.playerName, pid: payload.pid });
+        addLog(`👁 ${payload.playerName} revela: ${cards.map(getCardName).join(", ")}`);
+        setTimeout(() => setRevealedCard(null), 6000);
       }
     };
   }, [addLog]);
@@ -3771,7 +3781,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         const p = { ...ps[pid] };
         const drawn = p.library.slice(0, n).map(c => ({ ...c, instanceId: uid() }));
         const next = { ...p, library: p.library.slice(n), hand: [...p.hand, ...drawn] };
-        if (pid === myId) { syncState(next, `${p.name} roba ${n} carta${n > 1 ? "s" : ""}.`); addLog(`${p.name} roba ${n} carta${n > 1 ? "s" : ""}.`); addToast(`📚 ${n === 1 ? (drawn[0] ? getCardName(drawn[0]) : "carta") : `${n} cartas`}`, "var(--color-info)"); }
+        if (pid === myId) { syncState(next, `${p.name} roba ${n} carta${n > 1 ? "s" : ""}.`); addLog(`${p.name} roba ${n} carta${n > 1 ? "s" : ""}.`); addToast(`📚 ${n === 1 ? (drawn[0] ? getCardName(drawn[0]) : "carta") : `${n} cartas`}`, "var(--color-info)"); if (n === 1 && drawn[0]) { const name = getCardName(drawn[0]); setLastDrawnCard({ name }); setTimeout(() => setLastDrawnCard(null), 4000); } }
         return { ...ps, [pid]: next };
       });
     },
@@ -3816,6 +3826,24 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         if (pid === myId) { syncState(next, `${p.name} exilia ${n} del tope.`); addLog(`${p.name} exilia ${n} del tope.`); }
         return { ...ps, [pid]: next };
       });
+    },
+    revealTopCard: (pid, n = 1) => {
+      const p = players[pid]; if (!p || !p.library.length) return;
+      const count = Math.min(n, p.library.length);
+      const cards = p.library.slice(0, count);
+      const playerName = p.name;
+      // Mark cards as revealed so they show face-up in opponent hands
+      setPlayers(ps => {
+        const pp = ps[pid];
+        const newLib = pp.library.map((c, i) => i < count ? { ...c, revealed: true } : c);
+        const next = { ...pp, library: newLib };
+        syncState(next, `${playerName} revela ${count > 1 ? count + " cartas del tope" : "la carta del tope"} de su biblioteca.`);
+        return { ...ps, [pid]: next };
+      });
+      setRevealedCard({ cards, playerName, pid });
+      addLog(`👁 ${playerName} revela: ${cards.map(getCardName).join(", ")}`);
+      if (rt.current) rt.current.broadcast("reveal_card", { cards, playerName, pid });
+      setTimeout(() => setRevealedCard(null), 6000);
     },
     // Cascade (regla oficial):
     // Exilas cartas de arriba hacia abajo hasta encontrar una no-tierra con CMC menor
@@ -4358,6 +4386,10 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     return [
       zone !== "battlefield" && !card.faceDown && { label: "▶ Jugar en campo", action: () => playCard(card, zone) },
       // [1] MORPH: jugar boca abajo desde la mano
+      zone === "hand" && card.revealed && { label: "🙈 Ocultar de oponentes", action: () => {
+        updMe(p => ({ ...p, hand: p.hand.map(c => c.instanceId === card.instanceId ? { ...c, revealed: false } : c) }), `${players[myId]?.name} oculta ${getCardName(card)}.`);
+        setCtxMenu(null);
+      }, color: "var(--color-orange)" },
       zone === "hand" && { label: "🎴 Jugar boca abajo", action: () => {
         updMe(p => ({ ...p, hand: p.hand.filter(c => c.instanceId !== card.instanceId), battlefield: [...p.battlefield, { ...card, tapped: false, counters: [], abilities: [], faceDown: true }] }), `${players[myId]?.name} juega una carta boca abajo.`);
         setCtxMenu(null);
@@ -5048,6 +5080,11 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       </div>
                       <div style={{ position: "absolute", bottom: 2, left: 0, right: 0, textAlign: "center", fontSize: 10, color: "var(--color-white)", fontWeight: 800, background: "#000a", borderRadius: "0 0 4px 4px", padding: "1px 0" }}>{p.library.length}</div>
                     </div>
+                    {isMe && lastDrawnCard && (
+                      <div style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 2, fontSize: 9, color: "var(--color-info)", fontWeight: 700, textAlign: "center", maxWidth: cardW + 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", pointerEvents: "none", animation: "toast-in 0.18s ease-out" }}>
+                        {lastDrawnCard.name}
+                      </div>
+                    )}
                   </div>
 
                   {/* Graveyard */}
@@ -5117,9 +5154,14 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                         );
                       })
                     : p.hand.map(card => (
-                      <div key={card.instanceId} style={{ width: 38, height: 52, borderRadius: 4, overflow: "hidden", flexShrink: 0, border: "2px solid #2a3a5a", background: "linear-gradient(160deg,var(--bg-mana),var(--bg-mana),#1a0a2a)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <span style={{ fontSize: 12, opacity: 0.5 }}>🌟</span>
-                      </div>
+                      card.revealed
+                        ? <div key={card.instanceId} style={{ flexShrink: 0, position: "relative" }}>
+                            <CardTile card={card} small onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
+                            <div style={{ position: "absolute", top: 1, right: 1, fontSize: 8, background: "#000a", borderRadius: 3, padding: "0 2px", color: "var(--gold)", lineHeight: "14px" }}>👁</div>
+                          </div>
+                        : <div key={card.instanceId} style={{ width: 38, height: 52, borderRadius: 4, overflow: "hidden", flexShrink: 0, border: "2px solid #2a3a5a", background: "linear-gradient(160deg,var(--bg-mana),var(--bg-mana),#1a0a2a)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <span style={{ fontSize: 12, opacity: 0.5 }}>🌟</span>
+                          </div>
                     ))
                   }
                   {p.hand.length === 0 && <span style={{ color: "var(--bg-panel)", fontSize: 9 }}>vacía</span>}
@@ -5766,6 +5808,23 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           </div>
         );
       })()}
+      {/* Reveal Card Overlay */}
+      {revealedCard && (
+        <div onClick={() => setRevealedCard(null)} style={{ position: "fixed", inset: 0, zIndex: 900, background: "#000d", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, cursor: "pointer", padding: 16 }}>
+          <div style={{ fontSize: 13, color: "var(--gold)", fontFamily: "'Crimson Text',Georgia,serif", fontWeight: 700, letterSpacing: 1 }}>
+            👁 {revealedCard.playerName} revela {revealedCard.cards.length > 1 ? `${revealedCard.cards.length} cartas` : ""}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", maxWidth: "90vw" }}>
+            {revealedCard.cards.map((c, i) => (
+              <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                <CardTile card={c} small={revealedCard.cards.length > 3} />
+                <div style={{ fontSize: revealedCard.cards.length > 3 ? 10 : 13, color: "var(--color-white)", fontWeight: 700, textShadow: "0 1px 6px #000", maxWidth: 100, textAlign: "center", lineHeight: 1.2 }}>{getCardName(c)}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--gray-dark)", marginTop: 4 }}>Toca para cerrar</div>
+        </div>
+      )}
       {/* Toast notifications */}
       {toasts.length > 0 && (
         <div style={{ position: "fixed", bottom: isMobile ? 56 : 20, right: 14, display: "flex", flexDirection: "column", gap: 6, zIndex: 600, pointerEvents: "none" }}>
