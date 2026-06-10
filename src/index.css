@@ -247,6 +247,24 @@
   to   { width: 100%; }
 }
 
+@keyframes life-delta-float {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  60%  { opacity: 1; transform: translateY(-20px) scale(1.15); }
+  100% { opacity: 0; transform: translateY(-36px) scale(0.9); }
+}
+@keyframes critical-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,50,50,0); }
+  50%       { box-shadow: 0 0 18px 5px rgba(255,50,50,0.55); }
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes phase-pill-in {
+  from { opacity: 0; transform: scaleX(0.7); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    CLASES DE ANIMACIÓN
    ═══════════════════════════════════════════════════════════════════════ */
@@ -257,6 +275,10 @@
 .anim-blue-glow   { animation: blueGlow 2s ease-in-out infinite; }
 .anim-slide-down  { animation: slideDown var(--dur-normal) var(--ease-out); }
 .anim-fade-up     { animation: fadeInUp var(--dur-normal) var(--ease-out); }
+.critical-life    { animation: critical-pulse 1.4s ease-in-out infinite; }
+.life-delta       { position: absolute; pointer-events: none; font-weight: 800; font-size: 13px; animation: life-delta-float 1.4s ease-out forwards; z-index: 50; text-shadow: 0 1px 6px #000c; white-space: nowrap; }
+.skeleton-card    { background: linear-gradient(90deg,#1a1a2e 25%,#2a2a4a 50%,#1a1a2e 75%); background-size: 400% 100%; animation: shimmer 1.6s ease-in-out infinite; }
+.toast-item       { animation: toast-in 0.18s ease-out forwards; }
 
 /* ═══════════════════════════════════════════════════════════════════════
    COMPONENTES GLOBALES
