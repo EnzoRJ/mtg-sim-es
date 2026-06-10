@@ -3597,7 +3597,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [toasts, setToasts] = useState([]); // [{id, msg, color, icon}]
   const [lifeDeltas, setLifeDeltas] = useState({}); // {pid: [{id, value}]}
   const [revealedCard, setRevealedCard] = useState(null); // {card, playerName, pid}
-  const [lastDrawnCard, setLastDrawnCard] = useState(null); // {name}
+  const [lastCardAction, setLastCardAction] = useState(null); // {name, icon, color}
+  const lastCardActionTimer = useRef(null);
   const touchDragRef = useRef(null); // { instanceId, zone, timer, active, longPressReady, startX, startY }
   const libLongPressRef = useRef(null); // library long-press timer
   const rt = useRef(rtInstance);
@@ -3868,7 +3869,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         const p = { ...ps[pid] };
         const drawn = p.library.slice(0, n).map(c => ({ ...c, instanceId: uid() }));
         const next = { ...p, library: p.library.slice(n), hand: [...p.hand, ...drawn] };
-        if (pid === myId) { syncState(next, `${p.name} roba ${n} carta${n > 1 ? "s" : ""}.`); addLog(`${p.name} roba ${n} carta${n > 1 ? "s" : ""}.`); addToast(`📚 ${n === 1 ? (drawn[0] ? getCardName(drawn[0]) : "carta") : `${n} cartas`}`, "var(--color-info)"); if (n === 1 && drawn[0]) { const name = getCardName(drawn[0]); setLastDrawnCard({ name }); setTimeout(() => setLastDrawnCard(null), 4000); } }
+        if (pid === myId) { syncState(next, `${p.name} roba ${n} carta${n > 1 ? "s" : ""}.`); addLog(`${p.name} roba ${n} carta${n > 1 ? "s" : ""}.`); addToast(`📚 ${n === 1 ? (drawn[0] ? getCardName(drawn[0]) : "carta") : `${n} cartas`}`, "var(--color-info)"); if (n === 1 && drawn[0]) { clearTimeout(lastCardActionTimer.current); setLastCardAction({ name: getCardName(drawn[0]), icon: "📚", color: "var(--color-info)" }); lastCardActionTimer.current = setTimeout(() => setLastCardAction(null), 4000); } }
         return { ...ps, [pid]: next };
       });
     },
@@ -4281,7 +4282,11 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const tapCard = (iid) => {
     const card = players[myId]?.battlefield.find(c => c.instanceId === iid);
     const nowTapped = !card?.tapped;
-    if (card) addToast(nowTapped ? `↩ ${getCardName(card)}` : `↺ ${getCardName(card)}`, nowTapped ? "var(--color-warn-dim)" : "var(--color-life)");
+    if (card) {
+      clearTimeout(lastCardActionTimer.current);
+      setLastCardAction({ name: getCardName(card), icon: nowTapped ? "↻" : "↺", color: nowTapped ? "var(--color-warn-dim)" : "var(--color-life)" });
+      lastCardActionTimer.current = setTimeout(() => setLastCardAction(null), 3000);
+    }
     updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === iid ? { ...c, tapped: !c.tapped } : c) }));
   };
   const untapAll = () => { addToast("↺ Todo destapado", "var(--color-life)", "↺"); updMe(p => ({ ...p, battlefield: p.battlefield.map(c => ({ ...c, tapped: false })) }), `${players[myId]?.name} destapa todo.`); };
@@ -4895,6 +4900,11 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           {speaking[pid] && <span title="Hablando por voz" style={{ fontSize: 10, color: "var(--color-life-bright)", animation: "pulse 0.5s infinite", flexShrink: 0, textShadow: "0 0 8px var(--color-life-bright)" }}>🎙</span>}
           {p.experience > 0 && <span style={{ fontSize: 9, color: "#ddaaff", background: "#1a0a3a", borderRadius: 4, padding: "0 4px", flexShrink: 0 }}>✨{p.experience}</span>}
           <span title={`Mano: ${p.hand.length} carta${p.hand.length !== 1 ? "s" : ""}`} style={{ fontSize: 9, fontWeight: p.hand.length >= 8 ? 800 : 400, color: p.hand.length === 0 ? "var(--color-damage)" : p.hand.length >= 8 ? "var(--color-life-bright)" : "var(--text-muted)", marginLeft: "auto", flexShrink: 0, background: p.hand.length >= 8 ? "#0a2010" : p.hand.length === 0 ? "#2a0808" : "transparent", borderRadius: 4, padding: p.hand.length === 0 || p.hand.length >= 8 ? "0 4px" : 0 }}>🤚{p.hand.length}</span>
+          {isMe && lastCardAction && (
+            <span style={{ fontSize: 8, color: lastCardAction.color, background: "#0008", borderRadius: 4, padding: "0 4px", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flexShrink: 0, animation: "toast-in 0.18s ease-out" }}>
+              {lastCardAction.icon} {lastCardAction.name}
+            </span>
+          )}
         </div>
 
         {/* Body: battlefield + bottom bar — reversed for opponents */}
@@ -5217,11 +5227,6 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       </div>
                       <div style={{ position: "absolute", bottom: 2, left: 0, right: 0, textAlign: "center", fontSize: 10, color: "var(--color-white)", fontWeight: 800, background: "#000a", borderRadius: "0 0 4px 4px", padding: "1px 0" }}>{p.library.length}</div>
                     </div>
-                    {isMe && lastDrawnCard && (
-                      <div style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 2, fontSize: 9, color: "var(--color-info)", fontWeight: 700, textAlign: "center", maxWidth: cardW + 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", pointerEvents: "none", animation: "toast-in 0.18s ease-out" }}>
-                        {lastDrawnCard.name}
-                      </div>
-                    )}
                   </div>
 
                   {/* Graveyard */}
@@ -5416,21 +5421,108 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       ) : (
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
 
-        {/* LEFT: Phase + Turn order panel */}
-        <PhasePanel
-          playerOrder={playerOrder} players={players} activePlayer={activePlayer}
-          turn={turn} phase={phase} isMyTurn={isMyTurn}
-          onNextPhase={nextPhase} onEndTurn={advanceToNextPlayer}
-          onSkipDraw={() => {
-            const np = 2; // Principal 1, saltando Robo
-            setPhase(np);
-            const msg = `${players[myId]?.name} omite el robo.`;
-            addLog(msg);
-            rt.current?.broadcast("turn_change", { ap: activePlayer, ph: np, t: turn, log: msg });
-          }}
-          onMulligan={startMulligan} onHome={onHome}
-          avatars={avatarMap}
-        />
+        {/* LEFT: Turn controls + game flow */}
+        {(() => {
+          const [showShortcutsL, setShowShortcutsL] = React.useState(false);
+          return (
+            <div style={{ width: 72, flexShrink: 0, background: "var(--bg-base)", borderRight: "1px solid var(--bg-subtle)", display: "flex", flexDirection: "column", alignItems: "center", padding: "6px 4px", gap: 3, overflowY: "auto" }}>
+              {/* Logo + turn */}
+              <div style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
+                <div onClick={onHome} title="Inicio" style={{ fontSize: 15, cursor: "pointer" }}>⚔️</div>
+                <div style={{ fontSize: 9, color: "var(--gold)", fontWeight: 800 }}>T{turn}</div>
+              </div>
+
+              {/* Player order */}
+              <div style={{ width: "100%", borderBottom: "1px solid var(--bg-subtle)", paddingBottom: 4, display: "flex", flexDirection: "column", gap: 2 }}>
+                {playerOrder.map(pid => {
+                  const p = players[pid]; if (!p) return null;
+                  const isActive = pid === activePlayer;
+                  return (
+                    <div key={pid} style={{ padding: "3px 4px", borderRadius: 5, background: isActive ? "var(--bg-gold)" : "transparent", border: isActive ? "1px solid var(--gold-27)" : "1px solid transparent" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                        <span style={{ fontSize: 10 }}>{avatarMap?.[pid] || "🧙"}</span>
+                        <div style={{ fontSize: 8, fontWeight: 700, color: isActive ? "var(--gold)" : "var(--gray-mid)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name.slice(0, 7)}</div>
+                      </div>
+                      <div style={{ fontSize: 8, color: p.life <= 10 ? "var(--color-red)" : "var(--gray-dark)" }}>❤{p.life}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Turn action buttons */}
+              {isMyTurn && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 3, width: "100%" }}>
+                  <button onClick={nextPhase} className="mtg-btn" style={{ width: "100%", padding: "6px 2px", borderRadius: 6, border: "none", background: "linear-gradient(180deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, fontSize: 9, cursor: "pointer", lineHeight: 1.3, boxShadow: "0 0 12px var(--gold-53)" }}>
+                    {phase >= 5 ? "Pasar turno" : "Sig. fase"} ▶
+                  </button>
+                  {phase === 0 && (
+                    <button onClick={() => {
+                      const np = 2;
+                      setPhase(np);
+                      const msg = `${players[myId]?.name} omite el robo.`;
+                      addLog(msg);
+                      rt.current?.broadcast("turn_change", { ap: activePlayer, ph: np, t: turn, log: msg });
+                    }} style={{ width: "100%", padding: "5px 2px", borderRadius: 6, border: "1px solid #4a2a6a", background: "#1a0a2e", color: "#cc88ff", fontWeight: 700, fontSize: 8, cursor: "pointer" }}>
+                      🚫 No robar
+                    </button>
+                  )}
+                  {phase < 5 && (
+                    <button onClick={advanceToNextPlayer} style={{ width: "100%", padding: "5px 2px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-muted)", fontWeight: 700, fontSize: 8, cursor: "pointer" }}>
+                      ⏭ Fin Turno
+                    </button>
+                  )}
+                  {phase === 3 && (
+                    <div style={{ width: "100%", padding: "5px 6px", borderRadius: 7, background: "#2a0a0a", border: "1px solid var(--color-red-67)", textAlign: "center" }}>
+                      <div style={{ fontSize: 9, color: "#ff6666", fontWeight: 800 }}>⚔ ATAQUE</div>
+                      <div style={{ fontSize: 7, color: "var(--color-damage)", lineHeight: 1.4, marginTop: 1 }}>Click derecho en criatura</div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Separator */}
+              <div style={{ width: "80%", height: 1, background: "var(--bg-subtle)", margin: "1px 0", flexShrink: 0 }} />
+
+              {/* Turn-flow actions */}
+              {[
+                { icon: "📚", label: "Robar", action: () => libActions.draw(myId, 1), color: "var(--color-info)" },
+                { icon: "⟲", label: "Destapar", action: untapAll, color: "var(--color-life)" },
+              ].map(btn => (
+                <button key={btn.label} onClick={btn.action} title={btn.label}
+                  style={{ width: "100%", padding: "4px 2px", borderRadius: 6, border: "1px solid var(--bg-subtle)", background: "var(--bg-well)", color: btn.color, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                  <span style={{ fontSize: 14 }}>{btn.icon}</span>
+                  <span style={{ fontSize: 7, lineHeight: 1 }}>{btn.label}</span>
+                </button>
+              ))}
+
+              {/* Mulligan (turn 1) */}
+              {isMyTurn && turn === 1 && (
+                <button onClick={startMulligan} title="Mulligan" style={{ width: "100%", padding: "4px 2px", borderRadius: 5, border: "1px solid var(--gold-27)", background: "var(--bg-gold)", color: "var(--gold)", fontSize: 8, cursor: "pointer", fontWeight: 700 }}>
+                  🔄 Mulligan
+                </button>
+              )}
+
+              {/* Shortcuts */}
+              <div style={{ marginTop: "auto", paddingTop: 6, width: "100%" }}>
+                <button onClick={() => setShowShortcutsL(s => !s)} title="Atajos de teclado"
+                  style={{ width: "100%", padding: "4px 0", borderRadius: 5, border: `1px solid ${showShortcutsL ? "var(--gold-67)" : "var(--border-default)"}`, background: showShortcutsL ? "var(--bg-gold)" : "transparent", color: showShortcutsL ? "var(--gold)" : "var(--gray-mid)", fontSize: 11, cursor: "pointer" }}>
+                  ⌨
+                </button>
+                {showShortcutsL && (
+                  <div style={{ position: "fixed", left: 78, bottom: 12, background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 10, padding: "10px 14px", zIndex: 600, boxShadow: "0 4px 24px #000c", minWidth: 200 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--gold)", marginBottom: 8 }}>⌨ Atajos de teclado</div>
+                    {KEYBOARD_SHORTCUTS.map(({ key, desc }) => (
+                      <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 5 }}>
+                        <kbd style={{ background: "var(--bg-well)", border: "1px solid var(--border-strong)", borderRadius: 4, padding: "2px 7px", fontSize: 10, fontFamily: "monospace", color: "var(--text-primary)", fontWeight: 700 }}>{key}</kbd>
+                        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* CENTER: Player grids */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", gap: 4, padding: 4 }}>
@@ -5468,10 +5560,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
         {/* RIGHT: Actions + Log panel */}
         <div style={{ width: 68, flexShrink: 0, background: "var(--bg-base)", borderLeft: "1px solid var(--bg-subtle)", display: "flex", flexDirection: "column", alignItems: "center", padding: "4px 4px", gap: 2, overflowY: "auto", flexShrink: 0 }}>
-          {/* PRIMARY buttons — always visible */}
+          {/* PRIMARY buttons */}
           {[
-            { icon: "📚", label: "Robar", action: () => libActions.draw(myId, 1), color: "var(--color-info)" },
-            { icon: "⟲", label: "Destapar", action: untapAll, color: "var(--color-life)" },
             { icon: "🪄", label: "Token", action: () => setTokenModal(true), color: "var(--color-poison)" },
             { icon: "🎲", label: "Dado", action: () => setDiceModal(true), color: "var(--color-orange)" },
             { icon: "💬", label: "Chat", action: () => setChatOpen(o => !o), color: chatOpen ? "var(--color-info)" : "var(--gray-mid)" },
