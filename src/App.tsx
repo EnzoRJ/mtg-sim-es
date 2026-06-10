@@ -4583,14 +4583,6 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         ].filter(Boolean),
       },
       "---",
-      zone !== "hand" && { label: "🤚 A la mano", action: () => moveCard(card, zone, "hand") },
-      zone !== "graveyard" && { label: "🪦 Al cementerio", action: () => moveCard(card, zone, "graveyard") },
-      zone !== "exile" && { label: "✨ Exiliar", action: () => moveCard(card, zone, "exile") },
-      { label: "📚 A biblioteca (arriba)", action: () => moveCard(card, zone, "library_top") },
-      { label: "📚 A biblioteca (abajo)", action: () => moveCard(card, zone, "library_bottom") },
-      zone !== "sideboard" && (players[myId]?.sideboard?.length > 0 || zone === "sideboard") && { label: "↔ Al Sideboard", action: () => moveCard(card, zone, "sideboard"), color: "var(--color-info)" },
-      isCmd && { label: "⚔ A zona de mando", action: () => returnCmdToZone(card, zone, true), color: "var(--gold)" },
-      "---",
       // Contadores: solo para permanentes que no son tierras
       zone === "battlefield" && !cardIsLand && !card.faceDown && { label: "🎯 Gestionar contadores...", action: () => { setCtxMenu(null); setCounterModal(card.instanceId); } },
       // Contador de lealtad rápido para planeswalkers
@@ -4628,7 +4620,6 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             `${players[myId]?.name}: crea copia de ${getCardName(card)}.`);
         }
       },
-      "---",
       // [3] TAP/UNTAP masivo
       zone === "battlefield" && cardIsLand && {
         label: "🌍 Girar todas las tierras",
@@ -4650,6 +4641,14 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         }),
         color: attackers.has(card.instanceId) ? "var(--color-damage)" : "var(--color-orange)"
       },
+      "---",
+      zone !== "hand" && { label: "🤚 A la mano", action: () => moveCard(card, zone, "hand") },
+      zone !== "graveyard" && { label: "🪦 Al cementerio", action: () => moveCard(card, zone, "graveyard") },
+      zone !== "exile" && { label: "✨ Exiliar", action: () => moveCard(card, zone, "exile") },
+      { label: "📚 A biblioteca (arriba)", action: () => moveCard(card, zone, "library_top") },
+      { label: "📚 A biblioteca (abajo)", action: () => moveCard(card, zone, "library_bottom") },
+      zone !== "sideboard" && (players[myId]?.sideboard?.length > 0 || zone === "sideboard") && { label: "↔ Al Sideboard", action: () => moveCard(card, zone, "sideboard"), color: "var(--color-info)" },
+      isCmd && { label: "⚔ A zona de mando", action: () => returnCmdToZone(card, zone, true), color: "var(--gold)" },
     ].filter(Boolean);
   };
 
