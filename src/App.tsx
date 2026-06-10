@@ -218,9 +218,9 @@ var SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 function getSavedDecks() {
   try { return JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) || "[]"); } catch { return []; }
 }
-function saveDeckToStorage(name, deck, commander, playerName, format, sideboard) {
+function saveDeckToStorage(name, deck, commander, playerName, format, sideboard, coverCard?) {
   const decks = getSavedDecks().filter(d => d.name !== name);
-  decks.unshift({ name, deck, commander, playerName, format: format || FORMATS[0], sideboard: sideboard || [], savedAt: Date.now() });
+  decks.unshift({ name, deck, commander, playerName, format: format || FORMATS[0], sideboard: sideboard || [], savedAt: Date.now(), ...(coverCard ? { coverCard } : {}) });
   localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify(decks.slice(0, 20))); // max 20 decks
 }
 function deleteDeckFromStorage(name) {
@@ -380,7 +380,7 @@ function handleAuthCallback() {
 }
 
 // Cloud deck operations
-async function saveCloudDeck(name, deck, commander, playerName, format, sideboard) {
+async function saveCloudDeck(name, deck, commander, playerName, format, sideboard, coverCard?) {
   const user = getCurrentUser();
   if (!user) return { ok: false, error: "No hay sesión activa" };
   try {
@@ -392,7 +392,8 @@ async function saveCloudDeck(name, deck, commander, playerName, format, sideboar
         name,
         deck: { cards: deck, format: format || FORMATS[0], sideboard: sideboard || [] },
         commander,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        ...(coverCard ? { cover_card: coverCard } : {})
       })
     });
     if (!r.ok) {
@@ -406,7 +407,7 @@ async function saveCloudDeck(name, deck, commander, playerName, format, sideboar
 }
 
 // Upsert: si existe un mazo con el mismo nombre lo reemplaza, si no lo crea
-async function upsertCloudDeck(name, deck, commander, playerName, format, sideboard) {
+async function upsertCloudDeck(name, deck, commander, playerName, format, sideboard, coverCard?) {
   const user = getCurrentUser();
   if (!user) return { ok: false, error: "No hay sesión activa" };
   try {
@@ -420,7 +421,8 @@ async function upsertCloudDeck(name, deck, commander, playerName, format, sidebo
       name,
       deck: { cards: deck, format: format || FORMATS[0], sideboard: sideboard || [] },
       commander,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      ...(coverCard ? { cover_card: coverCard } : {})
     });
 
     if (existingId) {
@@ -453,12 +455,13 @@ async function loadCloudDecks() {
   // Normalize: support both old format (deck=[]) and new format (deck={cards,format,sideboard})
   return rows.map(row => {
     const d = row.deck;
+    const coverCard = row.cover_card ? row.cover_card : undefined;
     if (Array.isArray(d)) {
       // Old format — deck is plain array
-      return { ...row, deck: d, format: FORMATS[0], sideboard: [] };
+      return { ...row, deck: d, format: FORMATS[0], sideboard: [], ...(coverCard ? { coverCard } : {}) };
     }
     // New format — deck is object with cards/format/sideboard
-    return { ...row, deck: d?.cards || [], format: d?.format || FORMATS[0], sideboard: d?.sideboard || [] };
+    return { ...row, deck: d?.cards || [], format: d?.format || FORMATS[0], sideboard: d?.sideboard || [], ...(coverCard ? { coverCard } : {}) };
   });
 }
 
@@ -1251,7 +1254,7 @@ function MulliganModal({ player, mulliganCount, onKeep, onMulligan, onHome }) {
 }
 
 // ─── DECK BUILDER ─────────────────────────────────────────────────────────────
-function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPlayerName, initialDeckName, initialFormat, initialSideboard }) {
+function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPlayerName, initialDeckName, initialFormat, initialSideboard, initialCoverCard }) {
   const [search, setSearch] = useState(""); const [results, setResults] = useState([]);
   const [deck, setDeck] = useState(() => initialDeck || []); const [sideboard, setSideboard] = useState(() => initialSideboard || []); const [format, setFormat] = useState(() => initialFormat || FORMATS[0]); const [showFormatModal, setShowFormatModal] = useState(false); const [formatWarnings, setFormatWarnings] = useState({}); const [commander, setCommander] = useState(() => initialCommander || null);
   const [loading, setLoading] = useState(false); const [preview, setPreview] = useState(null);
@@ -1264,6 +1267,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
   const [savedDecks, setSavedDecks] = useState(getSavedDecks);
   const [deckName, setDeckName] = useState(initialDeckName || "Mi Mazo");
   const [saveConfirm, setSaveConfirm] = useState(null); // null | "replace" — estado de confirmación
+  const [coverCard, setCoverCard] = useState(() => initialCoverCard || null); // { image_url, name }
   const lang = "es"; // always Spanish, fallback to English if not found
   const deb = useRef(null);
 
@@ -1299,6 +1303,18 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
     // Auto-fill deck name with commander's name if still default/empty
     const cmdName = card.printed_name || card.name || "";
     if (cmdName) setDeckName(prev => (!prev || prev === "Mi Mazo") ? cmdName : prev);
+  };
+
+  const setCover = (card) => {
+    const cover = { image_url: card.image_url || card.image_uris?.normal, name: card.name || card.printed_name };
+    setCoverCard(cover);
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+      upsertCloudDeck(deckName, deck, commander, playerName, format, sideboard, cover);
+    } else {
+      saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard, cover);
+      setSavedDecks(getSavedDecks());
+    }
   };
 
   const handleImport = async () => {
@@ -1469,11 +1485,11 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                   setSaveConfirm(null);
                   const currentUser = getCurrentUser();
                   if (currentUser) {
-                    const result = await upsertCloudDeck(deckName, deck, commander, playerName, format, sideboard);
+                    const result = await upsertCloudDeck(deckName, deck, commander, playerName, format, sideboard, coverCard);
                     if (result.ok) alert(`✓ Mazo "${deckName}" actualizado ☁`);
                     else alert(`✗ Error: ${result.error}`);
                   } else {
-                    saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard);
+                    saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard, coverCard);
                     setSavedDecks(getSavedDecks());
                     alert(`✓ Mazo "${deckName}" actualizado`);
                   }
@@ -1486,11 +1502,11 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                   const newName = `${deckName} (copia)`;
                   const currentUser = getCurrentUser();
                   if (currentUser) {
-                    const result = await saveCloudDeck(newName, deck, commander, playerName, format, sideboard);
+                    const result = await saveCloudDeck(newName, deck, commander, playerName, format, sideboard, coverCard);
                     if (result.ok) { setDeckName(newName); alert(`✓ Guardado como "${newName}" ☁`); }
                     else alert(`✗ Error: ${result.error}`);
                   } else {
-                    saveDeckToStorage(newName, deck, commander, playerName, format, sideboard);
+                    saveDeckToStorage(newName, deck, commander, playerName, format, sideboard, coverCard);
                     setDeckName(newName);
                     setSavedDecks(getSavedDecks());
                     alert(`✓ Guardado como "${newName}"`);
@@ -1517,11 +1533,11 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                   return;
                 }
                 if (currentUser) {
-                  const result = await saveCloudDeck(deckName, deck, commander, playerName, format, sideboard);
+                  const result = await saveCloudDeck(deckName, deck, commander, playerName, format, sideboard, coverCard);
                   if (result.ok) alert(`✓ Mazo "${deckName}" guardado como ${format.label} ☁`);
                   else alert(`✗ Error: ${result.error}`);
                 } else {
-                  saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard);
+                  saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard, coverCard);
                   setSavedDecks(getSavedDecks());
                   alert(`✓ Mazo "${deckName}" guardado como ${format.label}`);
                 }
@@ -1833,6 +1849,11 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                       style={{ position: "relative" }}>
                       <CardTile card={card} small onClick={() => { }} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
                       <button onClick={() => setDeck(d => d.filter(c => c.instanceId !== card.instanceId))} style={{ position: "absolute", top: -4, right: -4, width: 15, height: 15, borderRadius: "50%", border: "none", background: "#cc2222", color: "var(--color-white)", cursor: "pointer", fontSize: 9, padding: 0 }}>×</button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setCover(card); }}
+                        title="Definir como portada"
+                        style={{ position: "absolute", top: 2, left: 2, zIndex: 10, background: "#000b", border: "none", borderRadius: 4, color: "#ffd700", fontSize: 10, padding: "1px 4px", cursor: "pointer", opacity: 0.85 }}
+                      >📌</button>
                       {formatWarnings[card.name] && (
                         <div title={formatWarnings[card.name] === "banned" ? "Baneada en " + format.label : formatWarnings[card.name] === "restricted" ? "Restringida (solo 1 copia)" : "No legal en " + format.label}
                           style={{ position: "absolute", bottom: -4, left: "50%", transform: "translateX(-50%)", background: formatWarnings[card.name] === "banned" ? "#cc0000" : formatWarnings[card.name] === "restricted" ? "#ff8800" : "var(--gray-mid)", borderRadius: 3, padding: "1px 4px", fontSize: 7, color: "var(--color-white)", whiteSpace: "nowrap", pointerEvents: "none" }}>
@@ -6495,6 +6516,20 @@ function AuthModal({ onAuth, onClose }) {
   );
 }
 
+// ─── DECK COVER INFO ─────────────────────────────────────────────────────────
+function deckCoverInfo(deck) {
+  const colorId = deck.commander?.color_identity ||
+    [...new Set((deck.deck || []).flatMap(c => c.color_identity || c.colors || []))];
+  const COLOR_VALS = { W: "#e8d48a", U: "#4a90d9", B: "#7a6a8a", R: "#cc4422", G: "#338844" };
+  const cols = colorId.map(c => COLOR_VALS[c]).filter(Boolean);
+  let gradient;
+  if (!cols.length) gradient = "linear-gradient(135deg, #1a1a2e, #16213e, #0f3460)";
+  else if (cols.length === 1) gradient = `linear-gradient(135deg, ${cols[0]}cc, #111 80%)`;
+  else gradient = `linear-gradient(135deg, ${cols.map((c, i) => `${c} ${Math.round(i * 100 / (cols.length - 1))}%`).join(", ")})`;
+  const imageUrl = deck.coverCard?.image_url || deck.commander?.image_url || null;
+  return { imageUrl, gradient, colorId };
+}
+
 // ─── COLOR PIPS ──────────────────────────────────────────────────────────────
 function ColorPips({ identity }: { identity: string[] }) {
   const colorMap = {
@@ -6522,8 +6557,8 @@ function ColorPips({ identity }: { identity: string[] }) {
 // ─── DECK GRID CARD ───────────────────────────────────────────────────────────
 function DeckGridCard({ deck, onPlay, onEdit, onDelete, onView, playerLabel }: { deck: any, onPlay?: any, onEdit?: any, onDelete?: any, onView?: any, playerLabel?: string }) {
   const [hovered, setHovered] = React.useState(false);
-  const identity = deck.commander?.color_identity || [];
-  const imgUrl = deck.commander?.image_url;
+  const { imageUrl: imgUrl, gradient, colorId } = deckCoverInfo(deck);
+  const identity = colorId;
   const deckName = deck.name || "Sin nombre";
   const cardCount = (deck.deck || []).length + (deck.commander ? 1 : 0);
   const playerName = playerLabel || deck.player_name || deck.playerName || "";
@@ -6549,7 +6584,7 @@ function DeckGridCard({ deck, onPlay, onEdit, onDelete, onView, playerLabel }: {
       <div style={{ position: "relative", height: 155, overflow: "hidden" }}>
         {imgUrl
           ? <img src={imgUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "20% 15%", display: "block" }} />
-          : <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg,#2a1a3a,#0a0a1a)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40 }}>⚔</div>}
+          : <div style={{ width: "100%", height: "100%", background: gradient, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40 }}>⚔</div>}
         {/* Gradient overlay */}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 60, background: "linear-gradient(to top, #161616 0%, transparent 100%)", pointerEvents: "none" }} />
         {/* Hover action buttons */}
@@ -7357,7 +7392,7 @@ export default function App() {
         }}
         onEditDeck={(savedDeck) => {
           // Load the saved deck into the builder for editing
-          setDeckData({ deck: savedDeck.deck, commander: savedDeck.commander, playerName: savedDeck.playerName, editingName: savedDeck.name });
+          setDeckData({ deck: savedDeck.deck, commander: savedDeck.commander, playerName: savedDeck.playerName, editingName: savedDeck.name, coverCard: savedDeck.coverCard });
           setStage("deck-edit");
         }}
         onResumeSession={(session) => {
@@ -7401,6 +7436,7 @@ export default function App() {
       initialDeckName={stage === "deck-edit" ? deckData?.editingName : undefined}
       initialFormat={stage === "deck-edit" ? deckData?.format : selectedFormat}
       initialSideboard={stage === "deck-edit" ? deckData?.sideboard : []}
+      initialCoverCard={stage === "deck-edit" ? deckData?.coverCard : undefined}
       onReady={d => {
         const joinCode = deckData?.joinCode;
         setDeckData({ ...d, joinCode, isNewDeck: true });
