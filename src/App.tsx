@@ -939,7 +939,7 @@ function SearchLibModal({ library, graveyard, sideboard, zone, dest, onPick, onC
     <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600 }}>
       <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 16, padding: 24, maxWidth: 500, width: "90vw", maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gold)", marginBottom: 12 }}>{title}</div>
-        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Nombre de carta..." style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", marginBottom: 12 }} autoFocus />
+        <input value={q} onChange={e => setQ(e.target.value)} maxLength={100} placeholder="Nombre de carta..." style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", marginBottom: 12 }} autoFocus />
         <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
           {filtered.map((card, i) => (
             <div key={card.instanceId} onClick={() => onPick(card)}
@@ -1123,7 +1123,7 @@ function CounterModal({ card, onUpdate, onClose }) {
 
           {/* Custom counter */}
           <div style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center" }}>
-            <input value={customName} onChange={e => setCustomName(e.target.value)} placeholder="Nombre contador custom..." style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 12, outline: "none" }} />
+            <input value={customName} onChange={e => setCustomName(e.target.value.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s\-]/g, "").slice(0, 20))} maxLength={20} placeholder="Nombre contador custom..." style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 12, outline: "none" }} />
             <button onClick={() => { if (customName.trim()) { add("custom"); } }} style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "var(--border-default)", color: "#cccccc", cursor: "pointer", fontSize: 12 }}>+ Agregar</button>
           </div>
 
@@ -1502,8 +1502,8 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
         </div>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, color: "var(--gray-mid)" }}>Tu nombre:</span>
-          <input value={playerName} onChange={e => setPlayerName(e.target.value)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 14, outline: "none", width: 120 }} />
-          <input value={deckName} onChange={e => setDeckName(e.target.value)} placeholder="Nombre del mazo" style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 13, outline: "none", width: 140 }} />
+          <input value={playerName} onChange={e => setPlayerName(e.target.value.replace(/^\s+/, "").slice(0, 20))} maxLength={20} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 14, outline: "none", width: 120 }} />
+          <input value={deckName} onChange={e => setDeckName(e.target.value.replace(/^\s+/, "").slice(0, 40))} maxLength={40} placeholder="Nombre del mazo" style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 13, outline: "none", width: 140 }} />
           {/* Confirmación de reemplazo inline */}
           {(() => {
             // Helper: pide confirmación si hay baneadas, retorna true si se puede guardar
@@ -1601,7 +1601,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
             <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 7 }}>
 
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cartas en español..." style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                <input value={search} onChange={e => setSearch(e.target.value)} maxLength={100} placeholder="Buscar cartas en español..." style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: "0 10px 10px" }}>
                 {loading && <div style={{ color: "var(--gray-mid)", textAlign: "center", padding: 16 }}>Buscando...</div>}
@@ -1637,6 +1637,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                 <textarea
                   placeholder={"Pegar lista (ej: 2x Negate\n1x Counterspell...)"}
                   rows={3}
+                  maxLength={5000}
                   style={{ padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 11, resize: "none", outline: "none", fontFamily: "monospace" }}
                   onPaste={async (e) => {
                     e.preventDefault();
@@ -1761,7 +1762,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
           {tab === "importar" && (
             <div style={{ flex: 1, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Una carta por línea. Ej: "4x Sol Ring"</div>
-              <textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder={"1x Sol Ring\n1x Command Tower\n..."} style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 12, resize: "none", outline: "none", fontFamily: "monospace" }} />
+              <textarea value={importText} onChange={e => setImportText(e.target.value)} maxLength={15000} placeholder={"1x Sol Ring\n1x Command Tower\n..."} style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 12, resize: "none", outline: "none", fontFamily: "monospace" }} />
               {importLoading ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--color-info)" }}>
@@ -2208,7 +2209,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
               {deckData?.isNewDeck && <div style={{ background: "var(--bg-well)", border: "1px solid var(--border-default)", borderRadius: 10, padding: "10px 12px" }}>
                 <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 7, letterSpacing: 1 }}>💾 GUARDAR MAZO ANTES DE JUGAR</div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input value={lobbyDeckName} onChange={e => setLobbyDeckName(e.target.value)} placeholder="Nombre del mazo..."
+                  <input value={lobbyDeckName} onChange={e => setLobbyDeckName(e.target.value.replace(/^\s+/, "").slice(0, 40))} maxLength={40} placeholder="Nombre del mazo..."
                     style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none" }} />
                   <button onClick={async () => {
                     const user = getCurrentUser();
@@ -2507,7 +2508,7 @@ function TokenModal({ onCreate, onClose, cmdTokenSuggestions }) {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
                 <div>
                   <div style={{ fontSize: 10, color: "var(--gray-mid)", marginBottom: 4 }}>Nombre</div>
-                  <input value={name} onChange={e => setName(e.target.value)} style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                  <input value={name} onChange={e => setName(e.target.value.replace(/^\s+/, "").slice(0, 30))} maxLength={30} style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                 </div>
                 <div>
                   <div style={{ fontSize: 10, color: "var(--gray-mid)", marginBottom: 4 }}>Color</div>
@@ -2515,11 +2516,11 @@ function TokenModal({ onCreate, onClose, cmdTokenSuggestions }) {
                 </div>
                 <div>
                   <div style={{ fontSize: 10, color: "var(--gray-mid)", marginBottom: 4 }}>Poder</div>
-                  <input value={power} onChange={e => setPower(e.target.value)} style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                  <input value={power} onChange={e => setPower(e.target.value.replace(/[^0-9\*\+\-\/]/g, "").slice(0, 5))} maxLength={5} style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                 </div>
                 <div>
                   <div style={{ fontSize: 10, color: "var(--gray-mid)", marginBottom: 4 }}>Resistencia</div>
-                  <input value={tough} onChange={e => setTough(e.target.value)} style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                  <input value={tough} onChange={e => setTough(e.target.value.replace(/[^0-9\*\+\-\/]/g, "").slice(0, 5))} maxLength={5} style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
@@ -2607,7 +2608,7 @@ function ChatPanel({ messages, input, onInput, onSend, onClose, playerName }) {
         <div ref={bottomRef} />
       </div>
       <div style={{ padding: 8, borderTop: "1px solid var(--border-default)", display: "flex", gap: 6 }}>
-        <input value={input} onChange={e => onInput(e.target.value)} onKeyDown={e => e.key === "Enter" && onSend()} placeholder="Escribe..." style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 12, outline: "none" }} />
+        <input value={input} onChange={e => onInput(e.target.value)} maxLength={200} onKeyDown={e => e.key === "Enter" && onSend()} placeholder="Escribe..." style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 12, outline: "none" }} />
         <button onClick={onSend} style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: "#1a3a6a", color: "var(--color-info)", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>→</button>
       </div>
     </div>
@@ -2622,7 +2623,7 @@ function NotesPanel({ notes, onChange, onClose }) {
         <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gold)" }}>📝 Notas</span>
         <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 16 }}>✕</button>
       </div>
-      <textarea value={notes} onChange={e => onChange(e.target.value)} placeholder="Tus notas: combos, recordatorios, conteos..." style={{ flex: 1, padding: 10, background: "var(--bg-input)", color: "var(--text-primary)", border: "none", outline: "none", resize: "none", fontSize: 12, lineHeight: 1.6, fontFamily: "monospace" }} />
+      <textarea value={notes} onChange={e => onChange(e.target.value)} maxLength={3000} placeholder="Tus notas: combos, recordatorios, conteos..." style={{ flex: 1, padding: 10, background: "var(--bg-input)", color: "var(--text-primary)", border: "none", outline: "none", resize: "none", fontSize: 12, lineHeight: 1.6, fontFamily: "monospace" }} />
     </div>
   );
 }
@@ -2879,7 +2880,7 @@ function VoteSetupModal({ onClose, onStart }) {
         <div style={{ fontSize: 17, fontWeight: 800, color: "var(--gold)", textAlign: "center" }}>🗳 Nueva Votación</div>
         <div>
           <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>Pregunta</div>
-          <input autoFocus value={question} onChange={e => setQuestion(e.target.value)}
+          <input autoFocus value={question} onChange={e => setQuestion(e.target.value)} maxLength={100}
             placeholder="Ej: ¿Quién ataca a quién?"
             style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, boxSizing: "border-box" }} />
         </div>
@@ -2888,7 +2889,7 @@ function VoteSetupModal({ onClose, onStart }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {options.map((opt, i) => (
               <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <input value={opt} onChange={e => setOption(i, e.target.value)}
+                <input value={opt} onChange={e => setOption(i, e.target.value)} maxLength={50}
                   placeholder={`Opción ${i + 1}`}
                   style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 12 }} />
                 {options.length > 2 && (
@@ -3113,6 +3114,7 @@ function AbilitiesModal({ markers, onAdd, onRemove, onClose }) {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
+              maxLength={100}
               placeholder="Filtrar habilidades... (ej: flying, trample)"
               autoFocus
               style={{ width: "100%", padding: "8px 12px 8px 30px", borderRadius: 8, border: `1px solid ${search ? "var(--gold-33)" : "var(--border-default)"}`, background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 12, outline: "none", boxSizing: "border-box", transition: "border-color 0.15s" }}
@@ -5737,6 +5739,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     setCardSearch(s => ({ ...s, results: (d.data || []).slice(0, 20), loading: false }));
                   } catch { setCardSearch(s => ({ ...s, results: [], loading: false })); }
                 }}
+                maxLength={100}
                 placeholder="Buscar carta..."
                 style={{ width: "100%", padding: "5px 7px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 10, outline: "none", boxSizing: "border-box" }}
               />
@@ -5807,7 +5810,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
               {/* Search bar — only if zone has enough cards to warrant it */}
               {zoneCards.length >= 4 && (
                 <div style={{ position: "relative", marginBottom: 12 }}>
-                  <input autoFocus value={zoneFilter} onChange={e => setZoneFilter(e.target.value)}
+                  <input autoFocus value={zoneFilter} onChange={e => setZoneFilter(e.target.value)} maxLength={60}
                     placeholder="Filtrar por nombre o tipo..."
                     style={{ width: "100%", padding: "7px 30px 7px 10px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 12, boxSizing: "border-box", outline: "none" }} />
                   {zoneFilter && (
@@ -5879,7 +5882,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         <div style={{ position: "fixed", inset: 0, background: "#000b", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700 }} onClick={() => setCardMarkerModal(null)}>
           <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 12, padding: 20, width: 300 }} onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)", marginBottom: 12 }}>🏷️ Marcador personalizado</div>
-            <input id="marker-text-input" autoFocus placeholder="Ej: No atacar, Objetivo, Equipo..." defaultValue=""
+            <input id="marker-text-input" autoFocus placeholder="Ej: No atacar, Objetivo, Equipo..." defaultValue="" maxLength={30}
               style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-well)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 10 }} />
             <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
               {["#cc2222","#cc9900","#227722","#2255cc","#882299","#888888"].map(col => (
@@ -5909,7 +5912,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             </div>
           ))}
           <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-            <input id="trigger-input" placeholder="Rhystic Study, Smothering Tithe..." style={{ flex: 1, padding: "6px 8px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-well)", color: "var(--text-primary)", fontSize: 11, outline: "none" }} />
+            <input id="trigger-input" maxLength={60} placeholder="Rhystic Study, Smothering Tithe..." style={{ flex: 1, padding: "6px 8px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-well)", color: "var(--text-primary)", fontSize: 11, outline: "none" }} />
             <button onClick={() => { const inp = document.getElementById("trigger-input"); const text = inp?.value?.trim(); if (!text) return; setTriggers(ts => [...ts, { id: uid(), text, color: "#ffaa44", active: true }]); if (inp) inp.value = ""; }} style={{ padding: "6px 10px", borderRadius: 7, border: "none", background: "var(--gold)", color: "#000", fontWeight: 800, cursor: "pointer", fontSize: 12 }}>+</button>
           </div>
         </div>
@@ -6214,7 +6217,7 @@ function DeckSelectorModal({ decks, cloudDecks, onSelect, onNew, onClose }) {
               + Nuevo Mazo
             </button>
           </div>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre o comandante..."
+          <input value={search} onChange={e => setSearch(e.target.value)} maxLength={100} placeholder="Buscar por nombre o comandante..."
             autoFocus={!isMobileView}
             style={{ width: "100%", padding: "9px 14px", borderRadius: 9, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 12 }} />
         </div>
@@ -6533,7 +6536,7 @@ function AuthModal({ onAuth, onClose }) {
         {/* Email/password */}
         <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" type="email"
           style={{ padding: "10px 14px", borderRadius: 9, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 14, outline: "none" }} />
-        <input value={password} onChange={e => setPassword(e.target.value)} placeholder="Contraseña" type="password"
+        <input value={password} onChange={e => setPassword(e.target.value)} placeholder="Contraseña" type="password" maxLength={72}
           onKeyDown={e => e.key === "Enter" && handleSubmit()}
           style={{ padding: "10px 14px", borderRadius: 9, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 14, outline: "none" }} />
 
@@ -7185,7 +7188,7 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
                       {/* Name — editable */}
                       {renamingDeck === d.name
                         ? <div style={{ display: "flex", gap: 5, marginBottom: 3 }}>
-                          <input value={renameValue} onChange={e => setRenameValue(e.target.value)}
+                          <input value={renameValue} onChange={e => setRenameValue(e.target.value.replace(/^\s+/, "").slice(0, 40))} maxLength={40}
                             onKeyDown={e => { if (e.key === "Enter") confirmRename(d); if (e.key === "Escape") setRenamingDeck(null); }}
                             autoFocus style={{ flex: 1, padding: "3px 8px", borderRadius: 5, border: "1px solid var(--gold-40)", background: "var(--bg-elevated)", color: "var(--gold)", fontSize: 13, outline: "none" }} />
                           <button onClick={() => confirmRename(d)} style={{ padding: "3px 8px", borderRadius: 5, border: "none", background: "var(--bg-life)", color: "var(--color-life)", cursor: "pointer", fontSize: 11 }}>✓</button>
