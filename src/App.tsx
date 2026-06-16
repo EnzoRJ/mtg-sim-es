@@ -259,7 +259,7 @@ async function authFetch(path, opts = {}) {
     ...opts,
     headers: {
       "apikey": SUPABASE_KEY,
-      "Authorization": "Bearer " + (t || SUPABASE_KEY),
+      "Authorization": "Bearer " + (t || ""),
       "Content-Type": "application/json",
       "Accept": "application/json",
       ...(opts.headers || {}),
@@ -470,11 +470,8 @@ async function deleteCloudDeck(id) {
   return r.ok;
 }
 
-// Game session persistence via Supabase REST API
-var SB_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" };
-
 async function saveGameSession(roomCode, myId, playersState, turn, phase, activePlayer) {
-  return; // state saved to localStorage via syncState
+  return;
 }
 
 
