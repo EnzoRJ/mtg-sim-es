@@ -497,7 +497,12 @@ async function clearGameSession(roomCode, myId) {
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const shuffle = (arr) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; };
-const genCode = () => Math.random().toString(36).slice(2, 6).toUpperCase();
+const genCode = () => {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sin O/0/I/1 ambiguos
+  const bytes = new Uint32Array(6);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => chars[b % chars.length]).join("");
+};
 function isLegendary(c) {
   const t = c?.type_line?.toLowerCase() || "";
   return t.includes("legendary") || t.includes("legendaria") || t.includes("legendario");
@@ -1265,8 +1270,15 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
   const [deckName, setDeckName] = useState(initialDeckName || "Mi Mazo");
   const [saveConfirm, setSaveConfirm] = useState(null); // null | "replace" — estado de confirmación
   const [coverCard, setCoverCard] = useState(() => initialCoverCard || null); // { image_url, name }
+  const [toasts, setToasts] = useState([]); // [{id, msg, color}]
   const lang = "es"; // always Spanish, fallback to English if not found
   const deb = useRef(null);
+
+  const addToast = (msg, color = "var(--color-life)") => {
+    const id = Date.now() + Math.random();
+    setToasts(t => [...t.slice(-3), { id, msg, color }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3200);
+  };
 
   useEffect(() => {
     clearTimeout(deb.current);
@@ -1520,12 +1532,12 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                   const currentUser = getCurrentUser();
                   if (currentUser) {
                     const result = await upsertCloudDeck(deckName, deck, commander, playerName, format, sideboard, coverCard);
-                    if (result.ok) alert(`✓ Mazo "${deckName}" actualizado ☁`);
-                    else alert(`✗ Error: ${result.error}`);
+                    if (result.ok) addToast(`Mazo "${deckName}" actualizado ☁`);
+                    else addToast(`Error: ${result.error}`, "var(--color-damage)");
                   } else {
                     saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard, coverCard);
                     setSavedDecks(getSavedDecks());
-                    alert(`✓ Mazo "${deckName}" actualizado`);
+                    addToast(`Mazo "${deckName}" actualizado`);
                   }
                 }} style={{ padding: "3px 10px", borderRadius: 6, border: "none", background: "var(--color-warning)", color: "var(--color-black)", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>
                   Reemplazar
@@ -1537,13 +1549,13 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                   const currentUser = getCurrentUser();
                   if (currentUser) {
                     const result = await saveCloudDeck(newName, deck, commander, playerName, format, sideboard, coverCard);
-                    if (result.ok) { setDeckName(newName); alert(`✓ Guardado como "${newName}" ☁`); }
-                    else alert(`✗ Error: ${result.error}`);
+                    if (result.ok) { setDeckName(newName); addToast(`Guardado como "${newName}" ☁`); }
+                    else addToast(`Error: ${result.error}`, "var(--color-damage)");
                   } else {
                     saveDeckToStorage(newName, deck, commander, playerName, format, sideboard, coverCard);
                     setDeckName(newName);
                     setSavedDecks(getSavedDecks());
-                    alert(`✓ Guardado como "${newName}"`);
+                    addToast(`Guardado como "${newName}"`);
                   }
                 }} style={{ padding: "3px 10px", borderRadius: 6, border: "1px solid var(--border-strong)", background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11 }}>
                   Guardar como nuevo
@@ -1552,7 +1564,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
               </div>
             ) : (
               <button onClick={async () => {
-                if (formatHasCommander(format) && !commander) return alert(`Selecciona un comandante para el formato ${format.label}.`);
+                if (formatHasCommander(format) && !commander) return addToast(`Selecciona un comandante para el formato ${format.label}.`, "var(--color-warning)");
                 if (!confirmBanned()) return;
                 const currentUser = getCurrentUser();
                 const existsLocal = getSavedDecks().some(d => d.name === deckName);
@@ -1568,12 +1580,12 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                 }
                 if (currentUser) {
                   const result = await saveCloudDeck(deckName, deck, commander, playerName, format, sideboard, coverCard);
-                  if (result.ok) alert(`✓ Mazo "${deckName}" guardado como ${format.label} ☁`);
-                  else alert(`✗ Error: ${result.error}`);
+                  if (result.ok) addToast(`Mazo "${deckName}" guardado como ${format.label} ☁`);
+                  else addToast(`Error: ${result.error}`, "var(--color-damage)");
                 } else {
                   saveDeckToStorage(deckName, deck, commander, playerName, format, sideboard, coverCard);
                   setSavedDecks(getSavedDecks());
-                  alert(`✓ Mazo "${deckName}" guardado como ${format.label}`);
+                  addToast(`Mazo "${deckName}" guardado como ${format.label}`);
                 }
               }}
                 style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "linear-gradient(90deg,var(--bg-life),#2a6a2a)", color: "var(--color-life)", cursor: "pointer", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
@@ -1819,8 +1831,8 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
             })()}
             <div style={{ marginLeft: "auto" }}>
               <button onClick={() => {
-                if (formatHasCommander(format) && !commander) return alert(`Selecciona un Comandante para el formato ${format.label}.`);
-                if (deck.length < 5) return alert("Agrega más cartas.");
+                if (formatHasCommander(format) && !commander) return addToast(`Selecciona un Comandante para el formato ${format.label}.`, "var(--color-warning)");
+                if (deck.length < 5) return addToast("Agrega más cartas.", "var(--color-warning)");
                 const deckWithoutCmd = !commander ? deck : deck.filter(c =>
                   c.instanceId !== commander.instanceId &&
                   c.name !== commander.name &&
@@ -1938,6 +1950,16 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
       {hover && <HoverZoom card={hover.card} x={hover.x} y={hover.y} />}
       {/* Save format picker */}
 
+      {/* Toast notifications */}
+      {toasts.length > 0 && (
+        <div style={{ position: "fixed", bottom: 20, right: 14, display: "flex", flexDirection: "column", gap: 8, zIndex: 9500, pointerEvents: "none" }}>
+          {toasts.map(t => (
+            <div key={t.id} className="toast-item" style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--bg-elevated)", border: `1px solid ${t.color}55`, borderLeft: `3px solid ${t.color}`, borderRadius: 9, padding: "10px 16px", fontSize: 13, color: "var(--text-primary)", fontFamily: "'Crimson Text',Georgia,serif", fontWeight: 600, maxWidth: 320, boxShadow: "0 6px 24px #000c" }}>
+              {t.msg}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1963,6 +1985,12 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
     return displayName ? `Mazo de ${displayName}` : "Mi Mazo";
   });
   const [myId] = useState(() => getOrCreatePlayerId(getCurrentUser()));
+  const [toasts, setToasts] = useState([]); // [{id, msg, color}]
+  const addToast = (msg, color = "var(--color-life)") => {
+    const id = Date.now() + Math.random();
+    setToasts(t => [...t.slice(-3), { id, msg, color }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3200);
+  };
 
   // Auto-reconnect when resuming a session
   useEffect(() => {
@@ -2168,7 +2196,7 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
               </button>
               <div style={{ textAlign: "center", color: "var(--gray-dark)" }}>— o únete con un código —</div>
               <div style={{ display: "flex", gap: 8 }}>
-                <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase())} placeholder="Código (ej. XK9F)" maxLength={4}
+                <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase().slice(0, 6))} placeholder="Código (ej. XK9F2L)" maxLength={6}
                   onKeyDown={e => e.key === "Enter" && joinRoom()}
                   style={{ flex: 1, padding: "13px 16px", borderRadius: 10, border: "1px solid var(--border-strong)", background: "var(--bg-elevated)", color: "var(--text-primary)", fontSize: 20, outline: "none", textAlign: "center", letterSpacing: 6, fontWeight: 700 }} />
                 <button onClick={joinRoom} style={{ padding: "13px 20px", borderRadius: 10, border: "none", background: "#1a3a6a", color: "var(--color-info)", fontSize: 14, cursor: "pointer", fontWeight: 700 }}>
@@ -2212,10 +2240,11 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
                     const user = getCurrentUser();
                     if (user) {
                       const res = await saveCloudDeck(lobbyDeckName, deckData.deck, deckData.commander, name, deckData.format);
-                      alert(res.ok ? `✓ Mazo "${lobbyDeckName}" guardado en la nube ☁` : `✗ Error: ${res.error}`);
+                      if (res.ok) addToast(`Mazo "${lobbyDeckName}" guardado en la nube ☁`);
+                      else addToast(`Error: ${res.error}`, "var(--color-damage)");
                     } else {
                       saveDeckToStorage(lobbyDeckName, deckData.deck, deckData.commander, name, deckData.format);
-                      alert(`✓ Mazo "${lobbyDeckName}" guardado`);
+                      addToast(`Mazo "${lobbyDeckName}" guardado`);
                     }
                   }}
                     style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: "linear-gradient(90deg,#1a6a1a,var(--bg-life))", color: "var(--color-life)", cursor: "pointer", fontSize: 12, fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap" }}>
@@ -2326,6 +2355,16 @@ function Lobby({ playerName: initialName, deckData, onGameStart, onHome, resumeC
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {/* Toast notifications */}
+      {toasts.length > 0 && (
+        <div style={{ position: "fixed", bottom: 20, right: 14, display: "flex", flexDirection: "column", gap: 8, zIndex: 9500, pointerEvents: "none" }}>
+          {toasts.map(t => (
+            <div key={t.id} className="toast-item" style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--bg-elevated)", border: `1px solid ${t.color}55`, borderLeft: `3px solid ${t.color}`, borderRadius: 9, padding: "10px 16px", fontSize: 13, color: "var(--text-primary)", fontFamily: "'Crimson Text',Georgia,serif", fontWeight: 600, maxWidth: 320, boxShadow: "0 6px 24px #000c" }}>
+              {t.msg}
+            </div>
+          ))}
         </div>
       )}
     </>
@@ -7029,19 +7068,19 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
             {/* Join code input */}
             {showJoin && (
               <div style={{ background: "var(--bg-elevated)", border: "1px solid #2a3a5a", borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Código de sala (4 letras)</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Código de sala (6 letras)</div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase().slice(0, 4))}
-                    onKeyDown={e => e.key === "Enter" && joinCode.length === 4 && onJoinGame(joinCode)}
-                    placeholder="XKJF" maxLength={4} autoFocus
-                    style={{ flex: 1, padding: "12px 14px", borderRadius: 9, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 22, outline: "none", textAlign: "center", letterSpacing: 8, fontWeight: 800 }} />
-                  <button onClick={() => joinCode.length === 4 && onJoinGame(joinCode)} disabled={joinCode.length < 4}
-                    style={{ padding: "12px 18px", borderRadius: 9, border: "none", background: joinCode.length === 4 ? "#1a4a8a" : "#111", color: joinCode.length === 4 ? "var(--color-info)" : "var(--gray-darker)", fontSize: 13, cursor: joinCode.length === 4 ? "pointer" : "default", fontWeight: 700 }}>
+                  <input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase().slice(0, 6))}
+                    onKeyDown={e => e.key === "Enter" && joinCode.length === 6 && onJoinGame(joinCode)}
+                    placeholder="XKJF92" maxLength={6} autoFocus
+                    style={{ flex: 1, padding: "12px 14px", borderRadius: 9, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 22, outline: "none", textAlign: "center", letterSpacing: 6, fontWeight: 800 }} />
+                  <button onClick={() => joinCode.length === 6 && onJoinGame(joinCode)} disabled={joinCode.length < 6}
+                    style={{ padding: "12px 18px", borderRadius: 9, border: "none", background: joinCode.length === 6 ? "#1a4a8a" : "#111", color: joinCode.length === 6 ? "var(--color-info)" : "var(--gray-darker)", fontSize: 13, cursor: joinCode.length === 6 ? "pointer" : "default", fontWeight: 700 }}>
                     Unirse →
                   </button>
                 </div>
-                <button onClick={() => joinCode.length === 4 && onSpectate && onSpectate(joinCode)} disabled={joinCode.length < 4}
-                  style={{ width: "100%", padding: "8px 0", borderRadius: 8, border: "1px solid #2a3a4a", background: "transparent", color: joinCode.length === 4 ? "var(--text-muted)" : "var(--gray-deep)", cursor: joinCode.length === 4 ? "pointer" : "default", fontSize: 12 }}>
+                <button onClick={() => joinCode.length === 6 && onSpectate && onSpectate(joinCode)} disabled={joinCode.length < 6}
+                  style={{ width: "100%", padding: "8px 0", borderRadius: 8, border: "1px solid #2a3a4a", background: "transparent", color: joinCode.length === 6 ? "var(--text-muted)" : "var(--gray-deep)", cursor: joinCode.length === 6 ? "pointer" : "default", fontSize: 12 }}>
                   👁 Entrar como espectador
                 </button>
               </div>
