@@ -5970,7 +5970,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                           <CardTile card={card} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
                         </div>
                         {canToLibrary && (
-                          <div style={{ position: "absolute", top: 4, left: 4, display: "flex", gap: 3, zIndex: 5 }}>
+                          <div style={{ position: "absolute", top: 4, left: 4, display: "flex", gap: 3, zIndex: 60 }}>
                             <button onClick={() => moveCard(card, showZone.zone, "library_top")} title="A biblioteca (arriba)"
                               style={{ width: 24, height: 20, borderRadius: 4, border: "1px solid var(--gold)", background: "rgba(20,16,0,0.92)", color: "var(--gold)", cursor: "pointer", fontSize: 10, padding: 0, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>📚↑</button>
                             <button onClick={() => moveCard(card, showZone.zone, "library_bottom")} title="A biblioteca (abajo)"
