@@ -4857,7 +4857,21 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       </div>
 
       {/* Graveyard */}
-      <div style={{ position: "relative" }} onClick={() => setShowZone({ pid: p.id, zone: "graveyard" })}>
+      <div style={{ position: "relative" }}
+        onClick={() => setShowZone({ pid: p.id, zone: "graveyard" })}
+        onContextMenu={e => {
+          if (!isMe || !p.graveyard.length) return;
+          e.preventDefault(); e.stopPropagation();
+          setCtxMenu({
+            x: e.clientX, y: e.clientY, title: `🪦 Cementerio (${p.graveyard.length})`,
+            items: [
+              { label: "📚 Carta de arriba → Biblioteca (tope)", action: () => moveCard(p.graveyard[0], "graveyard", "library_top") },
+              { label: "📚 Carta de arriba → Biblioteca (fondo)", action: () => moveCard(p.graveyard[0], "graveyard", "library_bottom") },
+              "---",
+              { label: "👁 Ver cementerio completo", action: () => { setCtxMenu(null); setShowZone({ pid: p.id, zone: "graveyard" }); } },
+            ]
+          });
+        }}>
         {p.graveyard.length > 0
           ? <CardTile card={p.graveyard[0]} small onClick={() => setShowZone({ pid: p.id, zone: "graveyard" })} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
           : <div style={{ width: 52, height: 73, borderRadius: 5, border: "2px dashed var(--border-panel)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 2, cursor: "pointer" }}><div style={{ fontSize: 14 }}>🪦</div><div style={{ fontSize: 9, color: "var(--gray-dark)" }}>0</div></div>}
@@ -4865,7 +4879,21 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       </div>
 
       {/* Exile */}
-      <div style={{ position: "relative" }} onClick={() => setShowZone({ pid: p.id, zone: "exile" })}>
+      <div style={{ position: "relative" }}
+        onClick={() => setShowZone({ pid: p.id, zone: "exile" })}
+        onContextMenu={e => {
+          if (!isMe || !p.exile.length) return;
+          e.preventDefault(); e.stopPropagation();
+          setCtxMenu({
+            x: e.clientX, y: e.clientY, title: `✨ Exilio (${p.exile.length})`,
+            items: [
+              { label: "📚 Carta de arriba → Biblioteca (tope)", action: () => moveCard(p.exile[0], "exile", "library_top") },
+              { label: "📚 Carta de arriba → Biblioteca (fondo)", action: () => moveCard(p.exile[0], "exile", "library_bottom") },
+              "---",
+              { label: "👁 Ver exilio completo", action: () => { setCtxMenu(null); setShowZone({ pid: p.id, zone: "exile" }); } },
+            ]
+          });
+        }}>
         {p.exile.length > 0
           ? <CardTile card={p.exile[0]} small onClick={() => setShowZone({ pid: p.id, zone: "exile" })} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
           : <div style={{ width: 52, height: 73, borderRadius: 5, border: "2px dashed var(--border-panel)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 2, cursor: "pointer" }}><div style={{ fontSize: 14 }}>✨</div><div style={{ fontSize: 9, color: "var(--gray-dark)" }}>0</div></div>}
@@ -5335,7 +5363,21 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   {/* Graveyard */}
                   <div style={zoneSlotStyle()}>
                     <div style={labelStyle}>Cem.</div>
-                    <div onClick={() => setShowZone({ pid: p.id, zone: "graveyard" })} style={{ cursor: "pointer" }}>
+                    <div onClick={() => setShowZone({ pid: p.id, zone: "graveyard" })}
+                      onContextMenu={e => {
+                        if (!isMe || !p.graveyard.length) return;
+                        e.preventDefault(); e.stopPropagation();
+                        setCtxMenu({
+                          x: e.clientX, y: e.clientY, title: `🪦 Cementerio (${p.graveyard.length})`,
+                          items: [
+                            { label: "📚 Carta de arriba → Biblioteca (tope)", action: () => moveCard(p.graveyard[0], "graveyard", "library_top") },
+                            { label: "📚 Carta de arriba → Biblioteca (fondo)", action: () => moveCard(p.graveyard[0], "graveyard", "library_bottom") },
+                            "---",
+                            { label: "👁 Ver cementerio completo", action: () => { setCtxMenu(null); setShowZone({ pid: p.id, zone: "graveyard" }); } },
+                          ]
+                        });
+                      }}
+                      style={{ cursor: "pointer" }}>
                       {p.graveyard.length > 0
                         ? <CardTile card={p.graveyard[0]} small onClick={() => setShowZone({ pid: p.id, zone: "graveyard" })} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
                         : <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed var(--border-panel)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1 }}><div style={{ fontSize: 12 }}>🪦</div><div style={{ fontSize: 8, color: "var(--gray-dark)" }}>{p.graveyard.length}</div></div>}
@@ -5345,7 +5387,21 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   {/* Exile */}
                   <div style={zoneSlotStyle()}>
                     <div style={labelStyle}>Exilio</div>
-                    <div onClick={() => setShowZone({ pid: p.id, zone: "exile" })} style={{ cursor: "pointer" }}>
+                    <div onClick={() => setShowZone({ pid: p.id, zone: "exile" })}
+                      onContextMenu={e => {
+                        if (!isMe || !p.exile.length) return;
+                        e.preventDefault(); e.stopPropagation();
+                        setCtxMenu({
+                          x: e.clientX, y: e.clientY, title: `✨ Exilio (${p.exile.length})`,
+                          items: [
+                            { label: "📚 Carta de arriba → Biblioteca (tope)", action: () => moveCard(p.exile[0], "exile", "library_top") },
+                            { label: "📚 Carta de arriba → Biblioteca (fondo)", action: () => moveCard(p.exile[0], "exile", "library_bottom") },
+                            "---",
+                            { label: "👁 Ver exilio completo", action: () => { setCtxMenu(null); setShowZone({ pid: p.id, zone: "exile" }); } },
+                          ]
+                        });
+                      }}
+                      style={{ cursor: "pointer" }}>
                       {p.exile.length > 0
                         ? <CardTile card={p.exile[0]} small onClick={() => setShowZone({ pid: p.id, zone: "exile" })} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
                         : <div style={{ width: cardW, height: cardH, borderRadius: 5, border: "2px dashed var(--border-panel)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 1 }}><div style={{ fontSize: 12 }}>✨</div><div style={{ fontSize: 8, color: "var(--gray-dark)" }}>{p.exile.length}</div></div>}
