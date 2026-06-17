@@ -1315,7 +1315,11 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
   };
 
   const setCover = (card) => {
-    const cover = { image_url: card.image_url || card.image_uris?.normal, name: card.name || card.printed_name };
+    const cover = {
+      image_url: card.image_url || card.image_uris?.normal,
+      art_crop: card.image_uris?.art_crop || card.card_faces?.[0]?.image_uris?.art_crop || null,
+      name: card.name || card.printed_name
+    };
     setCoverCard(cover);
     const currentUser = getCurrentUser();
     if (currentUser) {
@@ -6602,43 +6606,33 @@ function deckCoverInfo(deck) {
   if (!cols.length) gradient = "linear-gradient(135deg, #1a1a2e, #16213e, #0f3460)";
   else if (cols.length === 1) gradient = `linear-gradient(135deg, ${cols[0]}cc, #111 80%)`;
   else gradient = `linear-gradient(135deg, ${cols.map((c, i) => `${c} ${Math.round(i * 100 / (cols.length - 1))}%`).join(", ")})`;
-  const imageUrl = deck.coverCard?.image_url || deck.commander?.image_url || null;
+  const imageUrl = deck.coverCard?.art_crop || deck.coverCard?.image_url ||
+    deck.commander?.image_uris?.art_crop || deck.commander?.card_faces?.[0]?.image_uris?.art_crop ||
+    deck.commander?.image_url || null;
   return { imageUrl, gradient, colorId };
 }
 
 // ─── COLOR PIPS ──────────────────────────────────────────────────────────────
 function ColorPips({ identity }: { identity: string[] }) {
-  const colorMap = {
-    W: { bg: "#f0e68c", border: "#c8a800", letter: "W" },
-    U: { bg: "#4a90d9", border: "#2a5a9a", letter: "U" },
-    B: { bg: "#888", border: "#444", letter: "B" },
-    R: { bg: "#cc4422", border: "#aa2200", letter: "R" },
-    G: { bg: "#338844", border: "#226633", letter: "G" },
-  };
   if (!identity || identity.length === 0) return <span style={{ fontSize: 10, color: "var(--gray-dark)" }}>Incoloro</span>;
   return (
     <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-      {identity.map((c, i) => {
-        const col = colorMap[c] || { bg: "#555", border: "#333", letter: c };
-        return (
-          <div key={i} style={{ width: 14, height: 14, borderRadius: "50%", background: col.bg, border: `1px solid ${col.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 800, color: "#fff", flexShrink: 0, textShadow: "0 1px 2px rgba(0,0,0,0.7)" }}>
-            {col.letter}
-          </div>
-        );
-      })}
+      {identity.map((c, i) => (
+        <img key={i} src={`https://svgs.scryfall.io/card-symbols/${c}.svg`} alt={c} title={c}
+          style={{ width: 15, height: 15, borderRadius: "50%", flexShrink: 0, boxShadow: "0 1px 2px rgba(0,0,0,0.5)" }} />
+      ))}
     </div>
   );
 }
 
 // ─── DECK GRID CARD ───────────────────────────────────────────────────────────
-function DeckGridCard({ deck, onPlay, onEdit, onDelete, onView, playerLabel }: { deck: any, onPlay?: any, onEdit?: any, onDelete?: any, onView?: any, playerLabel?: string }) {
+function DeckGridCard({ deck, onPlay, onEdit, onDelete, onView }: { deck: any, onPlay?: any, onEdit?: any, onDelete?: any, onView?: any }) {
   const [hovered, setHovered] = React.useState(false);
   const { imageUrl: imgUrl, gradient, colorId } = deckCoverInfo(deck);
   const identity = colorId;
   const deckName = deck.name || "Sin nombre";
-  const cardCount = (deck.deck || []).length + (deck.commander ? 1 : 0);
-  const playerName = playerLabel || deck.player_name || deck.playerName || "";
-  const playerInitial = playerName ? playerName[0].toUpperCase() : "?";
+  const cmd = deck.commander;
+  const cardCount = (deck.deck || []).filter(c => !cmd || (c.name !== cmd.name && c.id !== cmd.id)).length + (cmd ? 1 : 0);
 
   return (
     <div
@@ -6659,7 +6653,7 @@ function DeckGridCard({ deck, onPlay, onEdit, onDelete, onView, playerLabel }: {
       {/* Art area */}
       <div style={{ position: "relative", height: 155, overflow: "hidden" }}>
         {imgUrl
-          ? <img src={imgUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "20% 15%", display: "block" }} />
+          ? <img src={imgUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }} />
           : <div style={{ width: "100%", height: "100%", background: gradient, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40 }}>⚔</div>}
         {/* Gradient overlay */}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 60, background: "linear-gradient(to top, #161616 0%, transparent 100%)", pointerEvents: "none" }} />
@@ -6688,13 +6682,6 @@ function DeckGridCard({ deck, onPlay, onEdit, onDelete, onView, playerLabel }: {
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <ColorPips identity={identity} />
           <span style={{ fontSize: 10, color: "var(--gray-dark)" }}>| 🏷 Sin etiquetas</span>
-        </div>
-        {/* Player row */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{ width: 20, height: 20, borderRadius: "50%", background: "linear-gradient(135deg,var(--gold),var(--gold-dark))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: "#0a0500", flexShrink: 0 }}>
-            {playerInitial}
-          </div>
-          <span style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{playerName || "Sin jugador"}</span>
           <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--gray-dark)" }}>{cardCount} cartas</span>
         </div>
       </div>
@@ -6944,7 +6931,6 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
               <DeckGridCard
                 key={d.id || d.name || i}
                 deck={d}
-                playerLabel={d.player_name || d.playerName || ""}
                 onView={(deck) => { setDeckTypeFilter([]); setViewDeck(deck); }}
                 onEdit={(deck) => {
                   onEditDeck({ deck: deck.deck, commander: deck.commander, playerName: deck.player_name || deck.playerName, name: deck.name, format: deck.format, sideboard: deck.sideboard });
