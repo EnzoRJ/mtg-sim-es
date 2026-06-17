@@ -4413,6 +4413,17 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     updMe(p => ({ ...p, [from]: p[from].filter(c => c.instanceId !== card.instanceId), [destKey]: to === "library_top" ? [card, ...p.library] : to === "library_bottom" ? [...p.library, card] : to === "hand" ? [...p.hand, card] : [card, ...(p[destKey] || [])] }), `${players[myId]?.name}: ${getCardName(card)} → ${toLabel}.`);
     setCtxMenu(null);
   };
+  const moveZoneToLibrary = (fromZone, dest) => {
+    const zoneLabel = fromZone === "graveyard" ? "cementerio" : "exilio";
+    const destLabel = dest === "library_top" ? "arriba" : "abajo";
+    updMe(p => {
+      const cards = p[fromZone] || [];
+      if (!cards.length) return p;
+      const newLib = dest === "library_top" ? [...cards, ...p.library] : [...p.library, ...cards];
+      return { ...p, [fromZone]: [], library: newLib };
+    }, `${players[myId]?.name}: envía todo el ${zoneLabel} a la biblioteca (${destLabel}).`);
+    setCtxMenu(null);
+  };
   const playCommander = () => {
     updMe(p => {
       if (!p.commandZone.length) return p;
@@ -4868,6 +4879,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
               { label: "📚 Carta de arriba → Biblioteca (tope)", action: () => moveCard(p.graveyard[0], "graveyard", "library_top") },
               { label: "📚 Carta de arriba → Biblioteca (fondo)", action: () => moveCard(p.graveyard[0], "graveyard", "library_bottom") },
               "---",
+              { label: "📚 Todo el cementerio → Biblioteca (tope)", action: () => moveZoneToLibrary("graveyard", "library_top"), color: "var(--gold)" },
+              { label: "📚 Todo el cementerio → Biblioteca (fondo)", action: () => moveZoneToLibrary("graveyard", "library_bottom"), color: "var(--gold)" },
+              "---",
               { label: "👁 Ver cementerio completo", action: () => { setCtxMenu(null); setShowZone({ pid: p.id, zone: "graveyard" }); } },
             ]
           });
@@ -4889,6 +4903,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             items: [
               { label: "📚 Carta de arriba → Biblioteca (tope)", action: () => moveCard(p.exile[0], "exile", "library_top") },
               { label: "📚 Carta de arriba → Biblioteca (fondo)", action: () => moveCard(p.exile[0], "exile", "library_bottom") },
+              "---",
+              { label: "📚 Todo el exilio → Biblioteca (tope)", action: () => moveZoneToLibrary("exile", "library_top"), color: "var(--gold)" },
+              { label: "📚 Todo el exilio → Biblioteca (fondo)", action: () => moveZoneToLibrary("exile", "library_bottom"), color: "var(--gold)" },
               "---",
               { label: "👁 Ver exilio completo", action: () => { setCtxMenu(null); setShowZone({ pid: p.id, zone: "exile" }); } },
             ]
@@ -5373,6 +5390,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                             { label: "📚 Carta de arriba → Biblioteca (tope)", action: () => moveCard(p.graveyard[0], "graveyard", "library_top") },
                             { label: "📚 Carta de arriba → Biblioteca (fondo)", action: () => moveCard(p.graveyard[0], "graveyard", "library_bottom") },
                             "---",
+                            { label: "📚 Todo el cementerio → Biblioteca (tope)", action: () => moveZoneToLibrary("graveyard", "library_top"), color: "var(--gold)" },
+                            { label: "📚 Todo el cementerio → Biblioteca (fondo)", action: () => moveZoneToLibrary("graveyard", "library_bottom"), color: "var(--gold)" },
+                            "---",
                             { label: "👁 Ver cementerio completo", action: () => { setCtxMenu(null); setShowZone({ pid: p.id, zone: "graveyard" }); } },
                           ]
                         });
@@ -5396,6 +5416,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                           items: [
                             { label: "📚 Carta de arriba → Biblioteca (tope)", action: () => moveCard(p.exile[0], "exile", "library_top") },
                             { label: "📚 Carta de arriba → Biblioteca (fondo)", action: () => moveCard(p.exile[0], "exile", "library_bottom") },
+                            "---",
+                            { label: "📚 Todo el exilio → Biblioteca (tope)", action: () => moveZoneToLibrary("exile", "library_top"), color: "var(--gold)" },
+                            { label: "📚 Todo el exilio → Biblioteca (fondo)", action: () => moveZoneToLibrary("exile", "library_bottom"), color: "var(--gold)" },
                             "---",
                             { label: "👁 Ver exilio completo", action: () => { setCtxMenu(null); setShowZone({ pid: p.id, zone: "exile" }); } },
                           ]
@@ -5917,7 +5940,21 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
               )}
               {isSbOwner && <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10 }}>Click izquierdo → a la mano · Click derecho → más opciones</div>}
               {(showZone.zone === "graveyard" || showZone.zone === "exile") && showZone.pid === myId && (
-                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10 }}>📚 → enviar a biblioteca · Click derecho → más opciones</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>📚 → enviar a biblioteca · Click derecho → más opciones</div>
+                  {zoneCards.length > 0 && (
+                    <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+                      <button onClick={() => { moveZoneToLibrary(showZone.zone, "library_top"); setShowZone(null); setZoneFilter(""); }}
+                        style={{ padding: "4px 9px", borderRadius: 6, border: "1px solid var(--gold)", background: "#1a1400", color: "var(--gold)", cursor: "pointer", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
+                        📚 Todo → Biblioteca (tope)
+                      </button>
+                      <button onClick={() => { moveZoneToLibrary(showZone.zone, "library_bottom"); setShowZone(null); setZoneFilter(""); }}
+                        style={{ padding: "4px 9px", borderRadius: 6, border: "1px solid var(--gold)", background: "#1a1400", color: "var(--gold)", cursor: "pointer", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>
+                        📚 Todo → Biblioteca (fondo)
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
               {/* Cards grid */}
               <div style={{ overflowY: "auto", flex: 1 }}>
