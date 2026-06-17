@@ -4408,8 +4408,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   };
   const moveCard = (card, from, to) => {
     if (from === "battlefield") setRow2Cards(s => { const n = new Set(s); n.delete(card.instanceId); return n; });
-    const toLabel = to === "graveyard" ? "cementerio" : to === "exile" ? "exilio" : to === "hand" ? "mano" : to === "sideboard" ? "sideboard" : "biblioteca";
-    updMe(p => ({ ...p, [from]: p[from].filter(c => c.instanceId !== card.instanceId), [to]: to === "library_top" ? [card, ...p.library] : to === "library_bottom" ? [...p.library, card] : to === "hand" ? [...p.hand, card] : [card, ...(p[to] || [])] }), `${players[myId]?.name}: ${getCardName(card)} → ${toLabel}.`);
+    const toLabel = to === "graveyard" ? "cementerio" : to === "exile" ? "exilio" : to === "hand" ? "mano" : to === "sideboard" ? "sideboard" : to === "library_top" ? "biblioteca (arriba)" : to === "library_bottom" ? "biblioteca (abajo)" : "biblioteca";
+    const destKey = (to === "library_top" || to === "library_bottom") ? "library" : to;
+    updMe(p => ({ ...p, [from]: p[from].filter(c => c.instanceId !== card.instanceId), [destKey]: to === "library_top" ? [card, ...p.library] : to === "library_bottom" ? [...p.library, card] : to === "hand" ? [...p.hand, card] : [card, ...(p[destKey] || [])] }), `${players[myId]?.name}: ${getCardName(card)} → ${toLabel}.`);
     setCtxMenu(null);
   };
   const playCommander = () => {
@@ -5859,17 +5860,33 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                 </div>
               )}
               {isSbOwner && <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10 }}>Click izquierdo → a la mano · Click derecho → más opciones</div>}
+              {(showZone.zone === "graveyard" || showZone.zone === "exile") && showZone.pid === myId && (
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10 }}>📚 → enviar a biblioteca · Click derecho → más opciones</div>
+              )}
               {/* Cards grid */}
               <div style={{ overflowY: "auto", flex: 1 }}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-                  {visible.map(card => (
-                    <div key={card.instanceId}
-                      onClick={isSbOwner ? () => { moveCard(card, "sideboard", "hand"); setShowZone(null); setZoneFilter(""); } : undefined}
-                      onContextMenu={e => { setShowZone(null); setZoneFilter(""); openCardCtx(e, showZone.pid, card, showZone.zone, showZone.pid === myId); }}
-                      style={{ cursor: isSbOwner ? "pointer" : "default" }}>
-                      <CardTile card={card} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
-                    </div>
-                  ))}
+                  {visible.map(card => {
+                    const canToLibrary = (showZone.zone === "graveyard" || showZone.zone === "exile") && showZone.pid === myId;
+                    return (
+                      <div key={card.instanceId} style={{ position: "relative" }}>
+                        <div
+                          onClick={isSbOwner ? () => { moveCard(card, "sideboard", "hand"); setShowZone(null); setZoneFilter(""); } : undefined}
+                          onContextMenu={e => { setShowZone(null); setZoneFilter(""); openCardCtx(e, showZone.pid, card, showZone.zone, showZone.pid === myId); }}
+                          style={{ cursor: isSbOwner ? "pointer" : "default" }}>
+                          <CardTile card={card} onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
+                        </div>
+                        {canToLibrary && (
+                          <div style={{ position: "absolute", top: -6, left: -6, display: "flex", gap: 2, zIndex: 5 }}>
+                            <button onClick={() => moveCard(card, showZone.zone, "library_top")} title="A biblioteca (arriba)"
+                              style={{ width: 21, height: 18, borderRadius: 4, border: "1px solid var(--gold)", background: "#1a1400", color: "var(--gold)", cursor: "pointer", fontSize: 9, padding: 0, fontWeight: 800, lineHeight: 1 }}>📚↑</button>
+                            <button onClick={() => moveCard(card, showZone.zone, "library_bottom")} title="A biblioteca (abajo)"
+                              style={{ width: 21, height: 18, borderRadius: 4, border: "1px solid var(--gold)", background: "#1a1400", color: "var(--gold)", cursor: "pointer", fontSize: 9, padding: 0, fontWeight: 800, lineHeight: 1 }}>📚↓</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                   {visible.length === 0 && <div style={{ color: "var(--gray-dark)", padding: 18 }}>{q ? `Sin resultados para "${zoneFilter}"` : "Vacío"}</div>}
                 </div>
               </div>
