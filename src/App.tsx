@@ -5475,8 +5475,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                             <CardTile card={card} small
                               selected={selCard?.instanceId === card.instanceId}
                               onClick={() => setSelCard(s => s?.instanceId === card.instanceId ? null : card)}
-                              onDoubleClick={() => playCard(card, "hand")}
-                              onHover={(c, x, y) => setHover({ card: c, x, y })} onHoverEnd={() => setHover(null)} />
+                              onDoubleClick={() => { playCard(card, "hand"); setHover(null); }}
+                              onHover={isMobile ? undefined : (c, x, y) => setHover({ card: c, x, y })}
+                              onHoverEnd={isMobile ? undefined : () => setHover(null)} />
                           </div>
                         );
                       })
