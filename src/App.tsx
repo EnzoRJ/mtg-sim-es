@@ -4391,6 +4391,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   };
   const untapAll = () => { clearTimeout(lastCardActionTimer.current); setLastCardAction({ name: "Todo destapado", icon: "↺", color: "var(--color-life)" }); lastCardActionTimer.current = setTimeout(() => setLastCardAction(null), 3000); updMe(p => ({ ...p, battlefield: p.battlefield.map(c => ({ ...c, tapped: false })) }), `${players[myId]?.name} destapa todo.`); };
   const playCard = (card, from) => {
+    from = from === "lands" ? "battlefield" : from;
     const autoAbilities = cardAbilitiesFromKeywords(card);
     // Store both face URLs for MDFC cards so they can be flipped in-game
     const face_urls = card.card_faces?.length > 1
@@ -4407,6 +4408,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     setSelCard(null); setCtxMenu(null);
   };
   const moveCard = (card, from, to) => {
+    from = from === "lands" ? "battlefield" : from;
     if (from === "battlefield") setRow2Cards(s => { const n = new Set(s); n.delete(card.instanceId); return n; });
     const toLabel = to === "graveyard" ? "cementerio" : to === "exile" ? "exilio" : to === "hand" ? "mano" : to === "sideboard" ? "sideboard" : to === "library_top" ? "biblioteca (arriba)" : to === "library_bottom" ? "biblioteca (abajo)" : "biblioteca";
     const destKey = (to === "library_top" || to === "library_bottom") ? "library" : to;
@@ -4584,6 +4586,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   // ── Context menu for cards ──
   const cardCtxItems = (pid, card, zone, isMe) => {
     if (!isMe) return [];
+    zone = zone === "lands" ? "battlefield" : zone; // "lands" es solo una agrupación visual, no una zona real del estado
     const isCmd = isLegendary(card) && zone !== "commandZone";
     const cardIsCreature = isCreature(card);
     const cardIsLand = isLand(card);
