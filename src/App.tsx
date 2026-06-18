@@ -1695,8 +1695,10 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
             </div>
           )}
           {tab === "stats" && (() => {
-            const nonLands = deck.filter(c => !isLand(c));
-            const lands = deck.filter(c => isLand(c));
+            // Excluir al comandante de las estadísticas (no se "roba" de la biblioteca de 99)
+            const statsDeck = commander ? deck.filter(c => c.name !== commander.name && c.id !== commander.id) : deck;
+            const nonLands = statsDeck.filter(c => !isLand(c));
+            const lands = statsDeck.filter(c => isLand(c));
             const cmcBuckets = [0, 1, 2, 3, 4, 5, 6, 7].map(n => ({
               cmc: n,
               count: nonLands.filter(c => (n === 7 ? (c.cmc || 0) >= 7 : (c.cmc || 0) === n)).length,
@@ -1706,16 +1708,16 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
             const COLOR_MAP = { W: "#f8f8d0", U: "#4488cc", B: "#553366", R: "#cc4422", G: "#338844" };
             const colorCounts = Object.entries(COLOR_MAP).map(([sym, col]) => ({
               sym, col,
-              count: deck.filter(c => (c.color_identity || []).includes(sym)).length,
+              count: statsDeck.filter(c => (c.color_identity || []).includes(sym)).length,
             }));
             const types = [
-              { label: "Criaturas", icon: "🐉", count: deck.filter(c => isCreature(c) && !isLand(c)).length },
+              { label: "Criaturas", icon: "🐉", count: statsDeck.filter(c => isCreature(c) && !isLand(c)).length },
               { label: "Tierras", icon: "🌲", count: lands.length },
-              { label: "Instantáneos", icon: "⚡", count: deck.filter(c => c.type_line?.toLowerCase().includes("instant") || c.type_line?.toLowerCase().includes("instantáneo")).length },
-              { label: "Conjuros", icon: "📜", count: deck.filter(c => c.type_line?.toLowerCase().includes("sorcery") || c.type_line?.toLowerCase().includes("conjuro")).length },
-              { label: "Encantamientos", icon: "✨", count: deck.filter(c => c.type_line?.toLowerCase().includes("enchantment") || c.type_line?.toLowerCase().includes("encantamiento")).length },
-              { label: "Artefactos", icon: "⚙", count: deck.filter(c => c.type_line?.toLowerCase().includes("artifact") || c.type_line?.toLowerCase().includes("artefacto")).length },
-              { label: "Planeswalkers", icon: "👁", count: deck.filter(c => isPlaneswalker(c)).length },
+              { label: "Instantáneos", icon: "⚡", count: statsDeck.filter(c => c.type_line?.toLowerCase().includes("instant") || c.type_line?.toLowerCase().includes("instantáneo")).length },
+              { label: "Conjuros", icon: "📜", count: statsDeck.filter(c => c.type_line?.toLowerCase().includes("sorcery") || c.type_line?.toLowerCase().includes("conjuro")).length },
+              { label: "Encantamientos", icon: "✨", count: statsDeck.filter(c => c.type_line?.toLowerCase().includes("enchantment") || c.type_line?.toLowerCase().includes("encantamiento")).length },
+              { label: "Artefactos", icon: "⚙", count: statsDeck.filter(c => c.type_line?.toLowerCase().includes("artifact") || c.type_line?.toLowerCase().includes("artefacto")).length },
+              { label: "Planeswalkers", icon: "👁", count: statsDeck.filter(c => isPlaneswalker(c)).length },
             ];
             const avgCmc = nonLands.length ? (nonLands.reduce((s, c) => s + (c.cmc || 0), 0) / nonLands.length).toFixed(2) : "0.00";
             return (
@@ -1762,7 +1764,7 @@ function DeckBuilder({ onReady, onHome, initialDeck, initialCommander, initialPl
                         <span style={{ fontSize: 12, width: 16 }}>{t.icon}</span>
                         <span style={{ flex: 1, fontSize: 11, color: "var(--text-muted)" }}>{t.label}</span>
                         <div style={{ width: 80, height: 6, borderRadius: 3, background: "var(--bg-subtle)", overflow: "hidden" }}>
-                          <div style={{ height: "100%", borderRadius: 3, background: "var(--gold)", width: `${(t.count / deck.length) * 100}%` }} />
+                          <div style={{ height: "100%", borderRadius: 3, background: "var(--gold)", width: `${(t.count / (statsDeck.length || 1)) * 100}%` }} />
                         </div>
                         <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)", minWidth: 20, textAlign: "right" }}>{t.count}</span>
                       </div>
@@ -7253,7 +7255,7 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
                               <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</span>
                               {deckHasBanned(d) && <span title="Contiene cartas baneadas en este formato" style={{ fontSize: 9, background: "#4a0a0a", color: "#ff8888", borderRadius: 4, padding: "1px 5px", flexShrink: 0, fontWeight: 800 }}>🚫 BAN</span>}
                             </div>
-                            <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{(d.deck || []).length + (d.commander ? 1 : 0)} cartas{d.commander ? ` · ${d.commander.printed_name || d.commander.name}` : ""}</div>
+                            <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{(d.deck || []).filter(c => !d.commander || (c.name !== d.commander.name && c.id !== d.commander.id)).length + (d.commander ? 1 : 0)} cartas{d.commander ? ` · ${d.commander.printed_name || d.commander.name}` : ""}</div>
                           </div>
                           <button onClick={() => onNewGame({ deck: d.deck, commander: d.commander, playerName: d.player_name, format: d.format })}
                             title="Jugar" style={{ padding: "5px 10px", borderRadius: 6, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "var(--color-black)", fontWeight: 800, fontSize: 11, cursor: "pointer" }}>▶</button>
@@ -7335,7 +7337,7 @@ function HomeScreen({ onNewGame, onJoinGame, onEditDeck, onResumeSession, onClea
                             {deckHasBanned(d) && <span title="Contiene cartas baneadas en este formato" style={{ fontSize: 9, background: "#4a0a0a", color: "#ff8888", borderRadius: 4, padding: "1px 5px", flexShrink: 0, fontWeight: 800 }}>🚫 BAN</span>}
                           </div>}
                       <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>
-                        {d.deck.length + (d.commander ? 1 : 0)} cartas · {d.commander ? getCardName(d.commander) : "Sin comandante"}
+                        {(d.deck || []).filter(c => !d.commander || (c.name !== d.commander.name && c.id !== d.commander.id)).length + (d.commander ? 1 : 0)} cartas · {d.commander ? getCardName(d.commander) : "Sin comandante"}
                       </div>
                     </div>
 
