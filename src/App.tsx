@@ -5371,7 +5371,11 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   {/* Library */}
                   <div style={zoneSlotStyle()}>
                     <div style={labelStyle}>Bib.</div>
-                    <div onClick={isMe ? () => libActions.draw(p.id, 1) : undefined}
+                    <div onClick={e => {
+                        if (!isMe) return;
+                        if (isMobile) { setCtxMenu({ x: e.clientX, y: e.clientY, title: `Biblioteca (${p.library.length})`, items: libraryMenu(p, p.id, isMe, libActions) }); }
+                        else { libActions.draw(p.id, 1); }
+                      }}
                       onContextMenu={e => { if (!isMe) return; e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, title: `Biblioteca (${p.library.length})`, items: libraryMenu(p, p.id, isMe, libActions) }); }}
                       style={{ width: cardW, height: cardH, borderRadius: 5, overflow: "hidden", border: "2px solid #3a5a8a", cursor: isMe ? "pointer" : "default", position: "relative" }}>
                       <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,var(--bg-mana) 0%,var(--bg-mana) 40%,#1a0a2a 100%)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
