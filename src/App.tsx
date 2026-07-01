@@ -3697,6 +3697,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [mobileCardTap, setMobileCardTap] = useState(null); // { card, pid, zone, x, y }
   const [toasts, setToasts] = useState([]); // [{id, msg, color, icon}]
+  const [isPeeking, setIsPeeking] = useState(false);
   const [lifeDeltas, setLifeDeltas] = useState({}); // {pid: [{id, value}]}
   const [revealedCard, setRevealedCard] = useState(null); // {card, playerName, pid}
   const [lastCardAction, setLastCardAction] = useState(null); // {name, icon, color}
@@ -3708,6 +3709,13 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const pendingSync = useRef(null);
   const isMounted = useRef(true);
   const playerOrder = initialPlayers.map(p => p.id);
+  const anyModalCoveringField = !!(
+    viewTopModal || scryModal || searchLibModal || resolveModal ||
+    tokenModal || lifeHistoryOpen || cardMarkerModal || mulliganModal ||
+    counterModal || versionModal || diceModal || abilitiesModal ||
+    massLifeOpen || voteSetupOpen || voteState || showZone
+  );
+  useEffect(() => { if (!anyModalCoveringField) setIsPeeking(false); }, [anyModalCoveringField]);
   // Map pid → avatar for use in sub-components
   const avatarMap = Object.fromEntries(initialPlayers.map(p => [p.id, p.avatar || "🧙"]));
   const isMyTurn = !isSpectator && activePlayer === myId;
@@ -5919,7 +5927,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
 
       {/* Zone modal */}
-      {showZone && (() => {
+      {!isPeeking && showZone && (() => {
         const zoneCards = players[showZone.pid]?.[showZone.zone] || [];
         const q = zoneFilter.trim().toLowerCase();
         const visible = q ? zoneCards.filter(c => (c.printed_name || c.name || "").toLowerCase().includes(q) || (c.type_line || "").toLowerCase().includes(q)) : zoneCards;
@@ -5997,6 +6005,42 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           </div>
         );
       })()}
+
+      {/* ── Peek: Ver Campo de Juego ─────────────────────────────────── */}
+      {anyModalCoveringField && !isPeeking && (
+        <button
+          onClick={() => setIsPeeking(true)}
+          style={{
+            position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+            zIndex: 2000, padding: "10px 22px", borderRadius: 24,
+            border: "1px solid var(--gold-40)", background: "var(--bg-elevated)",
+            color: "var(--gold)", fontWeight: 700, fontSize: 13, cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 8,
+            boxShadow: "0 4px 20px #000a", fontFamily: "'Crimson Text',Georgia,serif",
+            whiteSpace: "nowrap",
+          }}
+        >
+          ⚔ Ver Campo de Juego
+        </button>
+      )}
+      {isPeeking && (
+        <button
+          onClick={() => setIsPeeking(false)}
+          style={{
+            position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+            zIndex: 2000, padding: "10px 26px", borderRadius: 24,
+            border: "2px solid var(--gold)", background: "var(--bg-elevated)",
+            color: "var(--gold)", fontWeight: 800, fontSize: 14, cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 8,
+            boxShadow: "0 4px 28px #000c", fontFamily: "'Crimson Text',Georgia,serif",
+            whiteSpace: "nowrap",
+          }}
+        >
+          ↩ Volver
+        </button>
+      )}
+      {/* ── Modales de pantalla completa (ocultos al hacer peek) ─────── */}
+      <div style={{ display: isPeeking ? "none" : "contents" }}>
 
       {/* View top modal */}
       {viewTopModal && (
@@ -6233,6 +6277,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           onClose={() => setVersionModal(null)}
         />
       )}
+      </div>{/* end peek wrapper */}
       {/* Mobile card quick-action overlay */}
       {mobileCardTap && isMobile && (() => {
         const ox = Math.max(8, Math.min(mobileCardTap.x - 90, window.innerWidth - 196));
