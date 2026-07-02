@@ -920,11 +920,12 @@ function ScryModal({ cards, onDone, title }) {
 function SearchLibModal({ library, graveyard, sideboard, zone, dest, onPick, onClose }) {
   const [q, setQ] = useState("");
   const [hover, setHover] = useState(null);
+  const [selectedIdx, setSelectedIdx] = useState(0);
+  const listRef = useRef(null);
   const cards = zone === "graveyard" ? (graveyard || []) : zone === "sideboard" ? (sideboard || []) : (library || []);
   const filtered = cards.filter(c => {
     if (!q.trim()) return true;
     const s = q.toLowerCase();
-    // Search in: printed name (es), original name (en), type line, oracle text
     return (
       (c.printed_name || "").toLowerCase().includes(s) ||
       (c.name || "").toLowerCase().includes(s) ||
@@ -934,6 +935,21 @@ function SearchLibModal({ library, graveyard, sideboard, zone, dest, onPick, onC
       (c.printed_text || "").toLowerCase().includes(s)
     );
   });
+  useEffect(() => { setSelectedIdx(0); }, [q]);
+  useEffect(() => {
+    const el = listRef.current?.children[selectedIdx];
+    el?.scrollIntoView({ block: "nearest" });
+  }, [selectedIdx]);
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIdx(i => Math.min(i + 1, filtered.length - 1)); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIdx(i => Math.max(i - 1, 0)); }
+      else if (e.key === "Enter" && filtered[selectedIdx]) { onPick(filtered[selectedIdx]); }
+      else if (e.key === "Escape") { onClose(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [filtered, selectedIdx]);
   const title = zone === "graveyard"
     ? (dest === "battlefield" ? "⚔ Reanimar al campo" : "☠ Reanimar a la mano")
     : "🔎 Buscar en Biblioteca";
@@ -942,13 +958,13 @@ function SearchLibModal({ library, graveyard, sideboard, zone, dest, onPick, onC
       <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 16, padding: 24, maxWidth: 500, width: "90vw", maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gold)", marginBottom: 12 }}>{title}</div>
         <input value={q} onChange={e => setQ(e.target.value)} maxLength={100} placeholder="Nombre de carta..." style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 13, outline: "none", marginBottom: 12 }} autoFocus />
-        <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
+        <div ref={listRef} style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
           {filtered.map((card, i) => (
             <div key={card.instanceId} onClick={() => onPick(card)}
-              onMouseEnter={e => { e.currentTarget.style.background = "#2a2a4e"; setHover({ card, x: e.clientX, y: e.clientY }); }}
+              onMouseEnter={e => { setSelectedIdx(i); setHover({ card, x: e.clientX, y: e.clientY }); }}
               onMouseMove={e => setHover(h => h ? { ...h, x: e.clientX, y: e.clientY } : h)}
-              onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-subtle)"; setHover(null); }}
-              style={{ padding: "8px 12px", borderRadius: 7, background: "var(--bg-subtle)", cursor: "pointer", fontSize: 12, display: "flex", gap: 10, alignItems: "center" }}>
+              onMouseLeave={() => setHover(null)}
+              style={{ padding: "8px 12px", borderRadius: 7, background: i === selectedIdx ? "#2a2a4e" : "var(--bg-subtle)", border: i === selectedIdx ? "1px solid var(--gold-40)" : "1px solid transparent", cursor: "pointer", fontSize: 12, display: "flex", gap: 10, alignItems: "center" }}>
               <span style={{ color: "var(--gray-mid)", minWidth: 24 }}>#{cards.indexOf(card) + 1}</span>
               {card.image_url && <img src={card.image_url} style={{ width: 28, height: 39, borderRadius: 3, objectFit: "cover", flexShrink: 0 }} />}
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -959,7 +975,10 @@ function SearchLibModal({ library, graveyard, sideboard, zone, dest, onPick, onC
           ))}
           {!filtered.length && <div style={{ color: "var(--gray-dark)", padding: "20px 0", textAlign: "center" }}>Sin resultados</div>}
         </div>
-        <button onClick={onClose} style={{ marginTop: 14, padding: "8px 0", borderRadius: 8, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer" }}>Cancelar</button>
+        <div style={{ display: "flex", gap: 6, marginTop: 14, alignItems: "center" }}>
+          <span style={{ fontSize: 10, color: "var(--gray-dark)", flex: 1 }}>↑↓ navegar · Enter seleccionar · Esc cerrar</span>
+          <button onClick={onClose} style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer" }}>Cancelar</button>
+        </div>
       </div>
       {hover && <HoverZoom card={hover.card} x={hover.x} y={hover.y} />}
     </div>
@@ -989,11 +1008,12 @@ function CounterModal({ card, onUpdate, onClose }) {
   const extraPow = (counts["+pow"] || 0) - (counts["-pow"] || 0);
   const extraTgh = (counts["+tgh"] || 0) - (counts["-tgh"] || 0);
 
-  const add = (type) => onUpdate([...current, type === "custom" ? (customName || "custom") : type]);
+  const [qty, setQty] = useState(1);
+  const add = (type) => { const t = type === "custom" ? (customName || "custom") : type; onUpdate([...current, ...Array(qty).fill(t)]); };
   const remove = (type) => {
-    const idx = current.lastIndexOf(type);
-    if (idx === -1) return;
-    const next = [...current]; next.splice(idx, 1); onUpdate(next);
+    let next = [...current];
+    for (let i = 0; i < qty; i++) { const idx = next.lastIndexOf(type); if (idx === -1) break; next.splice(idx, 1); }
+    onUpdate(next);
   };
   const clear = (type) => onUpdate(current.filter(c => c !== type));
 
@@ -1030,6 +1050,12 @@ function CounterModal({ card, onUpdate, onClose }) {
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)" }}>🎯 Contadores</div>
               <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{card.printed_name || card.name}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+                <span style={{ fontSize: 10, color: "var(--gray-mid)" }}>Cantidad:</span>
+                <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{ width: 20, height: 20, borderRadius: "50%", border: "none", background: "var(--bg-subtle)", color: "var(--text-primary)", cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0 }}>−</button>
+                <span style={{ fontSize: 14, fontWeight: 800, color: "var(--gold)", minWidth: 20, textAlign: "center" }}>{qty}</span>
+                <button onClick={() => setQty(q => Math.min(20, q + 1))} style={{ width: 20, height: 20, borderRadius: "50%", border: "none", background: "var(--bg-subtle)", color: "var(--text-primary)", cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0 }}>+</button>
+              </div>
             </div>
             <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 18 }}>✕</button>
           </div>
@@ -2671,8 +2697,14 @@ function NotesPanel({ notes, onChange, onClose }) {
 }
 
 // ─── Zoom Card Modal ──────────────────────────────────────────────────────────
-function ZoomCardModal({ card, onClose }) {
+function ZoomCardModal({ card, onClose, zone, isMe, onMove }) {
   if (!card) return null;
+  const moveActions = isMe && zone && onMove ? [
+    zone !== "battlefield" && { label: "▶ Campo", to: "battlefield" },
+    zone !== "graveyard"  && { label: "🪦 Cementerio", to: "graveyard" },
+    zone !== "exile"      && { label: "✨ Exilio", to: "exile" },
+    zone !== "hand"       && { label: "✋ Mano", to: "hand" },
+  ].filter(Boolean) : [];
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000d", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 900 }} onClick={onClose}>
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }} onClick={e => e.stopPropagation()}>
@@ -2686,7 +2718,17 @@ function ZoomCardModal({ card, onClose }) {
           {card.power && <div style={{ fontSize: 18, fontWeight: 800, color: "var(--gold)", marginTop: 10 }}>⚔ {card.power}/{card.toughness}</div>}
           {card.loyalty && <div style={{ fontSize: 18, fontWeight: 800, color: "var(--color-info)", marginTop: 10 }}>🔵 {card.loyalty}</div>}
           {(card.counters || []).length > 0 && <div style={{ fontSize: 12, color: "#88ffcc", marginTop: 8 }}>Contadores: {[...new Set(card.counters)].map(t => `${t}×${card.counters.filter(x => x === t).length}`).join(", ")}</div>}
-          <button onClick={onClose} style={{ marginTop: 16, padding: "8px 24px", borderRadius: 8, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer" }}>Cerrar</button>
+          {moveActions.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
+              {moveActions.map(a => (
+                <button key={a.to} onClick={() => { onMove(a.to); onClose(); }}
+                  style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--bg-well)", color: "var(--text-primary)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <button onClick={onClose} style={{ marginTop: 12, padding: "8px 24px", borderRadius: 8, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer" }}>Cerrar</button>
         </div>
       </div>
     </div>
@@ -3023,7 +3065,7 @@ function VoteModal({ voteState, players, playerOrder, myId, avatarMap, onVote, o
 }
 
 // ─── Dice Roller Modal ────────────────────────────────────────────────────────
-function DiceModal({ onClose, playerName, onRoll }) {
+function DiceModal({ onClose, playerName, onRoll, history = [] }) {
   const [result, setResult] = useState(null);
   const [rolling, setRolling] = useState(false);
   const [coinResult, setCoinResult] = useState(null);
@@ -3111,6 +3153,18 @@ function DiceModal({ onClose, playerName, onRoll }) {
           ))}
         </div>
 
+        {history.length > 0 && (
+          <div style={{ marginTop: 14, borderTop: "1px solid var(--bg-subtle)", paddingTop: 10 }}>
+            <div style={{ fontSize: 10, color: "var(--gray-dark)", fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>HISTORIAL</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+              {history.map((r, i) => (
+                <span key={i} style={{ fontSize: 11, fontWeight: 800, color: r.color || "var(--gold)", background: "var(--bg-well)", borderRadius: 6, padding: "2px 7px" }}>
+                  d{r.die}:{r.value}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
         <button onClick={onClose} style={{ marginTop: 16, width: "100%", padding: "8px 0", borderRadius: 8, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer", fontSize: 12 }}>Cerrar</button>
       </div>
     </div>
@@ -3520,10 +3574,12 @@ function CmdDmgPanel({ myPid, players, playerOrder, avatarMap, onAdjust, onAdjus
           <span style={{ fontSize: 12, color: "var(--text-primary)", flex: 1 }}>{players[pid]?.name}</span>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <button onClick={onMinus} style={{ width: 22, height: 22, borderRadius: "50%", border: "none", background: "var(--bg-damage)", color: "var(--color-damage)", cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0 }}>−</button>
-            <span style={{ fontSize: 16, fontWeight: 800, color: lethal ? "var(--color-red)" : warn ? "var(--color-orange)" : "var(--text-primary)", minWidth: 28, textAlign: "center" }}>{dmg}</span>
+            <span style={{ fontSize: 16, fontWeight: 800, color: lethal ? "var(--color-red)" : warn ? "var(--color-orange)" : "var(--text-primary)", minWidth: 28, textAlign: "center" }}>
+              {dmg}<span style={{ fontSize: 9, fontWeight: 400, color: "var(--gray-dark)" }}>/21</span>
+            </span>
             <button onClick={onPlus} style={{ width: 22, height: 22, borderRadius: "50%", border: "none", background: "var(--bg-life)", color: "var(--color-life)", cursor: "pointer", fontSize: 13, fontWeight: 800, padding: 0 }}>+</button>
           </div>
-          {lethal && <span style={{ fontSize: 10, color: "var(--color-red)", fontWeight: 800 }}>☠</span>}
+          {lethal && <span style={{ fontSize: 10, color: "var(--color-red)", fontWeight: 800, background: "#3a0000", borderRadius: 4, padding: "1px 5px" }}>☠ LETAL</span>}
         </div>
         <div style={{ height: 4, borderRadius: 2, background: "var(--bg-subtle)", overflow: "hidden" }}>
           <div style={{ height: "100%", borderRadius: 2, background: lethal ? "var(--color-red)" : warn ? "var(--color-orange)" : "var(--gold)", width: `${pct}%`, transition: "width 0.3s" }} />
@@ -3698,6 +3754,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [mobileCardTap, setMobileCardTap] = useState(null); // { card, pid, zone, x, y }
   const [toasts, setToasts] = useState([]); // [{id, msg, color, icon}]
   const [isPeeking, setIsPeeking] = useState(false);
+  const [chatLastRead, setChatLastRead] = useState(0);
+  const [diceHistory, setDiceHistory] = useState<{playerName:string,die:number|string,value:number|string,color:string}[]>([]);
   const [lifeDeltas, setLifeDeltas] = useState({}); // {pid: [{id, value}]}
   const [revealedCard, setRevealedCard] = useState(null); // {card, playerName, pid}
   const [lastCardAction, setLastCardAction] = useState(null); // {name, icon, color}
@@ -4681,7 +4739,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         }) }), `${players[myId]?.name}: voltea ${getCardName(card)}.`);
         setCtxMenu(null);
       }},
-      { label: "🔍 Ver carta", action: () => { setCtxMenu(null); setZoomCard(card); } },
+      { label: "🔍 Ver carta", action: () => { setCtxMenu(null); setZoomCard({ card, zone, isMe, onMove: (to) => moveCard(card, zone, to) }); } },
       // [Feature 5] Marcador de carta
       zone === "battlefield" && {
         label: card.marker ? `🏷️ Cambiar marcador (${card.marker.text || "●"})` : "🏷️ Marcar carta...",
@@ -5171,7 +5229,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                         setSelCard(s => s?.instanceId === card.instanceId ? null : card);
                       }
                     }}
-                    onDoubleClick={() => { if (isMe && !isMobile) { tapCard(card.instanceId); setSelCard(null); } else if (!isMe) setZoomCard(card); }}
+                    onDoubleClick={() => { if (isMe && !isMobile) { tapCard(card.instanceId); setSelCard(null); } else if (!isMe) setZoomCard({ card }); }}
                     onHover={isMobile ? undefined : (c, x, y) => setHover({ card: card.faceDown ? null : card, x, y })}
                     onHoverEnd={isMobile ? undefined : () => setHover(null)} />
                   {/* Ability icons — hidden for face-down cards */}
@@ -5764,7 +5822,6 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           {[
             { icon: "🪄", label: "Token", action: () => setTokenModal(true), color: "var(--color-poison)" },
             { icon: "🎲", label: "Dado", action: () => setDiceModal(true), color: "var(--color-orange)" },
-            { icon: "💬", label: "Chat", action: () => setChatOpen(o => !o), color: chatOpen ? "var(--color-info)" : "var(--gray-mid)" },
             { icon: "🎙", label: voiceEnabled ? (muted ? "Silenc." : "Voz ON") : "Voz", action: toggleVoice, color: voiceEnabled ? (muted ? "var(--color-damage)" : "var(--color-life-bright)") : "var(--gray-dark)" },
           ].map(btn => (
             <button key={btn.label} onClick={btn.action} title={btn.label}
@@ -5773,6 +5830,20 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
               <span style={{ fontSize: 7, lineHeight: 1 }}>{btn.label}</span>
             </button>
           ))}
+          {/* Chat button with unread badge */}
+          {(() => {
+            const unread = chatOpen ? 0 : Math.max(0, chatMessages.length - chatLastRead);
+            return (
+              <button onClick={() => { setChatOpen(o => { if (!o) setChatLastRead(chatMessages.length); return !o; }); }} title="Chat"
+                style={{ width: "100%", padding: "4px 2px", borderRadius: 6, border: "1px solid var(--bg-subtle)", background: "var(--bg-well)", color: chatOpen ? "var(--color-info)" : "var(--gray-mid)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 1, position: "relative" }}>
+                <span style={{ fontSize: 14, position: "relative" }}>
+                  💬
+                  {unread > 0 && <span style={{ position: "absolute", top: -4, right: -6, minWidth: 14, height: 14, borderRadius: 7, background: "var(--color-damage)", color: "#fff", fontSize: 8, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 2px" }}>{unread}</span>}
+                </span>
+                <span style={{ fontSize: 7, lineHeight: 1 }}>Chat</span>
+              </button>
+            );
+          })()}
 
           {/* Separator */}
           <div style={{ width: "80%", height: 1, background: "var(--bg-subtle)", margin: "2px 0", flexShrink: 0 }} />
@@ -6227,17 +6298,23 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       {diceModal && <DiceModal
         onClose={() => setDiceModal(false)}
         playerName={players[myId]?.name}
+        history={diceHistory}
         onRoll={(rollData) => {
-          // Show to myself
           setDiceResult(rollData);
+          setDiceHistory(h => [rollData, ...h].slice(0, 10));
           addLog(`🎲 ${rollData.playerName} tira d${rollData.die}: ${rollData.value}${rollData.value === rollData.die ? " 🎉" : rollData.value === 1 ? " 💀" : ""}`);
           setTimeout(() => setDiceResult(null), 4000);
-          // Broadcast to all others
           rt.current?.broadcast("dice_roll", rollData);
         }}
       />}
       {/* Zoom Card */}
-      {zoomCard && <ZoomCardModal card={zoomCard} onClose={() => setZoomCard(null)} />}
+      {zoomCard && <ZoomCardModal
+        card={zoomCard.card || zoomCard}
+        zone={zoomCard.zone}
+        isMe={zoomCard.isMe}
+        onMove={zoomCard.onMove}
+        onClose={() => setZoomCard(null)}
+      />}
 
       {/* Mulligan Modal */}
       {mulliganModal && (
@@ -6286,7 +6363,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         return (
           <div style={{ position: "fixed", inset: 0, zIndex: 480 }} onClick={() => setMobileCardTap(null)}>
             <div style={{ position: "fixed", left: ox, top: oy, display: "flex", gap: 5, background: "var(--bg-well)", border: "1px solid var(--gold-40)", borderRadius: 10, padding: "7px 9px", boxShadow: "0 4px 24px #000c", zIndex: 481 }} onClick={e => e.stopPropagation()}>
-              <button style={{ ...btnStyle, color: "var(--color-info)" }} onClick={() => { setZoomCard(mobileCardTap.card); setMobileCardTap(null); }}>
+              <button style={{ ...btnStyle, color: "var(--color-info)" }} onClick={() => { setZoomCard({ card: mobileCardTap.card, zone: mobileCardTap.zone, isMe: mobileCardTap.pid === myId, onMove: mobileCardTap.pid === myId ? (to) => moveCard(mobileCardTap.card, mobileCardTap.zone, to) : undefined }); setMobileCardTap(null); }}>
                 <span style={{ fontSize: 15 }}>🔍</span><span style={{ fontSize: 8 }}>Ver</span>
               </button>
               <button style={{ ...btnStyle, color: "var(--gold)" }} onClick={() => { tapCard(mobileCardTap.card.instanceId); setMobileCardTap(null); }}>
