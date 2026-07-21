@@ -510,6 +510,17 @@ function isLegendary(c) {
 function isLand(c) { const t = c?.type_line?.toLowerCase() || ""; return t.includes("land") || t.includes("tierra"); }
 function isCreature(c) { const t = c?.type_line?.toLowerCase() || ""; return c?.isToken || c?.animated || t.includes("creature") || t.includes("criatura"); }
 function isPlaneswalker(c) { const t = c?.type_line?.toLowerCase() || ""; return t.includes("planeswalker"); }
+// Fuerza/Resistencia efectivas: base impresa + contadores +1/+1, -1/-1 y modificadores pow/tgh sueltos
+function getEffectivePT(card) {
+  const counters = card.counters || [];
+  const pp = counters.filter(x => x === "+1/+1").length;
+  const mm = counters.filter(x => x === "-1/-1").length;
+  const ep = counters.filter(x => x === "+pow").length - counters.filter(x => x === "-pow").length;
+  const et = counters.filter(x => x === "+tgh").length - counters.filter(x => x === "-tgh").length;
+  const basePow = parseInt(card.power, 10) || 0;
+  const baseTgh = parseInt(card.toughness, 10) || 0;
+  return { power: basePow + pp - mm + ep, toughness: baseTgh + pp - mm + et };
+}
 
 function mkState(id, name, deck, commander, startLife = 40, sideboard = []) {
   // Ensure commander is not in the library (filter by name and id)
@@ -2720,6 +2731,39 @@ function ChatPanel({ messages, input, onInput, onSend, onClose, playerName }) {
   );
 }
 
+// ─── Stack Panel (pila de hechizos/prioridad compartida) ──────────────────────
+function StackPanel({ items, myId, onAdd, onRemove, onClear, onClose }) {
+  const [text, setText] = useState("");
+  const submit = () => { if (text.trim()) { onAdd(text); setText(""); } };
+  return (
+    <div style={{ position: "fixed", bottom: 0, right: 460, width: 260, height: 340, background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: "12px 12px 0 0", display: "flex", flexDirection: "column", zIndex: 400, boxShadow: "0 -4px 24px var(--scrim-67)" }}>
+      <div style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-default)", background: "var(--bg-panel)", borderRadius: "12px 12px 0 0" }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gold)" }}>📚 Pila</span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {items.length > 0 && <button onClick={onClear} title="Vaciar pila" style={{ background: "none", border: "none", color: "var(--color-damage)", cursor: "pointer", fontSize: 11 }}>Vaciar</button>}
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--gray-mid)", cursor: "pointer", fontSize: 16 }}>✕</button>
+        </div>
+      </div>
+      <div style={{ flex: 1, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+        {items.length === 0 && <div style={{ color: "var(--gray-darker)", fontSize: 11, textAlign: "center", marginTop: 20 }}>Nada pendiente. Agrega un hechizo/habilidad que esté en la pila.</div>}
+        {items.map(item => (
+          <div key={item.id} style={{ display: "flex", alignItems: "flex-start", gap: 6, background: "var(--bg-panel)", borderRadius: 8, padding: "6px 8px" }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 9, color: "var(--gray-mid)", marginBottom: 2 }}>{item.addedByName}</div>
+              <div style={{ fontSize: 12, color: "var(--text-primary)", wordBreak: "break-word" }}>{item.text}</div>
+            </div>
+            <button onClick={() => onRemove(item.id)} title="Resolver / quitar" style={{ background: "none", border: "1px solid var(--color-life)", color: "var(--color-life)", borderRadius: 6, cursor: "pointer", fontSize: 10, padding: "2px 6px", flexShrink: 0 }}>✓</button>
+          </div>
+        ))}
+      </div>
+      <div style={{ padding: 8, borderTop: "1px solid var(--border-default)", display: "flex", gap: 6 }}>
+        <input value={text} onChange={e => setText(e.target.value)} maxLength={140} onKeyDown={e => e.key === "Enter" && submit()} placeholder="Ej: Rayo a Fulano..." style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border-strong)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 12, outline: "none" }} />
+        <button onClick={submit} style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: "#1a3a6a", color: "var(--color-info)", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>→</button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Notes Panel ──────────────────────────────────────────────────────────────
 function NotesPanel({ notes, onChange, onClose }) {
   return (
@@ -3765,7 +3809,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [voteState, setVoteState] = useState(null); // { question, options, votes:{pid:idx}, startedBy }
   const [voteSetupOpen, setVoteSetupOpen] = useState(false);
   // Combat state
-  const [attackers, setAttackers] = useState(new Set());
+  const [attackers, setAttackers] = useState({}); // { attackerInstanceId: targetPid }
+  const [blockers, setBlockers] = useState({}); // { attackerInstanceId: [blockerInstanceId, ...] }
   const [undoStack, setUndoStack] = useState([]);
   const [dragCard, setDragCard] = useState(null);
   const [battlefieldWrap, setBattlefieldWrap] = useState(false); // toggle wrap for 2-row layout // {instanceId, zone: 'battlefield'|'lands'|'hand'}
@@ -3783,6 +3828,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   // [Feature 3] Custom trigger reminders: [{id, text, color, active}]
   const [triggers, setTriggers] = useState([]);
   const [triggersOpen, setTriggersOpen] = useState(false);
+  const [combatModalOpen, setCombatModalOpen] = useState(false);
+  const [stackOpen, setStackOpen] = useState(false);
+  const [stackItems, setStackItems] = useState([]); // { id, text, addedBy, addedByName } — pila de hechizos/prioridad compartida
   // [Feature 5] Pending card marker: {instanceId, zone}
   const [cardMarkerModal, setCardMarkerModal] = useState(null);
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth <= 1024);
@@ -3809,7 +3857,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     viewTopModal || scryModal || searchLibModal || resolveModal ||
     tokenModal || lifeHistoryOpen || cardMarkerModal || mulliganModal ||
     counterModal || animateModal || versionModal || diceModal || abilitiesModal ||
-    massLifeOpen || voteSetupOpen || voteState || showZone
+    massLifeOpen || voteSetupOpen || voteState || showZone || combatModalOpen
   );
   useEffect(() => { if (!anyModalCoveringField) setIsPeeking(false); }, [anyModalCoveringField]);
   // Map pid → avatar for use in sub-components
@@ -3854,6 +3902,10 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         setVoteState(null);
         addLog("🗳 Votación cerrada.");
       }
+      // Pila de hechizos/prioridad compartida — lista simple, cualquier jugador agrega/quita
+      if (event === "stack_add") { setStackItems(s => [...s, payload]); }
+      if (event === "stack_remove") { setStackItems(s => s.filter(i => i.id !== payload.id)); }
+      if (event === "stack_clear") { setStackItems([]); }
       if (event === "reveal_card") {
         if (payload.targetPid && payload.targetPid !== myId) return; // targeted reveal — only show to target
         const cards = payload.cards || (payload.card ? [payload.card] : []);
@@ -4516,6 +4568,13 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const moveCard = (card, from, to) => {
     from = from === "lands" ? "battlefield" : from;
     if (from === "battlefield") setRow2Cards(s => { const n = new Set(s); n.delete(card.instanceId); return n; });
+    // Un token deja de existir en cuanto sale del campo de batalla (regla 111.7): no se agrega a la zona destino
+    if (from === "battlefield" && to !== "battlefield" && card.isToken) {
+      updMe(p => ({ ...p, battlefield: p.battlefield.filter(c => c.instanceId !== card.instanceId) }),
+        `${players[myId]?.name}: ${getCardName(card)} deja de existir (token).`);
+      setCtxMenu(null);
+      return;
+    }
     const toLabel = to === "graveyard" ? "cementerio" : to === "exile" ? "exilio" : to === "hand" ? "mano" : to === "sideboard" ? "sideboard" : to === "library_top" ? "biblioteca (arriba)" : to === "library_bottom" ? "biblioteca (abajo)" : "biblioteca";
     const destKey = (to === "library_top" || to === "library_bottom") ? "library" : to;
     updMe(p => ({ ...p, [from]: p[from].filter(c => c.instanceId !== card.instanceId), [destKey]: to === "library_top" ? [card, ...p.library] : to === "library_bottom" ? [...p.library, card] : to === "hand" ? [...p.hand, card] : [card, ...(p[destKey] || [])] }), `${players[myId]?.name}: ${getCardName(card)} → ${toLabel}.`);
@@ -4623,6 +4682,21 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     rt.current?.broadcast("chat_msg", msg);
     setChatInput(""); SFX.chat();
   };
+  // Pila de hechizos/prioridad compartida — cualquier jugador agrega texto libre y cualquiera lo quita al resolver
+  const addStackItem = (text) => {
+    if (!text.trim()) return;
+    const item = { id: uid(), text: text.trim(), addedBy: myId, addedByName: players[myId]?.name || "Tú" };
+    setStackItems(s => [...s, item]);
+    rt.current?.broadcast("stack_add", item);
+  };
+  const removeStackItem = (id) => {
+    setStackItems(s => s.filter(i => i.id !== id));
+    rt.current?.broadcast("stack_remove", { id });
+  };
+  const clearStack = () => {
+    setStackItems([]);
+    rt.current?.broadcast("stack_clear", {});
+  };
   const adjLife = (pid, d) => {
     setPlayers(ps => {
       if (!ps[pid]) return ps;
@@ -4656,7 +4730,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     const nextId = playerOrder[(idx + 1) % playerOrder.length];
     const newTurn = turn + 1;
     const msg = `─── Turno ${newTurn}: ${players[nextId]?.name || nextId} ───`;
-    setActivePlayer(nextId); setPhase(0); setTurn(newTurn); setAttackers(new Set()); setStormCount(0); addLog(msg);
+    setActivePlayer(nextId); setPhase(0); setTurn(newTurn); setAttackers({}); setBlockers({}); setStormCount(0); addLog(msg);
     setTurnLog(tl => [...tl, { turn: newTurn, entries: [msg] }]);
     rt.current?.broadcast("turn_change", { ap: nextId, ph: 0, t: newTurn, log: msg });
     try {
@@ -4695,7 +4769,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       advanceToNextPlayer();
     } else {
       const np = phase + 1; setPhase(np); const msg = `Fase: ${PHASES[np]}`; addLog(msg);
-      if (phase === 3) { setAttackers(new Set()); } // clear attackers after combat
+      // Los atacantes/bloqueadores ya NO se limpian automáticamente al salir de Ataque: el panel de
+      // resumen de combate los necesita hasta que el jugador aplique el daño. Se limpian al aplicar
+      // el daño o, como red de seguridad, al pasar de turno (advanceToNextPlayer).
       rt.current?.broadcast("turn_change", { ap: activePlayer, ph: np, t: turn, log: msg });
       // Auto-draw when entering Robo phase (index 1) on my turn
       if (np === 1 && activePlayer === myId) { setTimeout(() => libActions.draw(myId, 1), 100); }
@@ -4735,6 +4811,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     const cardIsLand = isLand(card);
     const cardIsPW = isPlaneswalker(card);
     const hasTwoFaces = (card.face_urls?.length > 1) || (card.card_faces?.length > 1);
+    const attackTargetPid = attackers[card.instanceId];
+    const opponents = playerOrder.filter(p => p !== myId);
+    const attackersOnMe = Object.entries(attackers).filter(([, tp]) => tp === myId).map(([iid]) => iid);
     return [
       zone !== "battlefield" && !card.faceDown && { label: "▶ Jugar en campo", action: () => playCard(card, zone) },
       // [1] MORPH: jugar boca abajo desde la mano
@@ -4907,18 +4986,62 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         label: "✨ Enderezar todos",
         action: () => { updMe(p => ({ ...p, battlefield: p.battlefield.map(c => ({ ...c, tapped: false })) }), `${players[myId]?.name}: destapa todos los permanentes.`); setCtxMenu(null); }
       },
-      // Declarar atacante: solo criaturas en combate
+      // Declarar atacante: solo criaturas en combate — elige a qué jugador ataca (Commander es multijugador)
       zone === "battlefield" && cardIsCreature && !card.faceDown && phase === 3 && isMyTurn && !card.tapped && {
-        label: attackers.has(card.instanceId) ? "❌ Quitar de ataque" : "⚔ Declarar atacante",
-        action: () => setAttackers(a => {
-          const n = new Set(a);
-          if (n.has(card.instanceId)) n.delete(card.instanceId);
-          else { n.add(card.instanceId); tapCard(card.instanceId); }
-          addLog(`${players[myId]?.name}: ${n.has(card.instanceId) ? "declara atacante" : "retira del ataque"} ${getCardName(card)}.`);
-          return n;
-        }),
-        color: attackers.has(card.instanceId) ? "var(--color-damage)" : "var(--color-orange)"
+        label: attackTargetPid ? `⚔ Atacando a ${players[attackTargetPid]?.name || attackTargetPid} ▶` : "⚔ Declarar atacante ▶",
+        color: attackTargetPid ? "var(--color-damage)" : "var(--color-orange)",
+        submenu: [
+          ...opponents.map(opId => ({
+            label: `${players[opId]?.avatar || "🧙"} ${players[opId]?.name || opId}${attackTargetPid === opId ? " ✓" : ""}`,
+            action: () => {
+              setAttackers(a => ({ ...a, [card.instanceId]: opId }));
+              if (!attackTargetPid) tapCard(card.instanceId);
+              addLog(`${players[myId]?.name}: declara atacante a ${players[opId]?.name || opId} con ${getCardName(card)}.`);
+            }
+          })),
+          ...(attackTargetPid ? ["---", {
+            label: "❌ Quitar de ataque", color: "var(--color-damage)",
+            action: () => {
+              setAttackers(a => { const n = { ...a }; delete n[card.instanceId]; return n; });
+              setBlockers(b => { const n = { ...b }; delete n[card.instanceId]; return n; });
+              addLog(`${players[myId]?.name}: retira del ataque a ${getCardName(card)}.`);
+            }
+          }] : []),
+        ]
       },
+      // Declarar bloqueador: mis criaturas sin girar, contra atacantes que me tienen como objetivo
+      zone === "battlefield" && cardIsCreature && !card.faceDown && phase === 3 && !card.tapped && attackersOnMe.length > 0 && (() => {
+        const findAttackerCard = (iid) => { for (const pl of Object.values(players)) { const c = pl.battlefield?.find(x => x.instanceId === iid); if (c) return c; } return null; };
+        const myBlockTarget = Object.entries(blockers).find(([, list]) => list.includes(card.instanceId))?.[0];
+        return {
+          label: myBlockTarget ? `🛡 Bloqueando a ${getCardName(findAttackerCard(myBlockTarget) || {})} ▶` : "🛡 Bloquear ▶",
+          color: myBlockTarget ? "var(--color-info)" : "var(--text-primary)",
+          submenu: [
+            ...attackersOnMe.map(atkId => {
+              const atkCard = findAttackerCard(atkId);
+              return {
+                label: `⚔ ${getCardName(atkCard || { name: "?" })}${myBlockTarget === atkId ? " ✓" : ""}`,
+                action: () => {
+                  setBlockers(b => {
+                    const n = { ...b };
+                    for (const k of Object.keys(n)) n[k] = n[k].filter(x => x !== card.instanceId);
+                    n[atkId] = [...(n[atkId] || []), card.instanceId];
+                    return n;
+                  });
+                  addLog(`${players[myId]?.name}: bloquea a ${getCardName(atkCard || {})} con ${getCardName(card)}.`);
+                }
+              };
+            }),
+            ...(myBlockTarget ? ["---", {
+              label: "❌ Quitar bloqueo", color: "var(--color-damage)",
+              action: () => {
+                setBlockers(b => { const n = { ...b }; for (const k of Object.keys(n)) n[k] = n[k].filter(x => x !== card.instanceId); return n; });
+                addLog(`${players[myId]?.name}: quita el bloqueo de ${getCardName(card)}.`);
+              }
+            }] : []),
+          ]
+        };
+      })(),
       "---",
       zone !== "hand" && { label: "🤚 A la mano", action: () => moveCard(card, zone, "hand") },
       zone !== "graveyard" && { label: "🪦 Al cementerio", action: () => moveCard(card, zone, "graveyard") },
@@ -5221,7 +5344,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             const permanents = p.battlefield.filter(c => !isLand(c));
             const lands = p.battlefield.filter(c => isLand(c));
             const renderCard = (card, zone = "battlefield", forceSmall = false) => {
-              const isAttacking = isMe && attackers.has(card.instanceId);
+              const isAttacking = isMe && attackers[card.instanceId] !== undefined;
+              const isBlocking = isMe && Object.values(blockers).some(list => list.includes(card.instanceId));
               const isDragging = dragCard?.instanceId === card.instanceId;
               const isOver = dragOverId === card.instanceId;
               return (
@@ -5290,7 +5414,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", opacity: isDragging ? 0.4 : 1, outline: isOver ? "2px dashed var(--gold)" : "none", borderRadius: 6, cursor: isDragging ? "grabbing" : "default", transition: "opacity 0.15s", overflow: "visible" }}
                   onContextMenu={e => openCardCtx(e, pid, card, "battlefield", isMe)}>
                   {isAttacking && <div style={{ position: "absolute", inset: -2, borderRadius: 6, border: "2px solid var(--color-red)", zIndex: 3, pointerEvents: "none", boxShadow: "0 0 8px var(--color-red-67)" }} />}
-                  {isAttacking && <div style={{ position: "absolute", top: 3, left: "50%", transform: "translateX(-50%)", background: "#cc0000", color: "var(--color-white)", borderRadius: 3, fontSize: 7, padding: "1px 4px", zIndex: 6, whiteSpace: "nowrap", fontWeight: 800 }}>⚔ ATQ</div>}
+                  {isAttacking && <div style={{ position: "absolute", top: 3, left: "50%", transform: "translateX(-50%)", background: "#cc0000", color: "var(--color-white)", borderRadius: 3, fontSize: 7, padding: "1px 4px", zIndex: 6, whiteSpace: "nowrap", fontWeight: 800 }}>⚔ ATQ → {players[attackers[card.instanceId]]?.name || attackers[card.instanceId]}</div>}
+                  {isBlocking && !isAttacking && <div style={{ position: "absolute", inset: -2, borderRadius: 6, border: "2px solid var(--color-info)", zIndex: 3, pointerEvents: "none", boxShadow: "0 0 8px var(--color-info-67, #2255cc88)" }} />}
+                  {isBlocking && <div style={{ position: "absolute", top: 3, left: "50%", transform: "translateX(-50%)", background: "#1a3a8a", color: "var(--color-white)", borderRadius: 3, fontSize: 7, padding: "1px 4px", zIndex: 6, whiteSpace: "nowrap", fontWeight: 800 }}>🛡 BLQ</div>}
                   {/* [Feature 5] Card marker badge */}
                   {card.marker && (
                     <div style={{ position: "absolute", top: 3, left: "50%", transform: "translateX(-50%)", background: card.marker.color, color: "#fff", borderRadius: 4, fontSize: 7, fontWeight: 800, padding: "1px 5px", zIndex: 5, whiteSpace: "nowrap", pointerEvents: "none", boxShadow: `0 0 6px ${card.marker.color}88`, maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -5372,12 +5498,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   )}
                   {!card.faceDown && (card.counters || []).length > 0 && (() => {
                     const cnts = card.counters || [];
-                    const pp = cnts.filter(x => x === "+1/+1").length;
-                    const mm = cnts.filter(x => x === "-1/-1").length;
-                    const ep = cnts.filter(x => x === "+pow").length - cnts.filter(x => x === "-pow").length;
-                    const et = cnts.filter(x => x === "+tgh").length - cnts.filter(x => x === "-tgh").length;
-                    const netP = pp - mm + ep;
-                    const netT = pp - mm + et;
+                    const eff = getEffectivePT(card);
+                    const netP = eff.power - (parseInt(card.power, 10) || 0);
+                    const netT = eff.toughness - (parseInt(card.toughness, 10) || 0);
                     const others = [...new Set(cnts.filter(x => x !== "+1/+1" && x !== "-1/-1" && x !== "+pow" && x !== "-pow" && x !== "+tgh" && x !== "-tgh"))];
                     const hasPR = netP !== 0 || netT !== 0;
                     return (
@@ -5756,6 +5879,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                     { icon: "💬", label: "Chat", action: () => { setChatOpen(o => !o); setMobileActionsOpen(false); }, color: "var(--color-info)" },
                     { icon: "📝", label: "Notas", action: () => { setNotesOpen(o => !o); setMobileActionsOpen(false); }, color: "var(--color-life)" },
                     { icon: "🔔", label: "Triggers", action: () => { setTriggersOpen(o => !o); setMobileActionsOpen(false); }, color: "#ffaa44" },
+                    { icon: "⚔", label: "Combate", action: () => { setCombatModalOpen(o => !o); setMobileActionsOpen(false); }, color: "var(--color-damage)" },
+                    { icon: "📚", label: "Pila", action: () => { setStackOpen(o => !o); setMobileActionsOpen(false); }, color: "var(--gold)" },
                     { icon: "🗳", label: "Votar", action: () => { setVoteSetupOpen(true); setMobileActionsOpen(false); }, color: "var(--gold)" },
                     { icon: "🎙", label: voiceEnabled ? (muted ? "Silenc." : "Voz ON") : "Voz", action: () => { toggleVoice(); setMobileActionsOpen(false); }, color: voiceEnabled ? (muted ? "var(--color-damage)" : "var(--color-life-bright)") : "var(--gray-dark)" },
                     { icon: "✕", label: "Salir", action: () => { try { const sess = JSON.parse(localStorage.getItem("commander_es_session") || "{}"); const allStates = Object.fromEntries(Object.entries(players).map(([pid, p]) => [pid, p])); const snapshot = { ...sess, players: (sess.players || []).map(p => ({ ...p, playerState: allStates[p.id] || p.playerState })), turn, phase, activePlayer, turnLog, savedAt: Date.now() }; localStorage.setItem("commander_es_session", JSON.stringify(snapshot)); localStorage.setItem("commander_es_full_save", JSON.stringify(snapshot)); } catch {} onExit(); setMobileActionsOpen(false); }, color: "var(--gray-darker)" },
@@ -5953,6 +6078,8 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             { icon: "📝", label: "Notas", action: () => setNotesOpen(o => !o), color: notesOpen ? "var(--color-life)" : "var(--gray-mid)" },
             { icon: "🔍", label: "Buscar", action: () => setCardSearch(s => ({ ...s, open: !s.open, query: "", results: [] })), color: cardSearch.open ? "var(--gold)" : "var(--gray-mid)" },
             { icon: "🔔", label: "Triggers", action: () => setTriggersOpen(o => !o), color: triggers.some(t => t.active) ? "#ffaa44" : triggersOpen ? "var(--gold)" : "var(--gray-mid)" },
+            { icon: "⚔", label: "Combate", action: () => setCombatModalOpen(o => !o), color: Object.keys(attackers).length ? "var(--color-damage)" : combatModalOpen ? "var(--gold)" : "var(--gray-mid)" },
+            { icon: "📚", label: "Pila", action: () => setStackOpen(o => !o), color: stackItems.length ? "var(--gold)" : stackOpen ? "var(--gold)" : "var(--gray-mid)" },
             { icon: "🗳", label: "Votar", action: () => setVoteSetupOpen(true), color: voteState ? "var(--gold)" : "var(--gray-mid)" },
             ...(voiceEnabled ? [{ icon: muted ? "🔇" : "🔊", label: muted ? "Unmute" : "Mute", action: toggleMute, color: muted ? "var(--color-red)" : "var(--color-life)" }] : []),
           ].map(btn => (
@@ -5996,7 +6123,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   setPlayers(newPlayers); setTurn(1); setPhase(0);
                   setActivePlayer(initialPlayers[0]?.id);
                   setTurnLog([{ turn: 1, entries: ["¡Partida reiniciada!"] }]);
-                  setAttackers(new Set()); addLog("🔄 Partida reiniciada.");
+                  setAttackers({}); setBlockers({}); addLog("🔄 Partida reiniciada.");
                   rt.current?.broadcast("notification", { msg: "🔄 La partida fue reiniciada", from: myId });
                 }
               }, color: "var(--gray-dark)"
@@ -6300,6 +6427,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
 
       {/* Chat */}
       {chatOpen && <ChatPanel messages={chatMessages} input={chatInput} onInput={setChatInput} onSend={sendChatMessage} onClose={() => setChatOpen(false)} playerName={players[myId]?.name} />}
+      {stackOpen && <StackPanel items={stackItems} myId={myId} onAdd={addStackItem} onRemove={removeStackItem} onClear={clearStack} onClose={() => setStackOpen(false)} />}
 
       {/* Notes */}
       {notesOpen && <NotesPanel notes={notes} onChange={v => { setNotes(v); try { localStorage.setItem(`notes_${roomCode}`, v); } catch {} }} onClose={() => setNotesOpen(false)} />}
@@ -6440,6 +6568,104 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           }}
         />
       )}
+      {/* Panel de resumen y resolución de combate — asistido, no motor de reglas: calcula y aplica, el jugador confirma cada muerte */}
+      {combatModalOpen && (() => {
+        const findCard = (iid) => { for (const [pid, pl] of Object.entries(players)) { const c = pl.battlefield?.find(x => x.instanceId === iid); if (c) return { card: c, ownerPid: pid }; } return null; };
+        const atkEntries = Object.entries(attackers);
+        const lifeDamage = {};
+        const cmdDamage = {};
+        const rows = atkEntries.map(([atkId, targetPid]) => {
+          const found = findCard(atkId);
+          if (!found) return null;
+          const { card: atkCard, ownerPid } = found;
+          const eff = getEffectivePT(atkCard);
+          const abilities = atkCard.abilities || [];
+          const isDeathtouch = abilities.includes("deathtouch");
+          const isTrample = abilities.includes("trample");
+          const isMenace = abilities.includes("menace");
+          const blockerIds = blockers[atkId] || [];
+          const blockerCards = blockerIds.map(bid => findCard(bid)).filter(Boolean);
+          const totalBlockerToughness = blockerCards.reduce((s, b) => s + getEffectivePT(b.card).toughness, 0);
+          const totalBlockerPower = blockerCards.reduce((s, b) => s + getEffectivePT(b.card).power, 0);
+          const isBlocked = blockerCards.length > 0;
+          const dmgToPlayer = !isBlocked ? eff.power : (isTrample ? Math.max(0, eff.power - totalBlockerToughness) : 0);
+          if (dmgToPlayer > 0) {
+            lifeDamage[targetPid] = (lifeDamage[targetPid] || 0) + dmgToPlayer;
+            if (atkCard.name && atkCard.name === players[ownerPid]?.commanderCard?.name) {
+              cmdDamage[targetPid] = cmdDamage[targetPid] || {};
+              cmdDamage[targetPid][ownerPid] = (cmdDamage[targetPid][ownerPid] || 0) + dmgToPlayer;
+            }
+          }
+          const targetLife = players[targetPid]?.life ?? 0;
+          const lethalToPlayer = !isBlocked && dmgToPlayer >= targetLife;
+          const blockerHasDeathtouch = blockerCards.some(b => (b.card.abilities || []).includes("deathtouch") && getEffectivePT(b.card).power > 0);
+          const attackerTakesLethal = isBlocked && (totalBlockerPower >= eff.toughness || blockerHasDeathtouch);
+          return { atkId, atkCard, ownerPid, targetPid, eff, isDeathtouch, isTrample, isMenace, blockerCards, totalBlockerPower, isBlocked, dmgToPlayer, lethalToPlayer, attackerTakesLethal };
+        }).filter(Boolean);
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "#000c", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700 }} onClick={() => setCombatModalOpen(false)}>
+            <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 16, padding: 20, width: 480, maxHeight: "85vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)" }}>⚔ Resumen de combate</div>
+                <button onClick={() => setCombatModalOpen(false)} style={{ background: "none", border: "none", color: "var(--gray-dark)", cursor: "pointer", fontSize: 18 }}>✕</button>
+              </div>
+              {!rows.length && <div style={{ fontSize: 12, color: "var(--text-muted)", padding: "12px 0" }}>No hay atacantes declarados. Usa "⚔ Declarar atacante" en el menú de cada criatura durante la fase de Ataque.</div>}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
+                {rows.map(r => (
+                  <div key={r.atkId} style={{ border: "1px solid var(--border-default)", borderRadius: 10, padding: "10px 12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ fontSize: 12, fontWeight: 700 }}>{getCardName(r.atkCard)} <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>({r.eff.power}/{r.eff.toughness})</span></div>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{players[r.ownerPid]?.name} → {players[r.targetPid]?.name}</div>
+                    </div>
+                    {!r.isBlocked ? (
+                      <div style={{ fontSize: 11, marginTop: 6, color: r.lethalToPlayer ? "var(--color-damage)" : "var(--text-primary)" }}>
+                        Daño a {players[r.targetPid]?.name}: <b>{r.dmgToPlayer}</b>{r.lethalToPlayer && " ☠ LETAL"}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 11, marginTop: 6 }}>
+                        <div>Bloqueado por: {r.blockerCards.map(b => `${getCardName(b.card)} (${getEffectivePT(b.card).power}/${getEffectivePT(b.card).toughness})`).join(", ")}</div>
+                        {r.isMenace && r.blockerCards.length < 2 && <div style={{ color: "var(--color-orange)" }}>⚠ Tiene Amenaza — necesita 2+ bloqueadores para ser válido.</div>}
+                        {r.isTrample && r.dmgToPlayer > 0 && <div>🐂 Arrollar: {r.dmgToPlayer} pasa a {players[r.targetPid]?.name}</div>}
+                        {r.isDeathtouch && <div style={{ color: "var(--color-poison)" }}>💀 Toque mortal: cualquier bloqueador dañado se considera letal</div>}
+                        <div style={{ color: r.attackerTakesLethal ? "var(--color-damage)" : "var(--text-muted)" }}>Atacante recibe daño de combate{r.attackerTakesLethal && " — ☠ LETAL"}</div>
+                      </div>
+                    )}
+                    <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                      <button onClick={() => moveCard(r.atkCard, "battlefield", "graveyard")} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 6, border: "1px solid var(--color-damage)", background: "transparent", color: "var(--color-damage)", cursor: "pointer" }}>🪦 Murió {getCardName(r.atkCard)}</button>
+                      {r.blockerCards.map(b => (
+                        <button key={b.card.instanceId} onClick={() => moveCard(b.card, "battlefield", "graveyard")} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 6, border: "1px solid var(--color-damage)", background: "transparent", color: "var(--color-damage)", cursor: "pointer" }}>🪦 Murió {getCardName(b.card)}</button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {Object.keys(lifeDamage).length > 0 && (
+                <div style={{ marginTop: 16, borderTop: "1px solid var(--border-default)", paddingTop: 12 }}>
+                  <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, marginBottom: 8 }}>Total a aplicar</div>
+                  {Object.entries(lifeDamage).map(([pid, dmg]) => (
+                    <div key={pid} style={{ fontSize: 11, marginBottom: 4 }}>
+                      {players[pid]?.name}: −{dmg} vida{cmdDamage[pid] && Object.entries(cmdDamage[pid]).map(([fp, d]) => ` (+${d} daño de comandante de ${players[fp]?.name})`).join("")}
+                    </div>
+                  ))}
+                  <button onClick={() => {
+                    Object.entries(lifeDamage).forEach(([pid, dmg]) => adjLife(pid, -dmg));
+                    Object.entries(cmdDamage).forEach(([toPid, byFrom]) => Object.entries(byFrom).forEach(([fromPid, d]) => adjCmdDmg(fromPid, toPid, d)));
+                    addLog("⚔ Daño de combate aplicado.");
+                    setAttackers({}); setBlockers({}); setCombatModalOpen(false);
+                  }} style={{ marginTop: 8, width: "100%", padding: "9px 0", borderRadius: 8, border: "none", background: "linear-gradient(90deg,var(--gold),var(--gold-dark))", color: "#000", fontWeight: 800, cursor: "pointer" }}>
+                    Aplicar daño de combate
+                  </button>
+                </div>
+              )}
+              {rows.length > 0 && (
+                <button onClick={() => { setAttackers({}); setBlockers({}); setCombatModalOpen(false); }} style={{ marginTop: 8, width: "100%", padding: "7px 0", borderRadius: 8, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer", fontSize: 11 }}>
+                  Descartar combate (sin aplicar daño)
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
       {/* Version selector */}
       {versionModal && (
         <CardVersionModal
