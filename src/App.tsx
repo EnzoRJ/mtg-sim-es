@@ -508,7 +508,7 @@ function isLegendary(c) {
   return t.includes("legendary") || t.includes("legendaria") || t.includes("legendario");
 }
 function isLand(c) { const t = c?.type_line?.toLowerCase() || ""; return t.includes("land") || t.includes("tierra"); }
-function isCreature(c) { const t = c?.type_line?.toLowerCase() || ""; return c?.isToken || t.includes("creature") || t.includes("criatura"); }
+function isCreature(c) { const t = c?.type_line?.toLowerCase() || ""; return c?.isToken || c?.animated || t.includes("creature") || t.includes("criatura"); }
 function isPlaneswalker(c) { const t = c?.type_line?.toLowerCase() || ""; return t.includes("planeswalker"); }
 
 function mkState(id, name, deck, commander, startLife = 40, sideboard = []) {
@@ -1159,6 +1159,43 @@ function CounterModal({ card, onUpdate, onClose }) {
         </div>
       </div>
     </>
+  );
+}
+
+
+// ─── Animate Land Modal (convertir tierra(s) en criatura) ─────────────────────
+function AnimateModal({ mode, cardName, onConfirm, onClose }) {
+  const [power, setPower] = useState("2");
+  const [toughness, setToughness] = useState("2");
+  const [untilEOT, setUntilEOT] = useState(true);
+  const [creatureType, setCreatureType] = useState("Elemental");
+  const fieldS = { width: "100%", marginTop: 4, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", boxSizing: "border-box", fontSize: 13 };
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#000c", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700 }} onClick={onClose}>
+      <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 16, padding: 22, width: 340 }} onClick={e => e.stopPropagation()}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)", marginBottom: 4 }}>🐲 Animar {mode === "all" ? "todas mis tierras" : cardName}</div>
+        <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 16 }}>Conviértela en una criatura (Nexo de Tinta, Revuelta de la Naturaleza, Aldea de la Copa de Árbol, etc.)</div>
+        <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+          <label style={{ flex: 1, fontSize: 11, color: "var(--text-muted)" }}>Fuerza
+            <input value={power} onChange={e => setPower(e.target.value)} inputMode="numeric" style={fieldS} />
+          </label>
+          <label style={{ flex: 1, fontSize: 11, color: "var(--text-muted)" }}>Resistencia
+            <input value={toughness} onChange={e => setToughness(e.target.value)} inputMode="numeric" style={fieldS} />
+          </label>
+        </div>
+        <label style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginBottom: 14 }}>Tipo de criatura (opcional)
+          <input value={creatureType} onChange={e => setCreatureType(e.target.value)} maxLength={40} placeholder="ej. Elemental" style={fieldS} />
+        </label>
+        <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+          <button onClick={() => setUntilEOT(true)} style={{ flex: 1, padding: "6px 0", borderRadius: 6, border: `1px solid ${untilEOT ? "var(--gold)" : "var(--border-default)"}`, background: untilEOT ? "var(--gold-33)" : "transparent", color: untilEOT ? "var(--gold)" : "var(--text-muted)", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>Hasta fin de turno</button>
+          <button onClick={() => setUntilEOT(false)} style={{ flex: 1, padding: "6px 0", borderRadius: 6, border: `1px solid ${!untilEOT ? "var(--gold)" : "var(--border-default)"}`, background: !untilEOT ? "var(--gold-33)" : "transparent", color: !untilEOT ? "var(--gold)" : "var(--text-muted)", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>Permanente</button>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer" }}>Cancelar</button>
+          <button onClick={() => { const p = parseInt(power, 10) || 0; const t = parseInt(toughness, 10) || 0; onConfirm({ power: p, toughness: t, untilEOT, creatureType: creatureType.trim() }); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: "var(--gold)", color: "#000", fontWeight: 800, cursor: "pointer" }}>Animar</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -3694,6 +3731,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [zoneFilter, setZoneFilter] = useState("");
   const [selCard, setSelCard] = useState(null);
   const [counterModal, setCounterModal] = useState(null); // instanceId of card
+  const [animateModal, setAnimateModal] = useState(null); // { mode: "single"|"all", instanceId?, cardName? }
   const [versionModal, setVersionModal] = useState(null); // card to change art version
   const [mulliganModal, setMulliganModal] = useState(false);
   const [mulliganCount, setMulliganCount] = useState(0); // how many mulligans taken
@@ -3770,7 +3808,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const anyModalCoveringField = !!(
     viewTopModal || scryModal || searchLibModal || resolveModal ||
     tokenModal || lifeHistoryOpen || cardMarkerModal || mulliganModal ||
-    counterModal || versionModal || diceModal || abilitiesModal ||
+    counterModal || animateModal || versionModal || diceModal || abilitiesModal ||
     massLifeOpen || voteSetupOpen || voteState || showZone
   );
   useEffect(() => { if (!anyModalCoveringField) setIsPeeking(false); }, [anyModalCoveringField]);
@@ -4553,6 +4591,31 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     updMe(p => ({ ...p, battlefield: [...p.battlefield, ...tokens] }), `${players[myId]?.name} crea ${qty}× token ${name}${power ? ` ${power}/${toughness}` : ""}.`);
     setTokenModal(false);
   };
+  // Animar tierra(s) como criatura (Nexo de Tinta, Revuelta de la Naturaleza, man-lands, etc.)
+  const animateCard = (iid, { power, toughness, untilEOT, creatureType }, cardNameForLog) => {
+    updMe(p => ({
+      ...p,
+      battlefield: p.battlefield.map(c => c.instanceId === iid
+        ? { ...c, animated: true, power: String(power), toughness: String(toughness), animatedUntilEOT: !!untilEOT, animatedCreatureType: creatureType || null }
+        : c)
+    }), `${players[myId]?.name}: anima ${cardNameForLog} como criatura ${power}/${toughness}${untilEOT ? " (hasta fin de turno)" : ""}.`);
+  };
+  const deanimateCard = (iid, cardNameForLog) => {
+    updMe(p => ({
+      ...p,
+      battlefield: p.battlefield.map(c => c.instanceId === iid
+        ? { ...c, animated: false, power: undefined, toughness: undefined, animatedUntilEOT: false, animatedCreatureType: null }
+        : c)
+    }), `${players[myId]?.name}: ${cardNameForLog} deja de ser una criatura.`);
+  };
+  const animateAllLands = ({ power, toughness, untilEOT, creatureType }) => {
+    updMe(p => ({
+      ...p,
+      battlefield: p.battlefield.map(c => isLand(c)
+        ? { ...c, animated: true, power: String(power), toughness: String(toughness), animatedUntilEOT: !!untilEOT, animatedCreatureType: creatureType || null }
+        : c)
+    }), `${players[myId]?.name}: anima todas sus tierras como criaturas ${power}/${toughness}${untilEOT ? " (hasta fin de turno)" : ""}.`);
+  };
   const sendChatMessage = () => {
     if (!chatInput.trim()) return;
     const msg = { sender: players[myId]?.name || "Tú", text: chatInput.trim(), time: new Date().toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) };
@@ -4600,6 +4663,18 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       const sess = JSON.parse(localStorage.getItem("commander_es_session") || "{}");
       localStorage.setItem("commander_es_session", JSON.stringify({ ...sess, turn: newTurn, phase: 0, activePlayer: nextId, savedAt: Date.now() }));
     } catch { }
+    // Termina mi turno: las tierras que animé "hasta el final del turno" vuelven a ser solo tierras
+    setPlayers(ps => {
+      const p = ps[myId]; if (!p) return ps;
+      const hasTemp = p.battlefield.some(c => c.animated && c.animatedUntilEOT);
+      if (!hasTemp) return ps;
+      const next = { ...p, battlefield: p.battlefield.map(c => (c.animated && c.animatedUntilEOT)
+        ? { ...c, animated: false, power: undefined, toughness: undefined, animatedUntilEOT: false, animatedCreatureType: null }
+        : c) };
+      addLog(`${p.name}: las animaciones temporales de tierras terminan.`);
+      syncState(next);
+      return { ...ps, [myId]: next };
+    });
     if (nextId === myId) {
       untapAll();
       // Auto-add lore counter to each Saga I control on my upkeep
@@ -4774,7 +4849,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       },
       "---",
       // Contadores: solo para permanentes que no son tierras
-      zone === "battlefield" && !cardIsLand && !card.faceDown && { label: "🎯 Gestionar contadores...", action: () => { setCtxMenu(null); setCounterModal(card.instanceId); } },
+      zone === "battlefield" && (!cardIsLand || card.animated) && !card.faceDown && { label: "🎯 Gestionar contadores...", action: () => { setCtxMenu(null); setCounterModal(card.instanceId); } },
       // Contador de lealtad rápido para planeswalkers
       zone === "battlefield" && cardIsPW && !card.faceDown && {
         label: "💜 Lealtad...",
@@ -4814,6 +4889,19 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       zone === "battlefield" && cardIsLand && {
         label: "🌍 Girar todas las tierras",
         action: () => { updMe(p => ({ ...p, battlefield: p.battlefield.map(c => isLand(c) ? { ...c, tapped: true } : c) }), `${players[myId]?.name}: gira todas las tierras.`); setCtxMenu(null); }
+      },
+      // Animar tierra como criatura (Nexo de Tinta, man-lands, etc.)
+      zone === "battlefield" && cardIsLand && !card.faceDown && !card.animated && {
+        label: "🐲 Animar como criatura...",
+        action: () => { setCtxMenu(null); setAnimateModal({ mode: "single", instanceId: card.instanceId, cardName: getCardName(card) }); }
+      },
+      zone === "battlefield" && cardIsLand && !card.faceDown && card.animated && {
+        label: `🚫 Quitar animación (${card.power}/${card.toughness})`,
+        action: () => { deanimateCard(card.instanceId, getCardName(card)); setCtxMenu(null); }
+      },
+      zone === "battlefield" && cardIsLand && !card.faceDown && {
+        label: "🐲🌍 Animar todas mis tierras...",
+        action: () => { setCtxMenu(null); setAnimateModal({ mode: "all" }); }
       },
       zone === "battlefield" && {
         label: "✨ Enderezar todos",
@@ -5213,6 +5301,13 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                   {card.qty > 1 && (
                     <div style={{ position: "absolute", bottom: 4, left: 4, background: "#0d2a4a", color: "#7ab8ff", borderRadius: 5, fontSize: 9, fontWeight: 900, padding: "1px 6px", zIndex: 5, border: "1px solid #2a6aaa", pointerEvents: "none", letterSpacing: 0.5, boxShadow: "0 1px 4px #000a" }}>
                       ×{card.qty}
+                    </div>
+                  )}
+                  {/* Animated land badge — tierra convertida en criatura */}
+                  {card.animated && !card.faceDown && (
+                    <div title={card.animatedCreatureType ? `Tierra animada — ${card.animatedCreatureType}` : "Tierra animada"}
+                      style={{ position: "absolute", top: 3, right: 3, background: "#0d2a12", color: "#7aff9a", borderRadius: 4, fontSize: 8, fontWeight: 800, padding: "1px 4px", zIndex: 5, whiteSpace: "nowrap", pointerEvents: "none", border: "1px solid #2a8a4a88", boxShadow: "0 0 6px #2a8a4a66" }}>
+                      🐲 {card.power}/{card.toughness}
                     </div>
                   )}
 
@@ -6333,6 +6428,18 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         if (!card) { setCounterModal(null); return null; }
         return <CounterModal card={card} onUpdate={(newCounters) => setCounters(counterModal, newCounters)} onClose={() => setCounterModal(null)} />;
       })()}
+      {animateModal && (
+        <AnimateModal
+          mode={animateModal.mode}
+          cardName={animateModal.cardName}
+          onClose={() => setAnimateModal(null)}
+          onConfirm={(opts) => {
+            if (animateModal.mode === "all") animateAllLands(opts);
+            else animateCard(animateModal.instanceId, opts, animateModal.cardName);
+            setAnimateModal(null);
+          }}
+        />
+      )}
       {/* Version selector */}
       {versionModal && (
         <CardVersionModal

@@ -10,3 +10,5 @@ node_modules
 .env.*
 .DS_Store
 .vercel
+dist/
+graphify-out/
