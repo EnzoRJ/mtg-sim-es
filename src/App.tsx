@@ -510,8 +510,16 @@ function isLegendary(c) {
 function isLand(c) { const t = c?.type_line?.toLowerCase() || ""; return t.includes("land") || t.includes("tierra"); }
 function isCreature(c) { const t = c?.type_line?.toLowerCase() || ""; return c?.isToken || c?.animated || t.includes("creature") || t.includes("criatura"); }
 function isPlaneswalker(c) { const t = c?.type_line?.toLowerCase() || ""; return t.includes("planeswalker"); }
-// Fuerza/Resistencia efectivas: base impresa + contadores +1/+1, -1/-1 y modificadores pow/tgh sueltos
-function getEffectivePT(card) {
+// Un anthem (card.staticBuffs) aplica a una criatura si su filtro coincide — declarado a mano, no se lee texto de carta
+function staticBuffApplies(buff, card) {
+  if (buff.filter === "all") return true;
+  if (buff.filter === "tokens") return !!card.isToken;
+  if (buff.filter === "type") return !!buff.typeText && (card.type_line || "").toLowerCase().includes(buff.typeText.toLowerCase());
+  return false;
+}
+// Fuerza/Resistencia efectivas: base impresa + contadores +1/+1, -1/-1, modificadores pow/tgh sueltos,
+// y anthems (card.staticBuffs) de otras cartas del mismo campo de batalla que apliquen.
+function getEffectivePT(card, battlefield = []) {
   const counters = card.counters || [];
   const pp = counters.filter(x => x === "+1/+1").length;
   const mm = counters.filter(x => x === "-1/-1").length;
@@ -519,7 +527,15 @@ function getEffectivePT(card) {
   const et = counters.filter(x => x === "+tgh").length - counters.filter(x => x === "-tgh").length;
   const basePow = parseInt(card.power, 10) || 0;
   const baseTgh = parseInt(card.toughness, 10) || 0;
-  return { power: basePow + pp - mm + ep, toughness: baseTgh + pp - mm + et };
+  let anthemPow = 0, anthemTgh = 0;
+  if (isCreature(card)) {
+    for (const source of battlefield) {
+      for (const buff of (source.staticBuffs || [])) {
+        if (staticBuffApplies(buff, card)) { anthemPow += buff.power; anthemTgh += buff.toughness; }
+      }
+    }
+  }
+  return { power: basePow + pp - mm + ep + anthemPow, toughness: baseTgh + pp - mm + et + anthemTgh };
 }
 
 function mkState(id, name, deck, commander, startLife = 40, sideboard = []) {
@@ -1296,6 +1312,76 @@ function TriggerConfigModal({ cardName, triggers, onAdd, onRemove, onClose }) {
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={onClose} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer" }}>Cerrar</button>
           <button onClick={() => onAdd({ event, mode, counterType, tokenName: tokenName.trim() || "Token", tokenPower: parseInt(tokenPower, 10) || 0, tokenToughness: parseInt(tokenToughness, 10) || 0, tokenColor })}
+            style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: "var(--gold)", color: "#000", fontWeight: 800, cursor: "pointer" }}>+ Agregar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ─── Static Buff (anthem) Modal ────────────────────────────────────────────────
+// Habilidad estática continua: "criaturas [filtro] que controlas obtienen +N/+N" (ej. Fragmentado Depredador).
+// A diferencia de los triggers, no espera un evento — aplica todo el tiempo mientras la carta esté en juego.
+var STATIC_BUFF_FILTERS = [
+  { key: "all", label: "Todas mis criaturas", desc: "Aplica a cualquier criatura que controles." },
+  { key: "type", label: "Por tipo de criatura", desc: "Aplica solo a criaturas cuyo tipo (ej. \"Fragmentado\", \"Zombie\") coincida." },
+  { key: "tokens", label: "Mis tokens", desc: "Aplica solo a criaturas token que controles." },
+];
+function StaticBuffModal({ cardName, buffs, onAdd, onRemove, onClose }) {
+  const [filter, setFilter] = useState("all");
+  const [typeText, setTypeText] = useState("");
+  const [power, setPower] = useState("1");
+  const [toughness, setToughness] = useState("1");
+  const fieldS = { width: "100%", marginTop: 4, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", boxSizing: "border-box", fontSize: 13 };
+  const filterDef = STATIC_BUFF_FILTERS.find(f => f.key === filter);
+  const buffLabel = (b) => {
+    const fd = STATIC_BUFF_FILTERS.find(f => f.key === b.filter);
+    const pt = `${b.power > 0 ? "+" : ""}${b.power}/${b.toughness > 0 ? "+" : ""}${b.toughness}`;
+    return b.filter === "type" ? `${pt} a "${b.typeText}"` : `${pt} a ${fd?.label.toLowerCase()}`;
+  };
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#000c", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700 }} onClick={onClose}>
+      <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 16, padding: 22, width: 360, maxHeight: "85vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)", marginBottom: 4 }}>🛡️ Habilidad estática de {cardName}</div>
+        <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 14 }}>Continua, no espera un evento — aplica mientras la carta esté en juego (ej. Fragmentado Depredador).</div>
+        {buffs.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16, padding: "8px 10px", background: "var(--bg-well)", borderRadius: 8 }}>
+            {buffs.map(b => (
+              <div key={b.id} onClick={() => onRemove(b.id)} title="Click para quitar"
+                style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 20, background: "var(--gold-33)", border: "1px solid var(--gold-53)", cursor: "pointer" }}>
+                <span style={{ fontSize: 11 }}>📢 {buffLabel(b)}</span>
+                <span style={{ fontSize: 9, color: "var(--gold)", opacity: 0.7 }}>✕</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, marginBottom: 8, letterSpacing: 0.5 }}>AGREGAR ANTHEM</div>
+        <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
+          {STATIC_BUFF_FILTERS.map(f => (
+            <button key={f.key} onClick={() => setFilter(f.key)}
+              style={{ padding: "5px 8px", borderRadius: 6, border: `1px solid ${filter === f.key ? "var(--gold)" : "var(--border-default)"}`, background: filter === f.key ? "var(--gold-33)" : "transparent", color: filter === f.key ? "var(--gold)" : "var(--text-muted)", cursor: "pointer", fontSize: 10, fontWeight: 700 }}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 14 }}>{filterDef?.desc}</div>
+        {filter === "type" && (
+          <label style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginBottom: 14 }}>Tipo de criatura
+            <input value={typeText} onChange={e => setTypeText(e.target.value)} maxLength={30} placeholder="ej. Fragmentado" style={fieldS} />
+          </label>
+        )}
+        <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
+          <label style={{ flex: 1, fontSize: 11, color: "var(--text-muted)" }}>Fuerza
+            <input value={power} onChange={e => setPower(e.target.value)} inputMode="numeric" placeholder="ej. 1 o -1" style={fieldS} />
+          </label>
+          <label style={{ flex: 1, fontSize: 11, color: "var(--text-muted)" }}>Resistencia
+            <input value={toughness} onChange={e => setToughness(e.target.value)} inputMode="numeric" placeholder="ej. 1 o -1" style={fieldS} />
+          </label>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer" }}>Cerrar</button>
+          <button onClick={() => { if (filter === "type" && !typeText.trim()) return; onAdd({ filter, typeText: typeText.trim(), power: parseInt(power, 10) || 0, toughness: parseInt(toughness, 10) || 0 }); }}
             style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: "var(--gold)", color: "#000", fontWeight: 800, cursor: "pointer" }}>+ Agregar</button>
         </div>
       </div>
@@ -3870,6 +3956,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [counterModal, setCounterModal] = useState(null); // instanceId of card
   const [animateModal, setAnimateModal] = useState(null); // { mode: "single"|"all", instanceId?, cardName? }
   const [triggerConfigModal, setTriggerConfigModal] = useState(null); // { instanceId, cardName }
+  const [staticBuffModal, setStaticBuffModal] = useState(null); // { instanceId, cardName }
   const [triggerPrompts, setTriggerPrompts] = useState([]); // { id, event, permanentInstanceId, permanentName, config, context? }
   const prevBattlefieldIdsRef = useRef(null); // Set<instanceId> del render anterior, para detectar ETB sin tocar cada punto donde se agregan cartas al campo
   const [versionModal, setVersionModal] = useState(null); // card to change art version
@@ -3953,7 +4040,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     viewTopModal || scryModal || searchLibModal || resolveModal ||
     tokenModal || lifeHistoryOpen || cardMarkerModal || mulliganModal ||
     counterModal || animateModal || versionModal || diceModal || abilitiesModal ||
-    massLifeOpen || voteSetupOpen || voteState || showZone || combatModalOpen || triggerConfigModal
+    massLifeOpen || voteSetupOpen || voteState || showZone || combatModalOpen || triggerConfigModal || staticBuffModal
   );
   useEffect(() => { if (!anyModalCoveringField) setIsPeeking(false); }, [anyModalCoveringField]);
   // Disparadores de "entra tierra" (land_etb) y "entra permanente" (permanent_etb): detecta cartas nuevas
@@ -5105,6 +5192,12 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
         color: (card.triggers || []).length ? "var(--gold)" : "var(--text-primary)",
         action: () => { setCtxMenu(null); setTriggerConfigModal({ instanceId: card.instanceId, cardName: getCardName(card) }); }
       },
+      // Habilidad estática (anthem): continua, no espera un evento — ej. "criaturas Fragmentados que controlas obtienen +1/+1"
+      zone === "battlefield" && !card.faceDown && {
+        label: (card.staticBuffs || []).length ? `🛡️ Habilidad estática (${card.staticBuffs.length}) ✓` : "🛡️ Configurar habilidad estática...",
+        color: (card.staticBuffs || []).length ? "var(--gold)" : "var(--text-primary)",
+        action: () => { setCtxMenu(null); setStaticBuffModal({ instanceId: card.instanceId, cardName: getCardName(card) }); }
+      },
       // Clonar token
       zone === "battlefield" && card.isToken && {
         label: "🎭 Clonar token",
@@ -5578,6 +5671,13 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       ×{card.qty}
                     </div>
                   )}
+                  {/* Anthem source badge — esta carta otorga una habilidad estática a otras */}
+                  {!card.faceDown && (card.staticBuffs || []).length > 0 && (
+                    <div title={card.staticBuffs.map(b => `${b.power > 0 ? "+" : ""}${b.power}/${b.toughness > 0 ? "+" : ""}${b.toughness}`).join(", ")}
+                      style={{ position: "absolute", top: 3, left: 3, background: "#2a1a0d", color: "#ffcc7a", borderRadius: 4, fontSize: 8, fontWeight: 800, padding: "1px 4px", zIndex: 5, whiteSpace: "nowrap", pointerEvents: "none", border: "1px solid #8a5a2a88", boxShadow: "0 0 6px #8a5a2a66" }}>
+                      📢
+                    </div>
+                  )}
                   {/* Animated land badge — tierra convertida en criatura */}
                   {card.animated && !card.faceDown && (
                     <div title={card.animatedCreatureType ? `Tierra animada — ${card.animatedCreatureType}` : "Tierra animada"}
@@ -5645,9 +5745,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       })}
                     </div>
                   )}
-                  {!card.faceDown && (card.counters || []).length > 0 && (() => {
+                  {!card.faceDown && ((card.counters || []).length > 0 || (isCreature(card) && p.battlefield.some(s => (s.staticBuffs || []).length > 0))) && (() => {
                     const cnts = card.counters || [];
-                    const eff = getEffectivePT(card);
+                    const eff = getEffectivePT(card, p.battlefield);
                     const netP = eff.power - (parseInt(card.power, 10) || 0);
                     const netT = eff.toughness - (parseInt(card.toughness, 10) || 0);
                     const others = [...new Set(cnts.filter(x => x !== "+1/+1" && x !== "-1/-1" && x !== "+pow" && x !== "-pow" && x !== "+tgh" && x !== "-tgh"))];
@@ -6772,6 +6872,26 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           />
         );
       })()}
+      {staticBuffModal && (() => {
+        const liveCard = players[myId]?.battlefield.find(c => c.instanceId === staticBuffModal.instanceId);
+        if (!liveCard) { setStaticBuffModal(null); return null; }
+        return (
+          <StaticBuffModal
+            cardName={staticBuffModal.cardName}
+            buffs={liveCard.staticBuffs || []}
+            onClose={() => setStaticBuffModal(null)}
+            onAdd={(buff) => {
+              const newBuff = { ...buff, id: uid() };
+              updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === staticBuffModal.instanceId ? { ...c, staticBuffs: [...(c.staticBuffs || []), newBuff] } : c) }),
+                `${players[myId]?.name}: agrega habilidad estática a ${staticBuffModal.cardName}.`);
+            }}
+            onRemove={(id) => {
+              updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === staticBuffModal.instanceId ? { ...c, staticBuffs: (c.staticBuffs || []).filter(b => b.id !== id) } : c) }),
+                `${players[myId]?.name}: quita una habilidad estática de ${staticBuffModal.cardName}.`);
+            }}
+          />
+        );
+      })()}
       {/* Panel de resumen y resolución de combate — asistido, no motor de reglas: calcula y aplica, el jugador confirma cada muerte */}
       {combatModalOpen && (() => {
         const findCard = (iid) => { for (const [pid, pl] of Object.entries(players)) { const c = pl.battlefield?.find(x => x.instanceId === iid); if (c) return { card: c, ownerPid: pid }; } return null; };
@@ -6782,15 +6902,15 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           const found = findCard(atkId);
           if (!found) return null;
           const { card: atkCard, ownerPid } = found;
-          const eff = getEffectivePT(atkCard);
+          const eff = getEffectivePT(atkCard, players[ownerPid]?.battlefield || []);
           const abilities = atkCard.abilities || [];
           const isDeathtouch = abilities.includes("deathtouch");
           const isTrample = abilities.includes("trample");
           const isMenace = abilities.includes("menace");
           const blockerIds = blockers[atkId] || [];
           const blockerCards = blockerIds.map(bid => findCard(bid)).filter(Boolean);
-          const totalBlockerToughness = blockerCards.reduce((s, b) => s + getEffectivePT(b.card).toughness, 0);
-          const totalBlockerPower = blockerCards.reduce((s, b) => s + getEffectivePT(b.card).power, 0);
+          const totalBlockerToughness = blockerCards.reduce((s, b) => s + getEffectivePT(b.card, players[b.ownerPid]?.battlefield || []).toughness, 0);
+          const totalBlockerPower = blockerCards.reduce((s, b) => s + getEffectivePT(b.card, players[b.ownerPid]?.battlefield || []).power, 0);
           const isBlocked = blockerCards.length > 0;
           const dmgToPlayer = !isBlocked ? eff.power : (isTrample ? Math.max(0, eff.power - totalBlockerToughness) : 0);
           if (dmgToPlayer > 0) {
@@ -6802,7 +6922,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           }
           const targetLife = players[targetPid]?.life ?? 0;
           const lethalToPlayer = !isBlocked && dmgToPlayer >= targetLife;
-          const blockerHasDeathtouch = blockerCards.some(b => (b.card.abilities || []).includes("deathtouch") && getEffectivePT(b.card).power > 0);
+          const blockerHasDeathtouch = blockerCards.some(b => (b.card.abilities || []).includes("deathtouch") && getEffectivePT(b.card, players[b.ownerPid]?.battlefield || []).power > 0);
           const attackerTakesLethal = isBlocked && (totalBlockerPower >= eff.toughness || blockerHasDeathtouch);
           return { atkId, atkCard, ownerPid, targetPid, eff, isDeathtouch, isTrample, isMenace, blockerCards, totalBlockerPower, isBlocked, dmgToPlayer, lethalToPlayer, attackerTakesLethal };
         }).filter(Boolean);
@@ -6827,7 +6947,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
                       </div>
                     ) : (
                       <div style={{ fontSize: 11, marginTop: 6 }}>
-                        <div>Bloqueado por: {r.blockerCards.map(b => `${getCardName(b.card)} (${getEffectivePT(b.card).power}/${getEffectivePT(b.card).toughness})`).join(", ")}</div>
+                        <div>Bloqueado por: {r.blockerCards.map(b => { const bEff = getEffectivePT(b.card, players[b.ownerPid]?.battlefield || []); return `${getCardName(b.card)} (${bEff.power}/${bEff.toughness})`; }).join(", ")}</div>
                         {r.isMenace && r.blockerCards.length < 2 && <div style={{ color: "var(--color-orange)" }}>⚠ Tiene Amenaza — necesita 2+ bloqueadores para ser válido.</div>}
                         {r.isTrample && r.dmgToPlayer > 0 && <div>🐂 Arrollar: {r.dmgToPlayer} pasa a {players[r.targetPid]?.name}</div>}
                         {r.isDeathtouch && <div style={{ color: "var(--color-poison)" }}>💀 Toque mortal: cualquier bloqueador dañado se considera letal</div>}
