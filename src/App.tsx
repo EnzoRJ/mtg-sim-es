@@ -1237,9 +1237,18 @@ var TRIGGER_EVENTS = [
   { key: "dies", label: "Muere criatura", icon: "💀", desc: "Cada vez que una criatura tuya muera (campo → cementerio)." },
   { key: "upkeep", label: "Mantenimiento", icon: "🌅", desc: "Al comienzo de tu fase de mantenimiento." },
 ];
+// Ability words que Scryfall ya trae en card.keywords y mapean 1:1 (o casi) a un evento — confiable,
+// a diferencia de parsear oracle_text libre. "constellation" es aproximado (solo dispara con encantamientos
+// en la carta real, acá dispara con cualquier permanente) — se avisa igual como sugerencia, no se auto-guarda.
+var KEYWORD_TO_TRIGGER_EVENT = { landfall: "land_etb", constellation: "permanent_etb" };
+function detectTriggerEventFromCard(card) {
+  const keywords = (card?.keywords || []).map(k => k.toLowerCase());
+  for (const kw of keywords) if (KEYWORD_TO_TRIGGER_EVENT[kw]) return { event: KEYWORD_TO_TRIGGER_EVENT[kw], keyword: kw };
+  return null;
+}
 
-function TriggerConfigModal({ cardName, triggers, onAdd, onRemove, onClose }) {
-  const [event, setEvent] = useState("land_etb");
+function TriggerConfigModal({ cardName, triggers, detected, onAdd, onRemove, onClose }) {
+  const [event, setEvent] = useState(detected?.event || "land_etb");
   const [mode, setMode] = useState("counter");
   const [counterType, setCounterType] = useState("+1/+1");
   const [tokenName, setTokenName] = useState("Gato");
@@ -1257,6 +1266,11 @@ function TriggerConfigModal({ cardName, triggers, onAdd, onRemove, onClose }) {
       <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 16, padding: 22, width: 360, maxHeight: "85vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
         <div style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)", marginBottom: 4 }}>🔔 Disparadores de {cardName}</div>
         <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 14 }}>Los declaras una vez y la app te avisa para resolverlos cuando ocurra el evento.</div>
+        {detected && (
+          <div style={{ fontSize: 10, color: "var(--color-info)", background: "var(--bg-well)", border: "1px solid var(--color-info)", borderRadius: 8, padding: "6px 10px", marginBottom: 14 }}>
+            🔍 Detectado automáticamente: esta carta tiene <b>{detected.keyword}</b>. Evento pre-seleccionado — revisa el modo (contador/token) antes de agregar.
+          </div>
+        )}
         {triggers.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16, padding: "8px 10px", background: "var(--bg-well)", borderRadius: 8 }}>
             {triggers.map(t => {
@@ -5186,12 +5200,16 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           }
         }))
       },
-      // Disparadores declarados a mano por el jugador (landfall, ETB, muere, mantenimiento) — no se lee el texto de la carta
-      zone === "battlefield" && !card.faceDown && {
-        label: (card.triggers || []).length ? `🔔 Disparadores (${card.triggers.length}) ✓` : "🔔 Configurar disparadores...",
-        color: (card.triggers || []).length ? "var(--gold)" : "var(--text-primary)",
-        action: () => { setCtxMenu(null); setTriggerConfigModal({ instanceId: card.instanceId, cardName: getCardName(card) }); }
-      },
+      // Disparadores declarados a mano por el jugador (landfall, ETB, muere, mantenimiento) — no se lee el texto de la carta,
+      // salvo la detección de ability words vía Scryfall (card.keywords), que solo pre-selecciona el evento como sugerencia.
+      zone === "battlefield" && !card.faceDown && (() => {
+        const detected = !(card.triggers || []).length ? detectTriggerEventFromCard(card) : null;
+        return {
+          label: (card.triggers || []).length ? `🔔 Disparadores (${card.triggers.length}) ✓` : detected ? `🔔 Configurar disparadores... (🔍 ${detected.keyword})` : "🔔 Configurar disparadores...",
+          color: (card.triggers || []).length ? "var(--gold)" : detected ? "var(--color-info)" : "var(--text-primary)",
+          action: () => { setCtxMenu(null); setTriggerConfigModal({ instanceId: card.instanceId, cardName: getCardName(card), detected: detectTriggerEventFromCard(card) }); }
+        };
+      })(),
       // Habilidad estática (anthem): continua, no espera un evento — ej. "criaturas Fragmentados que controlas obtienen +1/+1"
       zone === "battlefield" && !card.faceDown && {
         label: (card.staticBuffs || []).length ? `🛡️ Habilidad estática (${card.staticBuffs.length}) ✓` : "🛡️ Configurar habilidad estática...",
@@ -6859,6 +6877,7 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           <TriggerConfigModal
             cardName={triggerConfigModal.cardName}
             triggers={liveCard.triggers || []}
+            detected={triggerConfigModal.detected}
             onClose={() => setTriggerConfigModal(null)}
             onAdd={(trig) => {
               const newTrig = { ...trig, id: uid() };
