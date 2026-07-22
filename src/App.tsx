@@ -1211,6 +1211,99 @@ function AnimateModal({ mode, cardName, onConfirm, onClose }) {
 }
 
 
+// ─── Landfall / disparador de "entra tierra" Modal ─────────────────────────────
+// Configura qué ofrece una carta cuando entra una tierra bajo tu control (Refugio de Felidares, etc.)
+// No lee el texto de la carta — el jugador declara el disparador una vez y queda guardado en la carta.
+// Catálogo de eventos disparadores soportados — el jugador declara cuál aplica, la app no lee texto de carta
+var TRIGGER_EVENTS = [
+  { key: "land_etb", label: "Entra tierra", icon: "🏞", desc: "Cada vez que entre una tierra bajo tu control (landfall). Ej: Refugio de Felidares." },
+  { key: "permanent_etb", label: "Entra permanente", icon: "✨", desc: "Cada vez que entre un permanente bajo tu control (cualquier tipo)." },
+  { key: "dies", label: "Muere criatura", icon: "💀", desc: "Cada vez que una criatura tuya muera (campo → cementerio)." },
+  { key: "upkeep", label: "Mantenimiento", icon: "🌅", desc: "Al comienzo de tu fase de mantenimiento." },
+];
+
+function TriggerConfigModal({ cardName, triggers, onAdd, onRemove, onClose }) {
+  const [event, setEvent] = useState("land_etb");
+  const [mode, setMode] = useState("counter");
+  const [counterType, setCounterType] = useState("+1/+1");
+  const [tokenName, setTokenName] = useState("Gato");
+  const [tokenPower, setTokenPower] = useState("1");
+  const [tokenToughness, setTokenToughness] = useState("1");
+  const [tokenColor, setTokenColor] = useState("#e8e0c0");
+  const fieldS = { width: "100%", marginTop: 4, padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", boxSizing: "border-box", fontSize: 13 };
+  const modeBtn = (key, label) => (
+    <button onClick={() => setMode(key)} style={{ flex: 1, padding: "6px 0", borderRadius: 6, border: `1px solid ${mode === key ? "var(--gold)" : "var(--border-default)"}`, background: mode === key ? "var(--gold-33)" : "transparent", color: mode === key ? "var(--gold)" : "var(--text-muted)", cursor: "pointer", fontSize: 10, fontWeight: 700 }}>{label}</button>
+  );
+  const evtDef = TRIGGER_EVENTS.find(e => e.key === event);
+  const modeLabel = (t) => t.mode === "counter" ? `Contador ${t.counterType}` : t.mode === "token" ? `Token ${t.tokenName} ${t.tokenPower}/${t.tokenToughness}` : "Elegir uno";
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#000c", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 700 }} onClick={onClose}>
+      <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-strong)", borderRadius: 16, padding: 22, width: 360, maxHeight: "85vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)", marginBottom: 4 }}>🔔 Disparadores de {cardName}</div>
+        <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 14 }}>Los declaras una vez y la app te avisa para resolverlos cuando ocurra el evento.</div>
+        {triggers.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16, padding: "8px 10px", background: "var(--bg-well)", borderRadius: 8 }}>
+            {triggers.map(t => {
+              const ev = TRIGGER_EVENTS.find(e => e.key === t.event);
+              return (
+                <div key={t.id} onClick={() => onRemove(t.id)} title="Click para quitar"
+                  style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 20, background: "var(--gold-33)", border: "1px solid var(--gold-53)", cursor: "pointer" }}>
+                  <span style={{ fontSize: 11 }}>{ev?.icon} {ev?.label} → {modeLabel(t)}</span>
+                  <span style={{ fontSize: 9, color: "var(--gold)", opacity: 0.7 }}>✕</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, marginBottom: 8, letterSpacing: 0.5 }}>AGREGAR DISPARADOR</div>
+        <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
+          {TRIGGER_EVENTS.map(ev => (
+            <button key={ev.key} onClick={() => setEvent(ev.key)}
+              style={{ padding: "5px 8px", borderRadius: 6, border: `1px solid ${event === ev.key ? "var(--gold)" : "var(--border-default)"}`, background: event === ev.key ? "var(--gold-33)" : "transparent", color: event === ev.key ? "var(--gold)" : "var(--text-muted)", cursor: "pointer", fontSize: 10, fontWeight: 700 }}>
+              {ev.icon} {ev.label}
+            </button>
+          ))}
+        </div>
+        <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 14 }}>{evtDef?.desc}</div>
+        <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+          {modeBtn("counter", "Contador")}
+          {modeBtn("token", "Token")}
+          {modeBtn("choice", "Elegir uno")}
+        </div>
+        {(mode === "counter" || mode === "choice") && (
+          <label style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginBottom: 14 }}>Contador (en esta carta)
+            <select value={counterType} onChange={e => setCounterType(e.target.value)} style={fieldS}>
+              {COUNTER_TYPES.filter(t => t.key !== "custom").map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+            </select>
+          </label>
+        )}
+        {(mode === "token" || mode === "choice") && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Token a crear</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+              {TOKEN_PRESETS.slice(0, 6).map(tp => (
+                <button key={tp.name} onClick={() => { setTokenName(tp.name); setTokenPower(tp.p); setTokenToughness(tp.t); setTokenColor(tp.color); }}
+                  style={{ padding: "3px 8px", borderRadius: 6, border: "1px solid var(--border-default)", background: tokenName === tp.name ? "var(--gold-33)" : "transparent", color: "var(--text-primary)", cursor: "pointer", fontSize: 10 }}>{tp.name} {tp.p}/{tp.t}</button>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input value={tokenName} onChange={e => setTokenName(e.target.value)} maxLength={30} placeholder="Nombre" style={{ ...fieldS, flex: 2, marginTop: 0 }} />
+              <input value={tokenPower} onChange={e => setTokenPower(e.target.value)} inputMode="numeric" placeholder="F" style={{ ...fieldS, flex: 1, marginTop: 0 }} />
+              <input value={tokenToughness} onChange={e => setTokenToughness(e.target.value)} inputMode="numeric" placeholder="R" style={{ ...fieldS, flex: 1, marginTop: 0 }} />
+            </div>
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer" }}>Cerrar</button>
+          <button onClick={() => onAdd({ event, mode, counterType, tokenName: tokenName.trim() || "Token", tokenPower: parseInt(tokenPower, 10) || 0, tokenToughness: parseInt(tokenToughness, 10) || 0, tokenColor })}
+            style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: "var(--gold)", color: "#000", fontWeight: 800, cursor: "pointer" }}>+ Agregar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 // ─── Mulligan Modal (Commander London Mulligan) ───────────────────────────────
 // Commander rule: first mulligan is FREE (draw 7, keep 7).
 // From the second mulligan onward, put back (mulliganCount - 1) cards to library bottom.
@@ -3776,6 +3869,9 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const [selCard, setSelCard] = useState(null);
   const [counterModal, setCounterModal] = useState(null); // instanceId of card
   const [animateModal, setAnimateModal] = useState(null); // { mode: "single"|"all", instanceId?, cardName? }
+  const [triggerConfigModal, setTriggerConfigModal] = useState(null); // { instanceId, cardName }
+  const [triggerPrompts, setTriggerPrompts] = useState([]); // { id, event, permanentInstanceId, permanentName, config, context? }
+  const prevBattlefieldIdsRef = useRef(null); // Set<instanceId> del render anterior, para detectar ETB sin tocar cada punto donde se agregan cartas al campo
   const [versionModal, setVersionModal] = useState(null); // card to change art version
   const [mulliganModal, setMulliganModal] = useState(false);
   const [mulliganCount, setMulliganCount] = useState(0); // how many mulligans taken
@@ -3857,9 +3953,35 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     viewTopModal || scryModal || searchLibModal || resolveModal ||
     tokenModal || lifeHistoryOpen || cardMarkerModal || mulliganModal ||
     counterModal || animateModal || versionModal || diceModal || abilitiesModal ||
-    massLifeOpen || voteSetupOpen || voteState || showZone || combatModalOpen
+    massLifeOpen || voteSetupOpen || voteState || showZone || combatModalOpen || triggerConfigModal
   );
   useEffect(() => { if (!anyModalCoveringField) setIsPeeking(false); }, [anyModalCoveringField]);
+  // Disparadores de "entra tierra" (land_etb) y "entra permanente" (permanent_etb): detecta cartas nuevas
+  // en mi campo de batalla comparando contra el render anterior, sin tocar los ~10 puntos dispersos del
+  // código donde una carta entra al campo.
+  useEffect(() => {
+    const myBf = players[myId]?.battlefield || [];
+    const currentIds = new Set(myBf.map(c => c.instanceId));
+    if (prevBattlefieldIdsRef.current === null) { prevBattlefieldIdsRef.current = currentIds; return; } // primer render/resume: no disparar retroactivamente
+    const newIds = [...currentIds].filter(id => !prevBattlefieldIdsRef.current.has(id));
+    prevBattlefieldIdsRef.current = currentIds;
+    if (!newIds.length) return;
+    const newCards = myBf.filter(c => newIds.includes(c.instanceId));
+    const triggerHolders = myBf.filter(c => (c.triggers || []).length && !c.faceDown);
+    if (!triggerHolders.length) return;
+    const prompts = [];
+    for (const entered of newCards) {
+      const enteredIsLand = isLand(entered);
+      for (const perm of triggerHolders) {
+        for (const trig of (perm.triggers || [])) {
+          if (trig.event === "land_etb" && !enteredIsLand) continue;
+          if (trig.event !== "land_etb" && trig.event !== "permanent_etb") continue;
+          prompts.push({ id: uid(), event: trig.event, permanentInstanceId: perm.instanceId, permanentName: getCardName(perm), config: trig, context: getCardName(entered) });
+        }
+      }
+    }
+    if (prompts.length) setTriggerPrompts(prev => [...prev, ...prompts]);
+  }, [players[myId]?.battlefield]);
   // Map pid → avatar for use in sub-components
   const avatarMap = Object.fromEntries(initialPlayers.map(p => [p.id, p.avatar || "🧙"]));
   const isMyTurn = !isSpectator && activePlayer === myId;
@@ -4568,6 +4690,18 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
   const moveCard = (card, from, to) => {
     from = from === "lands" ? "battlefield" : from;
     if (from === "battlefield") setRow2Cards(s => { const n = new Set(s); n.delete(card.instanceId); return n; });
+    // Disparador "muere": una criatura mía murió (campo → cementerio) — busca en TODOS mis permanentes
+    // (incluida la que está muriendo) triggers "dies" declarados a mano; se resuelve igual con token o carta real.
+    if (from === "battlefield" && to === "graveyard" && isCreature(card)) {
+      const myBf = players[myId]?.battlefield || [];
+      const triggerHolders = myBf.filter(c => (c.triggers || []).some(t => t.event === "dies") && !c.faceDown);
+      if (triggerHolders.length) {
+        const newPrompts = triggerHolders.flatMap(perm => (perm.triggers || []).filter(t => t.event === "dies").map(trig => ({
+          id: uid(), event: "dies", permanentInstanceId: perm.instanceId, permanentName: getCardName(perm), config: trig, context: getCardName(card),
+        })));
+        setTriggerPrompts(prev => [...prev, ...newPrompts]);
+      }
+    }
     // Un token deja de existir en cuanto sale del campo de batalla (regla 111.7): no se agrega a la zona destino
     if (from === "battlefield" && to !== "battlefield" && card.isToken) {
       updMe(p => ({ ...p, battlefield: p.battlefield.filter(c => c.instanceId !== card.instanceId) }),
@@ -4751,6 +4885,15 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
     });
     if (nextId === myId) {
       untapAll();
+      // Disparador "mantenimiento": comienza mi turno — busca en mis permanentes triggers "upkeep" declarados a mano
+      const myBfNow = players[myId]?.battlefield || [];
+      const upkeepHolders = myBfNow.filter(c => (c.triggers || []).some(t => t.event === "upkeep") && !c.faceDown);
+      if (upkeepHolders.length) {
+        const newPrompts = upkeepHolders.flatMap(perm => (perm.triggers || []).filter(t => t.event === "upkeep").map(trig => ({
+          id: uid(), event: "upkeep", permanentInstanceId: perm.instanceId, permanentName: getCardName(perm), config: trig, context: null,
+        })));
+        setTriggerPrompts(prev => [...prev, ...newPrompts]);
+      }
       // Auto-add lore counter to each Saga I control on my upkeep
       setPlayers(ps => {
         const p = ps[myId]; if (!p) return ps;
@@ -4955,6 +5098,12 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
             }), `${players[myId]?.name}: ${hasIt ? "quita" : "asigna"} ${ab.name} a ${getCardName(card)}.`);
           }
         }))
+      },
+      // Disparadores declarados a mano por el jugador (landfall, ETB, muere, mantenimiento) — no se lee el texto de la carta
+      zone === "battlefield" && !card.faceDown && {
+        label: (card.triggers || []).length ? `🔔 Disparadores (${card.triggers.length}) ✓` : "🔔 Configurar disparadores...",
+        color: (card.triggers || []).length ? "var(--gold)" : "var(--text-primary)",
+        action: () => { setCtxMenu(null); setTriggerConfigModal({ instanceId: card.instanceId, cardName: getCardName(card) }); }
       },
       // Clonar token
       zone === "battlefield" && card.isToken && {
@@ -6428,6 +6577,41 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
       {/* Chat */}
       {chatOpen && <ChatPanel messages={chatMessages} input={chatInput} onInput={setChatInput} onSend={sendChatMessage} onClose={() => setChatOpen(false)} playerName={players[myId]?.name} />}
       {stackOpen && <StackPanel items={stackItems} myId={myId} onAdd={addStackItem} onRemove={removeStackItem} onClear={clearStack} onClose={() => setStackOpen(false)} />}
+      {/* Prompts de disparadores pendientes (landfall, ETB, muere, mantenimiento) — no auto-desaparecen, el jugador resuelve u omite */}
+      {triggerPrompts.length > 0 && (
+        <div style={{ position: "fixed", bottom: 10, right: 10, zIndex: 450, display: "flex", flexDirection: "column-reverse", gap: 8, maxWidth: 300 }}>
+          {triggerPrompts.map(pr => {
+            const evtDef = TRIGGER_EVENTS.find(e => e.key === pr.event) || {};
+            const label = pr.context ? `${evtDef.label}: ${pr.context} → ${pr.permanentName}` : `${evtDef.label}: ${pr.permanentName}`;
+            return (
+              <div key={pr.id} style={{ background: "var(--bg-elevated)", border: "1px solid var(--gold-53)", borderRadius: 10, padding: "10px 12px", boxShadow: "0 4px 20px var(--scrim-67)" }}>
+                <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, marginBottom: 6 }}>{evtDef.icon} {label}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {(pr.config.mode === "counter" || pr.config.mode === "choice") && (
+                    <button onClick={() => {
+                      addCounter(pr.permanentInstanceId, pr.config.counterType);
+                      addLog(`${players[myId]?.name}: resuelve disparador de ${pr.permanentName} → contador ${pr.config.counterType}.`);
+                      setTriggerPrompts(ps => ps.filter(x => x.id !== pr.id));
+                    }} style={{ padding: "5px 9px", borderRadius: 6, border: "1px solid var(--color-life)", background: "transparent", color: "var(--color-life)", cursor: "pointer", fontSize: 11 }}>
+                      +{pr.config.counterType}
+                    </button>
+                  )}
+                  {(pr.config.mode === "token" || pr.config.mode === "choice") && (
+                    <button onClick={() => {
+                      createToken(pr.config.tokenName, pr.config.tokenPower, pr.config.tokenToughness, pr.config.tokenColor, 1, null);
+                      addLog(`${players[myId]?.name}: resuelve disparador de ${pr.permanentName} → token ${pr.config.tokenName}.`);
+                      setTriggerPrompts(ps => ps.filter(x => x.id !== pr.id));
+                    }} style={{ padding: "5px 9px", borderRadius: 6, border: "1px solid var(--color-info)", background: "transparent", color: "var(--color-info)", cursor: "pointer", fontSize: 11 }}>
+                      🪙 {pr.config.tokenName} {pr.config.tokenPower}/{pr.config.tokenToughness}
+                    </button>
+                  )}
+                  <button onClick={() => setTriggerPrompts(ps => ps.filter(x => x.id !== pr.id))} style={{ padding: "5px 9px", borderRadius: 6, border: "1px solid var(--gray-deep)", background: "transparent", color: "var(--gray-mid)", cursor: "pointer", fontSize: 11 }}>Omitir</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Notes */}
       {notesOpen && <NotesPanel notes={notes} onChange={v => { setNotes(v); try { localStorage.setItem(`notes_${roomCode}`, v); } catch {} }} onClose={() => setNotesOpen(false)} />}
@@ -6568,6 +6752,26 @@ function GameBoard({ initialPlayers, myId, rtInstance, onExit, onHome, onClearSe
           }}
         />
       )}
+      {triggerConfigModal && (() => {
+        const liveCard = players[myId]?.battlefield.find(c => c.instanceId === triggerConfigModal.instanceId);
+        if (!liveCard) { setTriggerConfigModal(null); return null; }
+        return (
+          <TriggerConfigModal
+            cardName={triggerConfigModal.cardName}
+            triggers={liveCard.triggers || []}
+            onClose={() => setTriggerConfigModal(null)}
+            onAdd={(trig) => {
+              const newTrig = { ...trig, id: uid() };
+              updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === triggerConfigModal.instanceId ? { ...c, triggers: [...(c.triggers || []), newTrig] } : c) }),
+                `${players[myId]?.name}: agrega disparador (${TRIGGER_EVENTS.find(e => e.key === trig.event)?.label}) a ${triggerConfigModal.cardName}.`);
+            }}
+            onRemove={(id) => {
+              updMe(p => ({ ...p, battlefield: p.battlefield.map(c => c.instanceId === triggerConfigModal.instanceId ? { ...c, triggers: (c.triggers || []).filter(t => t.id !== id) } : c) }),
+                `${players[myId]?.name}: quita un disparador de ${triggerConfigModal.cardName}.`);
+            }}
+          />
+        );
+      })()}
       {/* Panel de resumen y resolución de combate — asistido, no motor de reglas: calcula y aplica, el jugador confirma cada muerte */}
       {combatModalOpen && (() => {
         const findCard = (iid) => { for (const [pid, pl] of Object.entries(players)) { const c = pl.battlefield?.find(x => x.instanceId === iid); if (c) return { card: c, ownerPid: pid }; } return null; };
